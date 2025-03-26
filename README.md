@@ -98,10 +98,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 📞 Contact
-
-Project Link: [https://github.com/yourusername/advanced-metal-calculator](https://github.com/yourusername/advanced-metal-calculator)
-
----
-
-Made with ❤️ by [Your Name]
