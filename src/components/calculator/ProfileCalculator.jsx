@@ -54,16 +54,16 @@ const ProfileCalculator = ({ profileData, onProfileDataChange, unit }) => {
   const getProfileImage = () => {
     if (!profileData.type) return null;
     
-    switch(profileData.type) {
-      case 'IPE':
+    switch(profileData.type.toLowerCase()) {
+      case 'ipe':
         return IPEImg;
-      case 'IPN':
+      case 'ipn':
         return IPNImg;
-      case 'HEA':
+      case 'hea':
         return HEAImg;
-      case 'HEB':
+      case 'heb':
         return HEBImg;
-      case 'UPN':
+      case 'upn':
         return UPNImg;
       default:
         return null;

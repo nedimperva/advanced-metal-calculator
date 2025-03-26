@@ -9,8 +9,8 @@ export const profiles = {
       'IPE 450', 'IPE 500', 'IPE 550', 'IPE 600'
     ]
   },
-  inp: {
-    name: 'INP (European Standard I-Beam)',
+  ipn: {
+    name: 'IPN (European Standard I-Beam)',
     sizes: [
       'INP 80', 'INP 100', 'INP 120', 'INP 140', 'INP 160', 'INP 180', 'INP 200',
       'INP 220', 'INP 240', 'INP 260', 'INP 280', 'INP 300', 'INP 320', 'INP 340',
@@ -41,15 +41,6 @@ export const profiles = {
       'HEB 220', 'HEB 240', 'HEB 260', 'HEB 280', 'HEB 300', 'HEB 320',
       'HEB 340', 'HEB 360', 'HEB 400', 'HEB 450', 'HEB 500', 'HEB 550',
       'HEB 600', 'HEB 650', 'HEB 700', 'HEB 800', 'HEB 900', 'HEB 1000'
-    ]
-  },
-  hem: {
-    name: 'HEM (European Wide Flange Beam)',
-    sizes: [
-      'HEM 100', 'HEM 120', 'HEM 140', 'HEM 160', 'HEM 180', 'HEM 200',
-      'HEM 220', 'HEM 240', 'HEM 260', 'HEM 280', 'HEM 300', 'HEM 320',
-      'HEM 340', 'HEM 360', 'HEM 400', 'HEM 450', 'HEM 500', 'HEM 550',
-      'HEM 600', 'HEM 650', 'HEM 700', 'HEM 800', 'HEM 900', 'HEM 1000'
     ]
   }
 };
