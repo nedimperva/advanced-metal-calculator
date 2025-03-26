@@ -25,8 +25,6 @@ A comprehensive web application for calculating the weight and cost of various m
 - [x] SavedCalculations component with proper scrolling
 - [x] Type selector tabs with improved visual design
 - [x] CalculationPreview component for displaying individual calculations
-- [x] Proper weight and price display in calculation previews
-- [x] Fixed delete functionality for individual calculations
 - [x] Add calculations to projects with automatic clearing
 - [x] Persistent storage using localStorage
 - [x] Responsive layout for desktop screens
