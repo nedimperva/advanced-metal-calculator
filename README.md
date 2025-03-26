@@ -30,13 +30,13 @@ A comprehensive web application for calculating the weight and cost of various m
 - [x] Add calculations to projects with automatic clearing
 - [x] Persistent storage using localStorage
 - [x] Responsive layout for desktop screens
+- [x] Improved mobile responsiveness
+  - [x] Optimized layout for small screens
+  - [x] Added touch-friendly controls
+  - [x] Implemented collapsible sections for better space utilization
 
 ## 📝 TODO List
 
-- [ ] Improve mobile responsiveness
-  - [ ] Optimize layout for small screens
-  - [ ] Add touch-friendly controls
-  - [ ] Implement collapsible sections for better space utilization
 - [ ] Add export/import functionality for projects and calculations
 - [ ] Implement user accounts and cloud synchronization
 - [ ] Add more material types and properties
