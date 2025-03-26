@@ -12,12 +12,12 @@ const AppContent = () => {
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: theme.colors.background }}>
       <nav className="flex-none" style={{ backgroundColor: theme.colors.surface, borderBottom: `1px solid ${theme.colors.border}` }}>
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-2 sm:px-4">
           <div className="flex justify-between items-center h-14">
-            <div className="flex space-x-4 h-full">
+            <div className="flex h-full overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setActiveView('calculator')}
-                className={`px-4 h-full transition-colors relative ${
+                className={`px-3 sm:px-4 h-full transition-colors relative whitespace-nowrap ${
                   activeView === 'calculator' ? 'font-medium' : ''
                 }`}
                 style={{ 
@@ -34,7 +34,7 @@ const AppContent = () => {
               </button>
               <button
                 onClick={() => setActiveView('projects')}
-                className={`px-4 h-full transition-colors relative ${
+                className={`px-3 sm:px-4 h-full transition-colors relative whitespace-nowrap ${
                   activeView === 'projects' ? 'font-medium' : ''
                 }`}
                 style={{ 
@@ -55,7 +55,7 @@ const AppContent = () => {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-auto">
         {activeView === 'calculator' ? <MetalCalculator /> : <ProjectsView />}
       </main>
     </div>

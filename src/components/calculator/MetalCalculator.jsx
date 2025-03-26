@@ -59,7 +59,7 @@ const MetalCalculator = () => {
     thickness: 1.8, 
     length: 6000 
   });
-  const [angleData, setAngleData] = useState({ type: '', width: 0, height: 0, thickness: 0, length: 0 });
+  const [angleData, setAngleData] = useState({ type: 'equal', width: 0, height: 0, thickness: 0, length: 0 });
   const [barData, setBarData] = useState({ 
     type: 'flat', 
     diameter: 0, 
@@ -136,9 +136,13 @@ const MetalCalculator = () => {
   useEffect(() => {
     setShowProgress(true);
     const priceTimeout = setTimeout(() => {
-      setTotalWeight(weight * quantity);
-      setPiecePrice(calculateTotalPrice(weight, pricePerKg, 1));
-      setTotalPrice(calculateTotalPrice(weight, pricePerKg, quantity));
+      // Handle empty or invalid values
+      const qtyValue = quantity === '' ? 0 : quantity;
+      const priceValue = pricePerKg === '' ? 0 : pricePerKg;
+      
+      setTotalWeight(weight * qtyValue);
+      setPiecePrice(calculateTotalPrice(weight, priceValue, 1));
+      setTotalPrice(calculateTotalPrice(weight, priceValue, qtyValue));
       setShowProgress(false);
     }, 300);
 
@@ -253,24 +257,24 @@ const MetalCalculator = () => {
   };
 
   return (
-    <div className="h-full" style={{ backgroundColor: theme.colors.background }}>
+    <div className="h-full overflow-auto" style={{ backgroundColor: theme.colors.background }}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
         {/* Left Column - Calculator */}
-        <div className="lg:col-span-2 p-4 flex flex-col gap-4">
+        <div className="lg:col-span-2 p-2 sm:p-4 flex flex-col gap-3 sm:gap-4">
           {/* Header and Controls */}
-          <div className="rounded-lg p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold" style={{ color: theme.colors.text }}>
+          <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold" style={{ color: theme.colors.text }}>
                 {t('appTitle')}
               </h1>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                 {/* Material Selection */}
-                <div className="flex items-center gap-2 border rounded-md p-1 px-2" style={{ backgroundColor: theme.colors.background, borderColor: theme.colors.border }}>
+                <div className="flex items-center gap-2 border rounded-md p-1 px-2 flex-grow sm:flex-grow-0" style={{ backgroundColor: theme.colors.background, borderColor: theme.colors.border }}>
                   <span className="text-sm font-medium" style={{ color: theme.colors.textLight }}>{t('materialLabel')}</span>
                   <select
                     value={selectedMaterial}
                     onChange={(e) => setSelectedMaterial(e.target.value)}
-                    className="bg-transparent border-0 focus:ring-0 text-sm p-1"
+                    className="bg-transparent border-0 focus:ring-0 text-sm p-1 flex-grow"
                     style={{ 
                       color: theme.colors.text,
                       outlineColor: theme.colors.primary
@@ -310,10 +314,10 @@ const MetalCalculator = () => {
             </div>
             
             {/* Calculation Type Tabs */}
-            <div className="flex border rounded-md overflow-hidden" style={{ borderColor: theme.colors.border }}>
+            <div className="flex flex-wrap border rounded-md overflow-hidden" style={{ borderColor: theme.colors.border }}>
               <button
                 onClick={() => handleCalculationTypeChange('plate')}
-                className={`py-2 px-4 text-center flex-1 transition-colors ${calculationType !== 'plate' ? 'border-r' : ''}`}
+                className={`py-2 px-2 sm:px-4 text-center flex-1 transition-colors text-sm sm:text-base ${calculationType !== 'plate' ? 'border-r' : ''}`}
                 style={{ 
                   backgroundColor: calculationType === 'plate' ? theme.colors.primary : theme.colors.background,
                   color: calculationType === 'plate' ? theme.colors.textOnPrimary : theme.colors.text,
@@ -324,7 +328,7 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handleCalculationTypeChange('profile')}
-                className={`py-2 px-4 text-center flex-1 transition-colors ${calculationType !== 'profile' ? 'border-r' : ''}`}
+                className={`py-2 px-2 sm:px-4 text-center flex-1 transition-colors text-sm sm:text-base ${calculationType !== 'profile' ? 'border-r' : ''}`}
                 style={{ 
                   backgroundColor: calculationType === 'profile' ? theme.colors.primary : theme.colors.background,
                   color: calculationType === 'profile' ? theme.colors.textOnPrimary : theme.colors.text,
@@ -335,7 +339,7 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handleCalculationTypeChange('pipe')}
-                className={`py-2 px-4 text-center flex-1 transition-colors ${calculationType !== 'pipe' ? 'border-r' : ''}`}
+                className={`py-2 px-2 sm:px-4 text-center flex-1 transition-colors text-sm sm:text-base ${calculationType !== 'pipe' ? 'border-r' : ''}`}
                 style={{ 
                   backgroundColor: calculationType === 'pipe' ? theme.colors.primary : theme.colors.background,
                   color: calculationType === 'pipe' ? theme.colors.textOnPrimary : theme.colors.text,
@@ -346,7 +350,7 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handleCalculationTypeChange('angle')}
-                className={`py-2 px-4 text-center flex-1 transition-colors ${calculationType !== 'angle' ? 'border-r' : ''}`}
+                className={`py-2 px-2 sm:px-4 text-center flex-1 transition-colors text-sm sm:text-base ${calculationType !== 'angle' ? 'border-r' : ''}`}
                 style={{ 
                   backgroundColor: calculationType === 'angle' ? theme.colors.primary : theme.colors.background,
                   color: calculationType === 'angle' ? theme.colors.textOnPrimary : theme.colors.text,
@@ -357,7 +361,7 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handleCalculationTypeChange('bar')}
-                className="py-2 px-4 text-center flex-1 transition-colors"
+                className="py-2 px-2 sm:px-4 text-center flex-1 transition-colors text-sm sm:text-base"
                 style={{ 
                   backgroundColor: calculationType === 'bar' ? theme.colors.primary : theme.colors.background,
                   color: calculationType === 'bar' ? theme.colors.textOnPrimary : theme.colors.text
@@ -370,10 +374,10 @@ const MetalCalculator = () => {
 
           {/* Pipe Sub-Type Tabs */}
           {calculationType === 'pipe' && (
-            <div className="flex space-x-1">
+            <div className="flex space-x-1 overflow-x-auto">
               <button
                 onClick={() => handlePipeSubTypeChange('round')}
-                className={`py-2 px-4 text-center flex-1 rounded-t-md transition-colors`}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
                 style={{ 
                   backgroundColor: pipeSubType === 'round' ? theme.colors.primary : theme.colors.surface,
                   color: pipeSubType === 'round' ? theme.colors.textOnPrimary : theme.colors.text
@@ -383,7 +387,7 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handlePipeSubTypeChange('square')}
-                className={`py-2 px-4 text-center flex-1 rounded-t-md transition-colors`}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
                 style={{ 
                   backgroundColor: pipeSubType === 'square' ? theme.colors.primary : theme.colors.surface,
                   color: pipeSubType === 'square' ? theme.colors.textOnPrimary : theme.colors.text
@@ -393,7 +397,7 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handlePipeSubTypeChange('rectangular')}
-                className={`py-2 px-4 text-center flex-1 rounded-t-md transition-colors`}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
                 style={{ 
                   backgroundColor: pipeSubType === 'rectangular' ? theme.colors.primary : theme.colors.surface,
                   color: pipeSubType === 'rectangular' ? theme.colors.textOnPrimary : theme.colors.text
@@ -406,10 +410,10 @@ const MetalCalculator = () => {
 
           {/* Angle Sub-Type Tabs */}
           {calculationType === 'angle' && (
-            <div className="flex space-x-1">
+            <div className="flex space-x-1 overflow-x-auto">
               <button
                 onClick={() => handleAngleSubTypeChange('equal')}
-                className={`py-2 px-4 text-center flex-1 rounded-t-md transition-colors`}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
                 style={{ 
                   backgroundColor: angleSubType === 'equal' ? theme.colors.primary : theme.colors.surface,
                   color: angleSubType === 'equal' ? theme.colors.textOnPrimary : theme.colors.text
@@ -419,7 +423,7 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handleAngleSubTypeChange('unequal')}
-                className={`py-2 px-4 text-center flex-1 rounded-t-md transition-colors`}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
                 style={{ 
                   backgroundColor: angleSubType === 'unequal' ? theme.colors.primary : theme.colors.surface,
                   color: angleSubType === 'unequal' ? theme.colors.textOnPrimary : theme.colors.text
@@ -432,10 +436,10 @@ const MetalCalculator = () => {
 
           {/* Bar Sub-Type Tabs */}
           {calculationType === 'bar' && (
-            <div className="flex space-x-1">
+            <div className="flex space-x-1 overflow-x-auto">
               <button
                 onClick={() => handleBarSubTypeChange('flat')}
-                className={`py-2 px-4 text-center flex-1 rounded-t-md transition-colors`}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
                 style={{ 
                   backgroundColor: barSubType === 'flat' ? theme.colors.primary : theme.colors.surface,
                   color: barSubType === 'flat' ? theme.colors.textOnPrimary : theme.colors.text
@@ -445,7 +449,7 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handleBarSubTypeChange('square')}
-                className={`py-2 px-4 text-center flex-1 rounded-t-md transition-colors`}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
                 style={{ 
                   backgroundColor: barSubType === 'square' ? theme.colors.primary : theme.colors.surface,
                   color: barSubType === 'square' ? theme.colors.textOnPrimary : theme.colors.text
@@ -455,7 +459,7 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handleBarSubTypeChange('round')}
-                className={`py-2 px-4 text-center flex-1 rounded-t-md transition-colors`}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
                 style={{ 
                   backgroundColor: barSubType === 'round' ? theme.colors.primary : theme.colors.surface,
                   color: barSubType === 'round' ? theme.colors.textOnPrimary : theme.colors.text
@@ -467,11 +471,11 @@ const MetalCalculator = () => {
           )}
 
           {/* Calculator and Results */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {/* Left side - Calculator */}
             <div>
               {calculationType && (
-                <div className="rounded-lg p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                   {calculationType === 'plate' && (
                     <PlateCalculator
                       plateData={plateData}
@@ -516,9 +520,9 @@ const MetalCalculator = () => {
             </div>
 
             {/* Right side - Pricing and Results */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Pricing Inputs */}
-              <div className="rounded-lg p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                 <PricingInputs
                   pricePerKg={pricePerKg}
                   setPricePerKg={setPricePerKg}
@@ -528,7 +532,7 @@ const MetalCalculator = () => {
               </div>
 
               {/* Results */}
-              <div className="rounded-lg p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                 <h3 className="text-lg font-medium mb-3" style={{ color: theme.colors.text }}>{t('results')}</h3>
                 <div className="space-y-4">
                   <div>
@@ -588,8 +592,8 @@ const MetalCalculator = () => {
           </div>
         </div>
 
-        {/* Right Column - Saved Calculations */}
-        <div className="h-full p-4" style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Saved Calculations - Responsive for all screen sizes */}
+        <div className="h-full p-2 sm:p-4">
           <SavedCalculations
             calculations={savedCalculations}
             onDelete={handleDeleteCalculation}

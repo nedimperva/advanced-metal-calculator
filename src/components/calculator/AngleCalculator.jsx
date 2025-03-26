@@ -7,30 +7,34 @@ const AngleCalculator = ({ angleData, onAngleDataChange, unit }) => {
   const { t } = useLanguage();
   
   const handleWidthChange = (e) => {
+    const value = e.target.value;
     onAngleDataChange({
       ...angleData,
-      width: parseFloat(e.target.value) || 0
+      width: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleHeightChange = (e) => {
+    const value = e.target.value;
     onAngleDataChange({
       ...angleData,
-      height: parseFloat(e.target.value) || 0
+      height: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleThicknessChange = (e) => {
+    const value = e.target.value;
     onAngleDataChange({
       ...angleData,
-      thickness: parseFloat(e.target.value) || 0
+      thickness: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleLengthChange = (e) => {
+    const value = e.target.value;
     onAngleDataChange({
       ...angleData,
-      length: parseFloat(e.target.value) || 0
+      length: value === '' ? '' : parseFloat(value)
     });
   };
 
@@ -43,7 +47,7 @@ const AngleCalculator = ({ angleData, onAngleDataChange, unit }) => {
           </label>
           <input
             type="number"
-            value={angleData.width || ''}
+            value={angleData.width === 0 ? '' : angleData.width}
             onChange={handleWidthChange}
             className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
@@ -63,7 +67,7 @@ const AngleCalculator = ({ angleData, onAngleDataChange, unit }) => {
             </label>
             <input
               type="number"
-              value={angleData.height || ''}
+              value={angleData.height === 0 ? '' : angleData.height}
               onChange={handleHeightChange}
               className="w-full p-2 border rounded-md focus:ring-2"
               style={{ 
@@ -83,7 +87,7 @@ const AngleCalculator = ({ angleData, onAngleDataChange, unit }) => {
           </label>
           <input
             type="number"
-            value={angleData.thickness || ''}
+            value={angleData.thickness === 0 ? '' : angleData.thickness}
             onChange={handleThicknessChange}
             className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
@@ -102,7 +106,7 @@ const AngleCalculator = ({ angleData, onAngleDataChange, unit }) => {
           </label>
           <input
             type="number"
-            value={angleData.length || ''}
+            value={angleData.length === 0 ? '' : angleData.length}
             onChange={handleLengthChange}
             className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
@@ -122,10 +126,10 @@ const AngleCalculator = ({ angleData, onAngleDataChange, unit }) => {
 AngleCalculator.propTypes = {
   angleData: PropTypes.shape({
     type: PropTypes.string,
-    width: PropTypes.number,
-    height: PropTypes.number,
-    thickness: PropTypes.number,
-    length: PropTypes.number
+    width: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    height: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    thickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    length: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
   }).isRequired,
   onAngleDataChange: PropTypes.func.isRequired,
   unit: PropTypes.string.isRequired

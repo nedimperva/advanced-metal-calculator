@@ -10,6 +10,7 @@ const ProjectsView = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [showProjectDetails, setShowProjectDetails] = useState(false);
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -57,6 +58,7 @@ const ProjectsView = () => {
         // If we're deleting the currently selected project, clear the selection
         if (selectedProject && selectedProject.id === projectId) {
           setSelectedProject(updatedProjects.length > 0 ? updatedProjects[0] : null);
+          setShowProjectDetails(false);
         }
       }
     }
@@ -85,13 +87,22 @@ const ProjectsView = () => {
     return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${hours}:${minutes} ${ampm}`;
   };
 
+  const handleProjectSelect = (project) => {
+    setSelectedProject(project);
+    setShowProjectDetails(true);
+  };
+
+  const handleBackToList = () => {
+    setShowProjectDetails(false);
+  };
+
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: theme.colors.background }}>
-      <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: theme.colors.border }}>
-        <h1 className="text-2xl font-bold" style={{ color: theme.colors.text }}>{t('myProjects')}</h1>
+      <div className="p-3 sm:p-4 flex justify-between items-center border-b" style={{ borderColor: theme.colors.border }}>
+        <h1 className="text-xl sm:text-2xl font-bold" style={{ color: theme.colors.text }}>{t('myProjects')}</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="py-2 px-4 font-medium rounded-md transition-colors flex items-center"
+          className="py-2 px-3 sm:px-4 font-medium rounded-md transition-colors flex items-center"
           style={{ 
             backgroundColor: theme.colors.primary,
             color: theme.colors.textOnPrimary
@@ -101,12 +112,35 @@ const ProjectsView = () => {
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 flex p-4 gap-4">
-        {/* Projects List */}
-        <div className="w-1/3 overflow-y-auto rounded-lg border" style={{ 
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border
-        }}>
+      <div className="flex-1 min-h-0 flex flex-col sm:flex-row p-2 sm:p-4 gap-3 sm:gap-4">
+        {/* Mobile Back Button - Only shown when viewing project details on mobile */}
+        {showProjectDetails && (
+          <div className="sm:hidden mb-2">
+            <button
+              onClick={handleBackToList}
+              className="flex items-center py-2 px-3 rounded-md text-sm"
+              style={{ 
+                backgroundColor: theme.colors.surface,
+                color: theme.colors.text,
+                border: `1px solid ${theme.colors.border}`
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              {t('backToProjects')}
+            </button>
+          </div>
+        )}
+
+        {/* Projects List - Hidden on mobile when viewing project details */}
+        <div 
+          className={`${showProjectDetails ? 'hidden sm:block' : 'block'} sm:w-1/3 overflow-y-auto rounded-lg border`}
+          style={{ 
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.border
+          }}
+        >
           <div className="p-3 border-b" style={{ 
             backgroundColor: theme.colors.primary,
             borderColor: theme.colors.border
@@ -135,22 +169,22 @@ const ProjectsView = () => {
               projects.map(project => (
                 <div
                   key={project.id}
-                  className={`p-4 cursor-pointer transition-colors`}
+                  className={`p-3 sm:p-4 cursor-pointer transition-colors`}
                   style={{ 
                     backgroundColor: selectedProject?.id === project.id ? theme.colors.background : 'transparent',
                     borderLeft: selectedProject?.id === project.id ? `4px solid ${theme.colors.primary}` : '4px solid transparent'
                   }}
-                  onClick={() => setSelectedProject(project)}
+                  onClick={() => handleProjectSelect(project)}
                 >
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-medium" style={{ color: theme.colors.text }}>
                         {project.name}
                       </h3>
-                      <p className="text-sm" style={{ color: theme.colors.textLight }}>
+                      <p className="text-xs sm:text-sm" style={{ color: theme.colors.textLight }}>
                         {formatDate(project.createdAt)}
                       </p>
-                      <p className="text-sm mt-1" style={{ color: theme.colors.textLight }}>
+                      <p className="text-xs sm:text-sm mt-1" style={{ color: theme.colors.textLight }}>
                         {project.calculations.length} {project.calculations.length === 1 ? t('item') : t('items')}
                       </p>
                     </div>
@@ -161,10 +195,10 @@ const ProjectsView = () => {
                           setEditingProject(project);
                           setShowModal(true);
                         }}
-                        className="p-1 rounded-full hover:opacity-80"
+                        className="p-2 rounded-full hover:opacity-80"
                         style={{ color: theme.colors.secondary }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                       </button>
@@ -173,10 +207,10 @@ const ProjectsView = () => {
                           e.stopPropagation();
                           handleDeleteProject(project.id);
                         }}
-                        className="p-1 rounded-full hover:opacity-80"
+                        className="p-2 rounded-full hover:opacity-80"
                         style={{ color: theme.colors.danger }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
@@ -188,14 +222,17 @@ const ProjectsView = () => {
           </div>
         </div>
 
-        {/* Project Details */}
-        <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg">
+        {/* Project Details - Hidden on mobile when viewing project list */}
+        <div 
+          className={`${!showProjectDetails && selectedProject ? 'hidden sm:block' : selectedProject ? 'block' : 'hidden sm:block'} flex-1 overflow-y-auto border rounded-lg`}
+          style={{ borderColor: theme.colors.border }}
+        >
           {selectedProject ? (
             <div>
-              <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: theme.colors.border }}>
+              <div className="p-3 sm:p-4 flex justify-between items-center border-b" style={{ borderColor: theme.colors.border }}>
                 <div>
-                  <h2 className="text-xl font-bold" style={{ color: theme.colors.text }}>{selectedProject.name}</h2>
-                  <div className="text-sm" style={{ color: theme.colors.textLight }}>
+                  <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.colors.text }}>{selectedProject.name}</h2>
+                  <div className="text-xs sm:text-sm" style={{ color: theme.colors.textLight }}>
                     {formatTime(selectedProject.createdAt)}
                   </div>
                 </div>
@@ -205,7 +242,7 @@ const ProjectsView = () => {
                       setEditingProject(selectedProject);
                       setShowModal(true);
                     }}
-                    className="py-1 px-3 text-sm rounded-md"
+                    className="py-1 px-2 sm:px-3 text-sm rounded-md"
                     style={{ 
                       backgroundColor: theme.colors.secondary,
                       color: theme.colors.textOnPrimary
@@ -215,7 +252,7 @@ const ProjectsView = () => {
                   </button>
                   <button
                     onClick={() => handleDeleteProject(selectedProject.id)}
-                    className="py-1 px-3 text-sm rounded-md"
+                    className="py-1 px-2 sm:px-3 text-sm rounded-md"
                     style={{ 
                       backgroundColor: theme.colors.danger,
                       color: theme.colors.textOnPrimary
@@ -227,20 +264,20 @@ const ProjectsView = () => {
               </div>
 
               {/* Project Stats */}
-              <div className="grid grid-cols-3 gap-4 p-4">
-                <div className="bg-gray-50 p-4 rounded-lg" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 sm:p-4">
+                <div className="bg-gray-50 p-3 sm:p-4 rounded-lg" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                   <div className="text-xs uppercase font-medium" style={{ color: theme.colors.textLight }}>{t('items')}</div>
-                  <div className="text-2xl font-bold" style={{ color: theme.colors.text }}>{selectedProject.calculations.length}</div>
+                  <div className="text-xl sm:text-2xl font-bold" style={{ color: theme.colors.text }}>{selectedProject.calculations.length}</div>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                <div className="bg-gray-50 p-3 sm:p-4 rounded-lg" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                   <div className="text-xs uppercase font-medium" style={{ color: theme.colors.textLight }}>{t('weight')}</div>
-                  <div className="text-2xl font-bold" style={{ color: theme.colors.text }}>
+                  <div className="text-xl sm:text-2xl font-bold" style={{ color: theme.colors.text }}>
                     {selectedProject.calculations.reduce((sum, calc) => sum + calc.weight * calc.quantity, 0).toFixed(2)} kg
                   </div>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                <div className="bg-gray-50 p-3 sm:p-4 rounded-lg" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                   <div className="text-xs uppercase font-medium" style={{ color: theme.colors.textLight }}>{t('totalValue')}</div>
-                  <div className="text-2xl font-bold" style={{ color: theme.colors.text }}>
+                  <div className="text-xl sm:text-2xl font-bold" style={{ color: theme.colors.text }}>
                     ${selectedProject.calculations.reduce((sum, calc) => sum + calc.totalPrice, 0).toFixed(2)}
                   </div>
                 </div>
@@ -248,7 +285,7 @@ const ProjectsView = () => {
 
               {/* Project Description */}
               {selectedProject.description && (
-                <div className="px-4 py-2">
+                <div className="px-3 sm:px-4 py-2">
                   <div className="text-xs uppercase font-medium mb-1" style={{ color: theme.colors.textLight }}>{t('description')}</div>
                   <div className="p-3 rounded-md" style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}>
                     {selectedProject.description}
@@ -257,7 +294,7 @@ const ProjectsView = () => {
               )}
 
               {/* Project Calculations */}
-              <div className="p-4">
+              <div className="p-3 sm:p-4">
                 <div className="flex justify-between items-center mb-2">
                   <div className="text-xs uppercase font-medium" style={{ color: theme.colors.textLight }}>{t('calculations')}</div>
                 </div>
@@ -276,12 +313,12 @@ const ProjectsView = () => {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full p-8 text-center" style={{ color: theme.colors.textLight }}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex flex-col items-center justify-center h-full p-6 sm:p-8 text-center" style={{ color: theme.colors.textLight }}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 sm:h-16 sm:w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <p className="text-lg font-medium mb-2">{t('noProjectSelected')}</p>
-              <p className="mb-4">{t('selectProjectOrCreate')}</p>
+              <p className="text-base sm:text-lg font-medium mb-2">{t('noProjectSelected')}</p>
+              <p className="mb-4 text-sm sm:text-base">{t('selectProjectOrCreate')}</p>
               <button
                 onClick={() => setShowModal(true)}
                 className="py-2 px-4 rounded-md"

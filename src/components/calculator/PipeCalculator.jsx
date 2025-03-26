@@ -7,44 +7,50 @@ const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
   const { t } = useLanguage();
   
   const handleOuterDiameterChange = (e) => {
+    const value = e.target.value;
     onPipeDataChange({
       ...pipeData,
-      outerDiameter: parseFloat(e.target.value) || 0
+      outerDiameter: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleSizeChange = (e) => {
+    const value = e.target.value;
     onPipeDataChange({
       ...pipeData,
-      size: parseFloat(e.target.value) || 0
+      size: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleWidthChange = (e) => {
+    const value = e.target.value;
     onPipeDataChange({
       ...pipeData,
-      width: parseFloat(e.target.value) || 0
+      width: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleHeightChange = (e) => {
+    const value = e.target.value;
     onPipeDataChange({
       ...pipeData,
-      height: parseFloat(e.target.value) || 0
+      height: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleThicknessChange = (e) => {
+    const value = e.target.value;
     onPipeDataChange({
       ...pipeData,
-      thickness: parseFloat(e.target.value) || 0
+      thickness: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleLengthChange = (e) => {
+    const value = e.target.value;
     onPipeDataChange({
       ...pipeData,
-      length: parseFloat(e.target.value) || 0
+      length: value === '' ? '' : parseFloat(value)
     });
   };
 
@@ -58,7 +64,7 @@ const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
             </label>
             <input
               type="number"
-              value={pipeData.outerDiameter || ''}
+              value={pipeData.outerDiameter === 0 ? '' : pipeData.outerDiameter}
               onChange={handleOuterDiameterChange}
               className="w-full p-2 border rounded-md focus:ring-2"
               style={{ 
@@ -79,7 +85,7 @@ const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
             </label>
             <input
               type="number"
-              value={pipeData.size || ''}
+              value={pipeData.size === 0 ? '' : pipeData.size}
               onChange={handleSizeChange}
               className="w-full p-2 border rounded-md focus:ring-2"
               style={{ 
@@ -101,7 +107,7 @@ const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
               </label>
               <input
                 type="number"
-                value={pipeData.width || ''}
+                value={pipeData.width === 0 ? '' : pipeData.width}
                 onChange={handleWidthChange}
                 className="w-full p-2 border rounded-md focus:ring-2"
                 style={{ 
@@ -119,7 +125,7 @@ const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
               </label>
               <input
                 type="number"
-                value={pipeData.height || ''}
+                value={pipeData.height === 0 ? '' : pipeData.height}
                 onChange={handleHeightChange}
                 className="w-full p-2 border rounded-md focus:ring-2"
                 style={{ 
@@ -140,7 +146,7 @@ const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
           </label>
           <input
             type="number"
-            value={pipeData.thickness || ''}
+            value={pipeData.thickness === 0 ? '' : pipeData.thickness}
             onChange={handleThicknessChange}
             className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
@@ -159,7 +165,7 @@ const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
           </label>
           <input
             type="number"
-            value={pipeData.length || ''}
+            value={pipeData.length === 0 ? '' : pipeData.length}
             onChange={handleLengthChange}
             className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
@@ -179,12 +185,12 @@ const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
 PipeCalculator.propTypes = {
   pipeData: PropTypes.shape({
     type: PropTypes.string,
-    outerDiameter: PropTypes.number,
-    size: PropTypes.number,
-    width: PropTypes.number,
-    height: PropTypes.number,
-    thickness: PropTypes.number,
-    length: PropTypes.number
+    outerDiameter: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    size: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    width: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    height: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    thickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    length: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
   }).isRequired,
   onPipeDataChange: PropTypes.func.isRequired,
   unit: PropTypes.string.isRequired
