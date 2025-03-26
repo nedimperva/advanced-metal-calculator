@@ -35,7 +35,6 @@ A comprehensive web application for calculating the weight and cost of various m
 
 ## 📝 TODO List
 
-- [ ] Add export/import functionality for projects and calculations
 - [ ] Implement user accounts and cloud synchronization
 - [ ] Add more material types and properties
 - [ ] Create a PDF report generator for projects
