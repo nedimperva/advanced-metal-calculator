@@ -28,9 +28,10 @@ const ProfileCalculator = ({ profileData, onProfileDataChange, unit }) => {
   
   // Handle length change
   const handleLengthChange = (e) => {
+    const value = e.target.value;
     onProfileDataChange({
       ...profileData,
-      length: parseFloat(e.target.value) || 0
+      length: value === '' ? '' : parseFloat(value)
     });
   };
   
@@ -97,7 +98,7 @@ const ProfileCalculator = ({ profileData, onProfileDataChange, unit }) => {
         </label>
         <input
           type="number"
-          value={profileData.length || 0}
+          value={profileData.length === 0 ? '' : profileData.length}
           onChange={handleLengthChange}
           className="w-full p-2 border rounded-md focus:ring-2"
           style={{ 
@@ -114,7 +115,11 @@ const ProfileCalculator = ({ profileData, onProfileDataChange, unit }) => {
 };
 
 ProfileCalculator.propTypes = {
-  profileData: PropTypes.object.isRequired,
+  profileData: PropTypes.shape({
+    type: PropTypes.string,
+    size: PropTypes.string,
+    length: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
+  }).isRequired,
   onProfileDataChange: PropTypes.func.isRequired,
   unit: PropTypes.string.isRequired
 };

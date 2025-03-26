@@ -7,23 +7,26 @@ const PlateCalculator = ({ plateData, onPlateDataChange, unit }) => {
   const { t } = useLanguage();
 
   const handleWidthChange = (e) => {
+    const value = e.target.value;
     onPlateDataChange({
       ...plateData,
-      width: parseFloat(e.target.value) || 0
+      width: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleLengthChange = (e) => {
+    const value = e.target.value;
     onPlateDataChange({
       ...plateData,
-      length: parseFloat(e.target.value) || 0
+      length: value === '' ? '' : parseFloat(value)
     });
   };
 
   const handleThicknessChange = (e) => {
+    const value = e.target.value;
     onPlateDataChange({
       ...plateData,
-      thickness: parseFloat(e.target.value) || 0
+      thickness: value === '' ? '' : parseFloat(value)
     });
   };
 
@@ -35,7 +38,7 @@ const PlateCalculator = ({ plateData, onPlateDataChange, unit }) => {
         </label>
         <input
           type="number"
-          value={plateData.width || ''}
+          value={plateData.width === 0 ? '' : plateData.width}
           onChange={handleWidthChange}
           className="w-full p-2 border rounded-md focus:ring-2"
           style={{ 
@@ -50,12 +53,12 @@ const PlateCalculator = ({ plateData, onPlateDataChange, unit }) => {
       </div>
       
       <div>
-        <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>
+        <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }} data-component-name="PlateCalculator">
           {t('length')} ({unit})
         </label>
         <input
           type="number"
-          value={plateData.length || ''}
+          value={plateData.length === 0 ? '' : plateData.length}
           onChange={handleLengthChange}
           className="w-full p-2 border rounded-md focus:ring-2"
           style={{ 
@@ -65,6 +68,7 @@ const PlateCalculator = ({ plateData, onPlateDataChange, unit }) => {
             outlineColor: theme.colors.primary
           }}
           placeholder={`${t('length')} (${unit})`}
+          data-component-name="PlateCalculator"
         />
       </div>
       
@@ -74,7 +78,7 @@ const PlateCalculator = ({ plateData, onPlateDataChange, unit }) => {
         </label>
         <input
           type="number"
-          value={plateData.thickness || ''}
+          value={plateData.thickness === 0 ? '' : plateData.thickness}
           onChange={handleThicknessChange}
           className="w-full p-2 border rounded-md focus:ring-2"
           style={{ 
@@ -93,9 +97,9 @@ const PlateCalculator = ({ plateData, onPlateDataChange, unit }) => {
 
 PlateCalculator.propTypes = {
   plateData: PropTypes.shape({
-    width: PropTypes.number,
-    length: PropTypes.number,
-    thickness: PropTypes.number
+    width: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    length: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    thickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
   }).isRequired,
   onPlateDataChange: PropTypes.func.isRequired,
   unit: PropTypes.string.isRequired
