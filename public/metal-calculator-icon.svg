@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="100" fill="#1A4D2E" />
+  
+  <!-- Calculator Body -->
+  <rect x="120" y="80" width="272" height="352" rx="20" fill="#E8DFCA" stroke="#4F6F52" stroke-width="8"/>
+  
+  <!-- Calculator Screen -->
+  <rect x="140" y="110" width="232" height="80" rx="8" fill="#F5EFE6" stroke="#4F6F52" stroke-width="4"/>
+  
+  <!-- Weight Symbol -->
+  <path d="M256 60C256 60 226 110 196 110H316C286 110 256 60 256 60Z" fill="#F5EFE6" stroke="#4F6F52" stroke-width="4"/>
+  <circle cx="256" cy="85" r="8" fill="#4F6F52"/>
+  
+  <!-- Calculator Buttons -->
+  <circle cx="170" cy="230" r="25" fill="#4F6F52"/>
+  <circle cx="240" cy="230" r="25" fill="#4F6F52"/>
+  <circle cx="310" cy="230" r="25" fill="#4F6F52"/>
+  
+  <circle cx="170" cy="300" r="25" fill="#4F6F52"/>
+  <circle cx="240" cy="300" r="25" fill="#4F6F52"/>
+  <circle cx="310" cy="300" r="25" fill="#4F6F52"/>
+  
+  <circle cx="170" cy="370" r="25" fill="#4F6F52"/>
+  <circle cx="240" cy="370" r="25" fill="#4F6F52"/>
+  <circle cx="310" cy="370" r="25" fill="#4F6F52"/>
+  
+  <!-- Metal Bars -->
+  <rect x="350" y="200" width="80" height="20" rx="5" fill="#F5EFE6" stroke="#4F6F52" stroke-width="4"/>
+  <rect x="350" y="240" width="80" height="20" rx="5" fill="#F5EFE6" stroke="#4F6F52" stroke-width="4"/>
+  <rect x="350" y="280" width="80" height="20" rx="5" fill="#F5EFE6" stroke="#4F6F52" stroke-width="4"/>
+</svg>
