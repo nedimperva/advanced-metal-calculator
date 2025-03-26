@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { theme } from '../../theme';
 import { useLanguage } from '../../contexts/LanguageContext';
+import plateImg from '../../img/plate.png';
 
 const PlateCalculator = ({ plateData, onPlateDataChange, unit }) => {
   const { t } = useLanguage();
@@ -32,6 +33,14 @@ const PlateCalculator = ({ plateData, onPlateDataChange, unit }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-protonpass-form="">
+      <div className="md:col-span-2 mb-4 flex justify-center">
+        <img 
+          src={plateImg} 
+          alt="Plate diagram" 
+          className="max-h-40 object-contain border rounded p-2"
+          style={{ backgroundColor: theme.colors.backgroundLight }}
+        />
+      </div>
       <div>
         <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }} data-component-name="PlateCalculator">
           {t('width')} ({unit})

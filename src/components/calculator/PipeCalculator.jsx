@@ -2,6 +2,9 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { theme } from '../../theme';
 import { useLanguage } from '../../contexts/LanguageContext';
+import roundPipeImg from '../../img/roundPipe.png';
+import squarePipeImg from '../../img/squarePipe.png';
+import rectangularPipeImg from '../../img/rectangularPipe.png';
 
 const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
   const { t } = useLanguage();
@@ -54,8 +57,30 @@ const PipeCalculator = ({ pipeData, onPipeDataChange, unit }) => {
     });
   };
 
+  // Get the appropriate image based on pipe type
+  const getPipeImage = () => {
+    switch(pipeData.type) {
+      case 'round':
+        return roundPipeImg;
+      case 'square':
+        return squarePipeImg;
+      case 'rectangular':
+        return rectangularPipeImg;
+      default:
+        return rectangularPipeImg;
+    }
+  };
+
   return (
     <div>
+      <div className="mb-4 flex justify-center">
+        <img 
+          src={getPipeImage()} 
+          alt={`${pipeData.type} pipe diagram`} 
+          className="max-h-40 object-contain border rounded p-2"
+          style={{ backgroundColor: theme.colors.backgroundLight }}
+        />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {pipeData.type === 'round' && (
           <div>

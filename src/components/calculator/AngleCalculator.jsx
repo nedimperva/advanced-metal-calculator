@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { theme } from '../../theme';
 import { useLanguage } from '../../contexts/LanguageContext';
+import equalAngleImg from '../../img/equalAngle.png';
+import unequalAngleImg from '../../img/unequalAngle.png';
 
 const AngleCalculator = ({ angleData, onAngleDataChange, unit }) => {
   const { t } = useLanguage();
@@ -38,8 +40,21 @@ const AngleCalculator = ({ angleData, onAngleDataChange, unit }) => {
     });
   };
 
+  // Get the appropriate image based on angle type
+  const getAngleImage = () => {
+    return angleData.type === 'equal' ? equalAngleImg : unequalAngleImg;
+  };
+
   return (
     <div>
+      <div className="mb-4 flex justify-center">
+        <img 
+          src={getAngleImage()} 
+          alt={`${angleData.type} angle diagram`} 
+          className="max-h-40 object-contain border rounded p-2"
+          style={{ backgroundColor: theme.colors.backgroundLight }}
+        />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>

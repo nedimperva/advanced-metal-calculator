@@ -2,6 +2,9 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { theme } from '../../theme';
 import { useLanguage } from '../../contexts/LanguageContext';
+import flatBarImg from '../../img/flatBar.png';
+import roundBarImg from '../../img/roundBar.png';
+import squareBarImg from '../../img/squareBar.png';
 
 const BarCalculator = ({ barData, onBarDataChange, unit }) => {
   const { t } = useLanguage();
@@ -46,8 +49,30 @@ const BarCalculator = ({ barData, onBarDataChange, unit }) => {
     });
   };
 
+  // Get the appropriate image based on bar type
+  const getBarImage = () => {
+    switch(barData.type) {
+      case 'flat':
+        return flatBarImg;
+      case 'round':
+        return roundBarImg;
+      case 'square':
+        return squareBarImg;
+      default:
+        return flatBarImg;
+    }
+  };
+
   return (
     <div>
+      <div className="mb-4 flex justify-center">
+        <img 
+          src={getBarImage()} 
+          alt={`${barData.type} bar diagram`} 
+          className="max-h-40 object-contain border rounded p-2"
+          style={{ backgroundColor: theme.colors.backgroundLight }}
+        />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {barData.type === 'flat' && (
           <>

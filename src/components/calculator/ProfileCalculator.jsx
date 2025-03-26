@@ -3,6 +3,11 @@ import PropTypes from 'prop-types';
 import { profiles } from '../../data/profiles';
 import { theme } from '../../theme';
 import { useLanguage } from '../../contexts/LanguageContext';
+import IPEImg from '../../img/IPE.png';
+import IPNImg from '../../img/IPN.png';
+import HEAImg from '../../img/HEA.png';
+import HEBImg from '../../img/HEB.png';
+import UPNImg from '../../img/UPN.png';
 
 const ProfileCalculator = ({ profileData, onProfileDataChange, unit }) => {
   const { t } = useLanguage();
@@ -45,8 +50,38 @@ const ProfileCalculator = ({ profileData, onProfileDataChange, unit }) => {
     setAvailableSizes(profiles[profileData.type].sizes || []);
   }, [profileData.type]);
   
+  // Get the appropriate image based on profile type
+  const getProfileImage = () => {
+    if (!profileData.type) return null;
+    
+    switch(profileData.type) {
+      case 'IPE':
+        return IPEImg;
+      case 'IPN':
+        return IPNImg;
+      case 'HEA':
+        return HEAImg;
+      case 'HEB':
+        return HEBImg;
+      case 'UPN':
+        return UPNImg;
+      default:
+        return null;
+    }
+  };
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="md:col-span-2 mb-4 flex justify-center">
+        {profileData.type && (
+          <img 
+            src={getProfileImage()} 
+            alt={`${profileData.type} profile diagram`} 
+            className="max-h-40 object-contain border rounded p-2"
+            style={{ backgroundColor: theme.colors.backgroundLight }}
+          />
+        )}
+      </div>
       <div>
         <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>
           {t('profileType')}
