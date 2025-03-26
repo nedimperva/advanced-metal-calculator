@@ -71,7 +71,7 @@ const MetalCalculator = () => {
   
   // Pricing states
   const [pricePerKg, setPricePerKg] = useState(2);
-  const [quantity, setQuantity] = useState(4);
+  const [quantity, setQuantity] = useState(1);
 
   // Results
   const [weight, setWeight] = useState(0);

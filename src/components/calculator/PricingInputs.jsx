@@ -49,9 +49,9 @@ const PricingInputs = ({ pricePerKg, setPricePerKg, quantity, setQuantity }) => 
           </label>
           <input
             type="number"
-            value={quantity === 1 ? '' : quantity}
+            value={quantity === 0 ? '' : quantity}
             onChange={handleQuantityChange}
-            min="1"
+            min="0"
             className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
               backgroundColor: theme.colors.background,

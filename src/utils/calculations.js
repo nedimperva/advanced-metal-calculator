@@ -232,8 +232,13 @@ export const calculateBarWeight = (barData, unit, density) => {
  * @returns {number} - Total price
  */
 export const calculateTotalPrice = (weight, pricePerKg, quantity) => {
-  if (weight <= 0 || pricePerKg <= 0 || quantity <= 0) return 0;
+  // Handle empty string or undefined values
+  const weightValue = weight || 0;
+  const priceValue = pricePerKg || 0;
+  const quantityValue = quantity || 0;
+  
+  if (weightValue <= 0 || priceValue <= 0 || quantityValue <= 0) return 0;
   
   // Calculate total price (weight * pricePerKg * quantity)
-  return Math.round(weight * pricePerKg * quantity * 100) / 100;
+  return Math.round(weightValue * priceValue * quantityValue * 100) / 100;
 };
