@@ -99,3 +99,27 @@ export const groupCalculationsByType = (calculations) => {
     return groups;
   }, {});
 };
+
+export const deleteCalculationFromProject = (projectId, calculationId) => {
+  try {
+    const projects = loadProjects();
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return null;
+
+    const updatedProject = {
+      ...project,
+      calculations: project.calculations.filter(calc => calc.id !== calculationId),
+      updatedAt: new Date().toISOString()
+    };
+
+    const updatedProjects = projects.map(p => 
+      p.id === projectId ? updatedProject : p
+    );
+
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
+    return updatedProjects;
+  } catch (error) {
+    console.error('Error deleting calculation from project:', error);
+    return null;
+  }
+};

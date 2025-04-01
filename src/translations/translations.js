@@ -118,7 +118,18 @@ export const translations = {
     calculations: 'Calculations',
     noCalculationsInProject: 'No calculations in this project',
     noProjectSelected: 'No project selected',
-    selectProjectOrCreate: 'Select a project from the list or create a new one'
+    selectProjectOrCreate: 'Select a project from the list or create a new one',
+    confirmDeleteProject: 'Are you sure you want to delete this project?',
+    confirmDeleteCalculation: 'Are you sure you want to delete this calculation?',
+    remove: 'Remove',
+
+    // PWA
+    installApp: 'Install App',
+    addToHomeScreen: 'Add to your home screen for easy access',
+    install: 'Install',
+    later: 'Later',
+    offlineMessage: 'You are currently offline',
+    backToProjects: 'Back to Projects'
   },
   bs: {
     // App
@@ -238,8 +249,19 @@ export const translations = {
     description: 'Opis',
     calculations: 'Kalkulacije',
     noCalculationsInProject: 'Nema kalkulacija u ovom projektu',
-    noProjectSelected: 'Nijedan projekat nije odabran',
-    selectProjectOrCreate: 'Odaberite projekat s liste ili kreirajte novi'
+    noProjectSelected: 'Nije odabran projekat',
+    selectProjectOrCreate: 'Odaberite projekat sa liste ili kreirajte novi',
+    confirmDeleteProject: 'Da li ste sigurni da želite obrisati ovaj projekat?',
+    confirmDeleteCalculation: 'Da li ste sigurni da želite obrisati ovu kalkulaciju?',
+    remove: 'Ukloni',
+
+    // PWA
+    installApp: 'Instaliraj Aplikaciju',
+    addToHomeScreen: 'Dodaj na početni ekran za lakši pristup',
+    install: 'Instaliraj',
+    later: 'Kasnije',
+    offlineMessage: 'Trenutno ste offline',
+    backToProjects: 'Nazad na Projekte'
   }
 };
 

@@ -32,6 +32,10 @@ A comprehensive web application for calculating the weight and cost of various m
   - [x] Optimized layout for small screens
   - [x] Added touch-friendly controls
   - [x] Implemented collapsible sections for better space utilization
+- [x] Progressive Web App (PWA) features:
+  - [x] Implement PWA features for mobile and offline use
+  - [x] Add to home screen functionality
+  - [x] Offline calculation capabilities
 
 ## 📝 TODO List
 
@@ -44,9 +48,13 @@ A comprehensive web application for calculating the weight and cost of various m
 ## 💡 Future Improvement Ideas
 
 - **Progressive Web App (PWA)**:
-  - Implement PWA features for mobile and offline use
-  - Add to home screen functionality
-  - Offline calculation capabilities
+  - ✅ Implement PWA features for mobile and offline use
+  - ✅ Add to home screen functionality
+  - ✅ Offline calculation capabilities
+
+## 🌐 Live Demo
+
+Check out the live demo of the application: [Advanced Metal Calculator](https://nedimperva.github.io/advanced-metal-calculator/)
 
 ## 🛠️ Installation and Setup
 
@@ -81,6 +89,17 @@ npm run build
 npm run preview
 ```
 
+## 🚀 Deployment
+
+The application is deployed on GitHub Pages. You can deploy it using one of these methods:
+
+```bash
+# Deploy to GitHub Pages using the npm script
+npm run deploy
+```
+
+Alternatively, push changes to the main branch, and the GitHub Actions workflow will automatically deploy the application.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -94,4 +113,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-

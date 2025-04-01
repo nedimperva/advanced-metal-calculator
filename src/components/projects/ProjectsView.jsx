@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { theme } from '../../theme';
 import ProjectModal from './ProjectModal';
-import { loadProjects, deleteProject, saveProject } from '../../utils/projects';
+import { loadProjects, deleteProject, saveProject, deleteCalculationFromProject } from '../../utils/projects';
 import CalculationPreview from '../project/CalculationPreview';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -59,6 +59,20 @@ const ProjectsView = () => {
         if (selectedProject && selectedProject.id === projectId) {
           setSelectedProject(updatedProjects.length > 0 ? updatedProjects[0] : null);
           setShowProjectDetails(false);
+        }
+      }
+    }
+  };
+
+  const handleDeleteCalculation = (calculationId) => {
+    if (window.confirm(t('confirmDeleteCalculation') || 'Are you sure you want to delete this calculation?')) {
+      if (selectedProject) {
+        const updatedProjects = deleteCalculationFromProject(selectedProject.id, calculationId);
+        if (updatedProjects) {
+          setProjects(updatedProjects);
+          // Update the selected project with the updated version
+          const updatedSelectedProject = updatedProjects.find(p => p.id === selectedProject.id);
+          setSelectedProject(updatedSelectedProject);
         }
       }
     }
@@ -306,7 +320,7 @@ const ProjectsView = () => {
                 ) : (
                   <div className="space-y-3">
                     {selectedProject.calculations.map((calc) => (
-                      <CalculationPreview key={calc.id} calculation={calc} />
+                      <CalculationPreview key={calc.id} calculation={calc} onDelete={() => handleDeleteCalculation(calc.id)} />
                     ))}
                   </div>
                 )}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import MetalCalculator from './components/calculator/MetalCalculator';
 import ProjectsView from './components/projects/ProjectsView';
 import LanguageSelector from './components/common/LanguageSelector';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { theme } from './theme';
 
@@ -58,6 +59,9 @@ const AppContent = () => {
       <main className="flex-1 overflow-auto">
         {activeView === 'calculator' ? <MetalCalculator /> : <ProjectsView />}
       </main>
+      
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
     </div>
   );
 };
