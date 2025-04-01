@@ -129,7 +129,16 @@ export const translations = {
     install: 'Install',
     later: 'Later',
     offlineMessage: 'You are currently offline',
-    backToProjects: 'Back to Projects'
+    backToProjects: 'Back to Projects',
+    
+    // Update Notification
+    updateAvailable: 'Update Available',
+    updateMessage: 'A new version of the app is available',
+    updateNow: 'Update Now',
+    updateLater: 'Later',
+    updating: 'Updating...',
+    updateComplete: 'Update complete',
+    refreshPage: 'Please refresh the page to use the latest version'
   },
   bs: {
     // App
@@ -261,7 +270,16 @@ export const translations = {
     install: 'Instaliraj',
     later: 'Kasnije',
     offlineMessage: 'Trenutno ste offline',
-    backToProjects: 'Nazad na Projekte'
+    backToProjects: 'Nazad na Projekte',
+    
+    // Update Notification
+    updateAvailable: 'Dostupno Ažuriranje',
+    updateMessage: 'Nova verzija aplikacije je dostupna',
+    updateNow: 'Ažuriraj Sada',
+    updateLater: 'Kasnije',
+    updating: 'Ažuriranje...',
+    updateComplete: 'Ažuriranje završeno',
+    refreshPage: 'Molimo osvježite stranicu da biste koristili najnoviju verziju'
   }
 };
 

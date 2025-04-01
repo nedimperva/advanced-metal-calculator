@@ -5,6 +5,15 @@ export const registerServiceWorker = () => {
       navigator.serviceWorker.register('/advanced-metal-calculator/sw.js')
         .then(registration => {
           console.log('Service Worker registered with scope:', registration.scope);
+          
+          // Check for updates on page load
+          registration.update();
+          
+          // Set up periodic checks for updates
+          setInterval(() => {
+            registration.update();
+            console.log('Checking for service worker updates...');
+          }, 60 * 60 * 1000); // Check every hour
         })
         .catch(error => {
           console.error('Service Worker registration failed:', error);

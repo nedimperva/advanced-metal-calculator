@@ -2,9 +2,11 @@
 
 const CACHE = "advanced-metal-calculator-offline";
 const OFFLINE_URL = "offline.html";
+const VERSION = "1.0.1"; // Current version
 
 // Install stage sets up the offline page in the cache and opens a new cache
 self.addEventListener("install", event => {
+  console.log(`Installing service worker version ${VERSION}`);
   event.waitUntil(
     caches.open(CACHE).then(cache => {
       return cache.addAll([
@@ -22,6 +24,7 @@ self.addEventListener("install", event => {
 
 // Activate event cleans up old caches
 self.addEventListener("activate", event => {
+  console.log(`Activating service worker version ${VERSION}`);
   event.waitUntil(
     caches.keys().then(keyList => {
       return Promise.all(
@@ -34,6 +37,13 @@ self.addEventListener("activate", event => {
     })
   );
   self.clients.claim();
+});
+
+// Add message listener for skip waiting
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // If any fetch fails, it will look for the request in the cache and serve it from there first
