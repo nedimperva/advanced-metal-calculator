@@ -1,42 +1,42 @@
 export const theme = {
   colors: {
-    // New color palette
-    primary: '#1A4D2E', // Dark green
-    secondary: '#4F6F52', // Medium green
-    background: '#F5EFE6', // Light cream
-    surface: '#E8DFCA', // Warm beige
+    // New color palette based on logo
+    primary: '#00bcd4', // Teal from the middle of the gradient
+    secondary: '#26a69a', // Teal-green from the end of the gradient
+    background: '#F5EFE6', // Keeping the light cream background
+    surface: '#E8DFCA', // Keeping the warm beige surface
     
     // Variations
-    primaryLight: '#2A5D3E',
-    secondaryLight: '#5F7F62',
+    primaryLight: '#29b6f6', // Light blue from the start of the gradient
+    secondaryLight: '#4db6ac', // Lighter teal-green
     
     // Text colors
-    text: '#1A4D2E', // Dark green for text
-    textLight: '#4F6F52', // Medium green for secondary text
+    text: '#1a237e', // Dark blue from the logo stroke
+    textLight: '#4F6F52', // Keeping medium green for secondary text
     textOnPrimary: '#F5EFE6', // Light cream on dark backgrounds
     
     // Accent colors
-    accent1: '#1A4D2E', // Dark green
-    accent2: '#4F6F52', // Medium green
-    accent3: '#E8DFCA', // Warm beige
+    accent1: '#29b6f6', // Light blue from the start of the gradient
+    accent2: '#00bcd4', // Teal from the middle of the gradient
+    accent3: '#26a69a', // Teal-green from the end of the gradient
     
     // Status colors
-    success: '#1A4D2E', // Dark green
-    warning: '#D4AC2B', // Gold
-    danger: '#B22727', // Red
+    success: '#26a69a', // Teal-green
+    warning: '#D4AC2B', // Keeping gold
+    danger: '#B22727', // Keeping red
     
     // Border colors
-    border: '#E8DFCA', // Warm beige
+    border: '#E8DFCA', // Keeping warm beige
     
     // Hover states
-    primaryHover: '#0D3C1D',
-    secondaryHover: '#3E5E41',
-    successHover: '#0D3C1D',
-    warningHover: '#C39B1A',
-    dangerHover: '#A11616',
-    accent1Hover: '#0D3C1D',
-    accent2Hover: '#3E5E41',
-    accent3Hover: '#D9D0BB'
+    primaryHover: '#00acc1', // Darker teal
+    secondaryHover: '#00897b', // Darker teal-green
+    successHover: '#00897b', // Darker teal-green
+    warningHover: '#C39B1A', // Keeping gold hover
+    dangerHover: '#A11616', // Keeping red hover
+    accent1Hover: '#0288d1', // Darker light blue
+    accent2Hover: '#00acc1', // Darker teal
+    accent3Hover: '#00897b' // Darker teal-green
   },
   transitions: {
     DEFAULT: 'all 0.2s ease-in-out',
