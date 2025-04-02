@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { materials } from '../../data/materials';
-import { calculatePipeWeight, calculateProfileWeight, calculatePlateWeight, calculateAngleWeight, calculateBarWeight, calculateTotalPrice } from '../../utils/calculations';
+import { calculatePipeWeight, calculateProfileWeight, calculatePlateWeight, calculateAngleWeight, calculateBarWeight, calculatePressBrakeAngleWeight, calculatePressBrakeUWeight, calculateTotalPrice } from '../../utils/calculations';
 import { loadSavedCalculations, saveCalculation, deleteCalculation } from '../../utils/storage';
 import { generateCalculationName } from '../../utils/generateCalculationName';
 import PlateCalculator from './PlateCalculator';
@@ -8,6 +8,8 @@ import ProfileCalculator from './ProfileCalculator';
 import PipeCalculator from './PipeCalculator';
 import AngleCalculator from './AngleCalculator';
 import BarCalculator from './BarCalculator';
+import PressBrakeAngleCalculator from './PressBrakeAngleCalculator';
+import PressBrakeUCalculator from './PressBrakeUCalculator';
 import PricingInputs from './PricingInputs';
 import SavedCalculations from './SavedCalculations';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -21,8 +23,9 @@ const MetalCalculator = () => {
   const [calculationType, setCalculationType] = useState('pipe');
   const [unit, setUnit] = useState('mm');
   const [pipeSubType, setPipeSubType] = useState('rectangular'); // 'round', 'square', 'rectangular'
-  const [angleSubType, setAngleSubType] = useState('equal');
+  const [angleSubType, setAngleSubType] = useState('equal'); // 'equal', 'unequal', 'pressBrake'
   const [barSubType, setBarSubType] = useState('flat');
+  const [profileSubType, setProfileSubType] = useState('standard'); // 'standard', 'pressBrakeU'
   
   // Loading states
   const [isCalculating, setIsCalculating] = useState(false);
@@ -68,6 +71,22 @@ const MetalCalculator = () => {
     sideLength: 0, 
     length: 0 
   });
+  const [pressBrakeAngleData, setPressBrakeAngleData] = useState({ 
+    width: 0, 
+    height: 0, 
+    thickness: 0, 
+    length: 0,
+    angle: 90,
+    radius: 0
+  });
+  const [pressBrakeUData, setPressBrakeUData] = useState({ 
+    width: 0, 
+    height: 0, 
+    thickness: 0, 
+    length: 0,
+    radius: 0,
+    flangeWidth: 0
+  });
   
   // Pricing states
   const [pricePerKg, setPricePerKg] = useState(2);
@@ -87,6 +106,8 @@ const MetalCalculator = () => {
       case 'pipe': return theme.colors.primary;
       case 'angle': return theme.colors.secondary;
       case 'bar': return theme.colors.success;
+      case 'pressBrakeAngle': return theme.colors.warning;
+      case 'pressBrakeU': return theme.colors.info;
       default: return theme.colors.primary;
     }
   };
@@ -106,13 +127,21 @@ const MetalCalculator = () => {
             calculatedWeight = calculatePlateWeight(plateData, unit, density);
             break;
           case 'profile':
-            calculatedWeight = calculateProfileWeight(profileData, unit, density);
+            if (profileSubType === 'pressBrakeU') {
+              calculatedWeight = calculatePressBrakeUWeight(pressBrakeUData, unit, density);
+            } else {
+              calculatedWeight = calculateProfileWeight(profileData, unit, density);
+            }
             break;
           case 'pipe':
             calculatedWeight = calculatePipeWeight(pipeData, unit, density);
             break;
           case 'angle':
-            calculatedWeight = calculateAngleWeight(angleData, unit, density);
+            if (angleSubType === 'pressBrake') {
+              calculatedWeight = calculatePressBrakeAngleWeight(pressBrakeAngleData, unit, density);
+            } else {
+              calculatedWeight = calculateAngleWeight(angleData, unit, density);
+            }
             break;
           case 'bar':
             calculatedWeight = calculateBarWeight(barData, unit, density);
@@ -130,7 +159,7 @@ const MetalCalculator = () => {
     }, 500);
 
     return () => clearTimeout(calculationTimeout);
-  }, [selectedMaterial, calculationType, plateData, profileData, pipeData, angleData, barData, unit]);
+  }, [selectedMaterial, calculationType, plateData, profileData, pipeData, angleData, barData, pressBrakeAngleData, pressBrakeUData, unit, angleSubType, profileSubType]);
 
   // Calculate total weight and prices when weight or quantity changes
   useEffect(() => {
@@ -172,16 +201,30 @@ const MetalCalculator = () => {
         currentCalculation.name = generateCalculationName('plate', plateData, unit, language);
         break;
       case 'profile':
-        currentCalculation.dimensions = profileData;
-        currentCalculation.name = generateCalculationName('profile', profileData, unit, language);
+        if (profileSubType === 'pressBrakeU') {
+          currentCalculation.dimensions = pressBrakeUData;
+          currentCalculation.subType = 'pressBrakeU';
+          currentCalculation.name = generateCalculationName('pressBrakeU', pressBrakeUData, unit, language);
+        } else {
+          currentCalculation.dimensions = profileData;
+          currentCalculation.subType = 'standard';
+          currentCalculation.name = generateCalculationName('profile', profileData, unit, language);
+        }
         break;
       case 'pipe':
         currentCalculation.dimensions = pipeData;
         currentCalculation.name = generateCalculationName('pipe', pipeData, unit, language);
         break;
       case 'angle':
-        currentCalculation.dimensions = angleData;
-        currentCalculation.name = generateCalculationName('angle', angleData, unit, language);
+        if (angleSubType === 'pressBrake') {
+          currentCalculation.dimensions = pressBrakeAngleData;
+          currentCalculation.subType = 'pressBrake';
+          currentCalculation.name = generateCalculationName('pressBrakeAngle', pressBrakeAngleData, unit, language);
+        } else {
+          currentCalculation.dimensions = angleData;
+          currentCalculation.subType = angleSubType;
+          currentCalculation.name = generateCalculationName('angle', angleData, unit, language);
+        }
         break;
       case 'bar':
         currentCalculation.dimensions = barData;
@@ -254,6 +297,17 @@ const MetalCalculator = () => {
   // Handle calculation type change
   const handleCalculationTypeChange = (type) => {
     setCalculationType(type);
+    
+    // Reset subtypes when changing calculation type
+    if (type === 'pipe') {
+      setPipeSubType('rectangular');
+    } else if (type === 'angle') {
+      setAngleSubType('equal');
+    } else if (type === 'bar') {
+      setBarSubType('flat');
+    } else if (type === 'profile') {
+      setProfileSubType('standard');
+    }
   };
 
   return (
@@ -295,7 +349,8 @@ const MetalCalculator = () => {
                     {calculationType === 'angle' && (
                       <>
                         {angleSubType === 'equal' ? t('equalAngle') : 
-                         angleSubType === 'unequal' ? t('unequalAngle') : t('angle')}
+                         angleSubType === 'unequal' ? t('unequalAngle') : 
+                         angleSubType === 'pressBrake' ? t('pressBrakeAngle') : t('angle')}
                       </>
                     )}
                     {calculationType === 'bar' && (
@@ -309,7 +364,8 @@ const MetalCalculator = () => {
                     {calculationType === 'profile' && (
                       <>
                         {profileData.size ? profileData.size : 
-                         profileData.type ? profileData.type.toUpperCase() : t('profile')}
+                         profileData.type ? profileData.type.toUpperCase() : 
+                         profileSubType === 'pressBrakeU' ? t('pressBrakeU') : t('profile')}
                       </>
                     )}
                   </span>
@@ -479,6 +535,16 @@ const MetalCalculator = () => {
               >
                 {t('unequalAngle')}
               </button>
+              <button
+                onClick={() => handleAngleSubTypeChange('pressBrake')}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
+                style={{ 
+                  backgroundColor: angleSubType === 'pressBrake' ? theme.colors.primary : theme.colors.surface,
+                  color: angleSubType === 'pressBrake' ? theme.colors.textOnPrimary : theme.colors.text
+                }}
+              >
+                {t('pressBrakeAngle')}
+              </button>
             </div>
           )}
 
@@ -518,6 +584,32 @@ const MetalCalculator = () => {
             </div>
           )}
 
+          {/* Profile Sub-Type Tabs */}
+          {calculationType === 'profile' && (
+            <div className="flex space-x-1 overflow-x-auto">
+              <button
+                onClick={() => setProfileSubType('standard')}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
+                style={{ 
+                  backgroundColor: profileSubType === 'standard' ? theme.colors.primary : theme.colors.surface,
+                  color: profileSubType === 'standard' ? theme.colors.textOnPrimary : theme.colors.text
+                }}
+              >
+                {t('standardProfile')}
+              </button>
+              <button
+                onClick={() => setProfileSubType('pressBrakeU')}
+                className={`py-2 px-3 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base whitespace-nowrap`}
+                style={{ 
+                  backgroundColor: profileSubType === 'pressBrakeU' ? theme.colors.primary : theme.colors.surface,
+                  color: profileSubType === 'pressBrakeU' ? theme.colors.textOnPrimary : theme.colors.text
+                }}
+              >
+                {t('pressBrakeU')}
+              </button>
+            </div>
+          )}
+
           {/* Calculator and Results */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {/* Left side - Calculator */}
@@ -532,7 +624,7 @@ const MetalCalculator = () => {
                     />
                   )}
 
-                  {calculationType === 'profile' && (
+                  {calculationType === 'profile' && profileSubType === 'standard' && (
                     <ProfileCalculator
                       profileData={profileData}
                       onProfileDataChange={setProfileData}
@@ -540,6 +632,20 @@ const MetalCalculator = () => {
                     />
                   )}
 
+                  {calculationType === 'profile' && profileSubType === 'pressBrakeU' && (
+                    <PressBrakeUCalculator
+                      pressBrakeUData={pressBrakeUData}
+                      onPressBrakeUDataChange={(data) => {
+                        // Set radius to match thickness if not explicitly set
+                        if (data.thickness && (!data.radius || data.radius === 0)) {
+                          data.radius = data.thickness;
+                        }
+                        setPressBrakeUData(data);
+                      }}
+                      unit={unit}
+                    />
+                  )}
+                  
                   {calculationType === 'pipe' && (
                     <PipeCalculator
                       pipeData={pipeData}
@@ -548,7 +654,7 @@ const MetalCalculator = () => {
                     />
                   )}
 
-                  {calculationType === 'angle' && (
+                  {calculationType === 'angle' && angleSubType !== 'pressBrake' && (
                     <AngleCalculator
                       angleData={angleData}
                       onAngleDataChange={setAngleData}
@@ -556,6 +662,20 @@ const MetalCalculator = () => {
                     />
                   )}
 
+                  {calculationType === 'angle' && angleSubType === 'pressBrake' && (
+                    <PressBrakeAngleCalculator
+                      pressBrakeAngleData={pressBrakeAngleData}
+                      onPressBrakeAngleDataChange={(data) => {
+                        // Set radius to match thickness if not explicitly set
+                        if (data.thickness && (!data.radius || data.radius === 0)) {
+                          data.radius = data.thickness;
+                        }
+                        setPressBrakeAngleData(data);
+                      }}
+                      unit={unit}
+                    />
+                  )}
+                  
                   {calculationType === 'bar' && (
                     <BarCalculator
                       barData={barData}

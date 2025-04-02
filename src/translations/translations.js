@@ -41,6 +41,8 @@ export const translations = {
     pipe: 'Pipe',
     angle: 'Angle',
     bar: 'Bar',
+    pressBrakeAngle: 'Press Brake Angle',
+    pressBrakeU: 'Press Brake U-Shape',
     
     // Pipe Subtypes
     roundPipe: 'Round Pipe',
@@ -61,6 +63,7 @@ export const translations = {
     selectType: 'Select Type',
     profileSize: 'Profile Size',
     selectSize: 'Select Size',
+    standardProfile: 'Standard Profile',
     
     // Dimensions
     width: 'Width',
@@ -72,6 +75,9 @@ export const translations = {
     innerDiameter: 'Inner Diameter',
     wallThickness: 'Wall Thickness',
     size: 'Size',
+    angle: 'Angle',
+    radius: 'Radius',
+    flangeWidth: 'Flange Width',
     
     // Results
     results: 'Results',
@@ -182,6 +188,8 @@ export const translations = {
     pipe: 'Cijev',
     angle: 'Ugaonik',
     bar: 'Šipka',
+    pressBrakeAngle: 'Savijeni Ugaonik',
+    pressBrakeU: 'Savijeni U-Profil',
     
     // Pipe Subtypes
     roundPipe: 'Okrugla cijev',
@@ -202,6 +210,7 @@ export const translations = {
     selectType: 'Odaberi tip',
     profileSize: 'Veličina profila',
     selectSize: 'Odaberi veličinu',
+    standardProfile: 'Standardni Profil',
     
     // Dimensions
     width: 'Širina',
@@ -213,6 +222,9 @@ export const translations = {
     innerDiameter: 'Unutrašnji prečnik',
     wallThickness: 'Debljina zida',
     size: 'Veličina',
+    angle: 'Ugao',
+    radius: 'Radijus',
+    flangeWidth: 'Širina Prirubnice',
     
     // Results
     results: 'Rezultati',

@@ -2,7 +2,7 @@ import { getTranslation } from '../translations/translations';
 
 /**
  * Generate a standardized name for a calculation based on its type and dimensions
- * @param {string} type - The type of calculation (plate, profile, pipe, angle, bar)
+ * @param {string} type - The type of calculation (plate, profile, pipe, angle, bar, pressBrakeAngle, pressBrakeU)
  * @param {Object} data - The dimension data for the calculation
  * @param {string} unit - The unit of measurement (mm or in)
  * @param {string} language - The current language (en or bs)
@@ -47,6 +47,12 @@ export const generateCalculationName = (type, data, unit, language = 'en') => {
         return `${t('flatBar')} ${data.width}x${data.height} L=${data.length}${unit}`;
       }
       return '';
+    
+    case 'pressBrakeAngle':
+      return `${t('pressBrakeAngle')} ${data.width}x${data.height}x${data.thickness} ${data.angle}° L=${data.length}${unit}`;
+    
+    case 'pressBrakeU':
+      return `${t('pressBrakeU')} ${data.width}x${data.height}x${data.thickness} L=${data.length}${unit}`;
     
     default:
       return '';

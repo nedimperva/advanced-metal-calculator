@@ -225,6 +225,98 @@ export const calculateBarWeight = (barData, unit, density) => {
 };
 
 /**
+ * Calculate the weight of a press brake angle based on dimensions and density
+ * @param {Object} pressBrakeAngleData - The press brake angle dimensions
+ * @param {string} unit - The unit of measurement ('mm' or 'in')
+ * @param {number} density - The density of the material in g/cm³
+ * @returns {number} - The weight in kg
+ */
+export const calculatePressBrakeAngleWeight = (pressBrakeAngleData, unit, density) => {
+  if (!pressBrakeAngleData.width || !pressBrakeAngleData.height || !pressBrakeAngleData.thickness || !pressBrakeAngleData.length) return 0;
+  
+  let { width, height, thickness, length, radius } = pressBrakeAngleData;
+  radius = radius || 0; // Default radius to 0 if not provided
+  
+  // Convert to mm if using inches
+  if (unit === 'in') {
+    width = width * 25.4;
+    height = height * 25.4;
+    thickness = thickness * 25.4;
+    length = length * 25.4;
+    radius = radius * 25.4;
+  }
+  
+  // Calculate the developed length of the angle (flat pattern)
+  // For simplicity, we're using the sum of the two legs minus the thickness
+  // and adding the arc length for the bend (if radius is provided)
+  let developedWidth = width + height - thickness;
+  
+  // If radius is provided, add the arc length
+  if (radius > 0) {
+    // The arc length is approximately π * r * (angle/180)
+    // For a 90-degree bend, that's π * r * 0.5
+    const angle = pressBrakeAngleData.angle || 90; // Default to 90 degrees if not specified
+    const angleInRadians = (angle * Math.PI) / 180;
+    const bendAllowance = angleInRadians * radius;
+    developedWidth += bendAllowance - (2 * radius * Math.tan(angleInRadians / 2));
+  }
+  
+  // Calculate the area of the developed flat pattern
+  const area = (developedWidth / 10) * (thickness / 10);
+  
+  // Calculate volume in cm³
+  const volume = area * (length / 10);
+  
+  // Calculate weight (volume in cm³ * density in g/cm³ / 1000 to get kg)
+  return volume * density / 1000;
+};
+
+/**
+ * Calculate the weight of a press brake U-shape based on dimensions and density
+ * @param {Object} pressBrakeUData - The press brake U-shape dimensions
+ * @param {string} unit - The unit of measurement ('mm' or 'in')
+ * @param {number} density - The density of the material in g/cm³
+ * @returns {number} - The weight in kg
+ */
+export const calculatePressBrakeUWeight = (pressBrakeUData, unit, density) => {
+  if (!pressBrakeUData.width || !pressBrakeUData.height || !pressBrakeUData.thickness || !pressBrakeUData.length) return 0;
+  
+  let { width, height, thickness, length, radius, flangeWidth } = pressBrakeUData;
+  radius = radius || 0; // Default radius to 0 if not provided
+  flangeWidth = flangeWidth || width / 2; // Default flange width to half of width if not provided
+  
+  // Convert to mm if using inches
+  if (unit === 'in') {
+    width = width * 25.4;
+    height = height * 25.4;
+    thickness = thickness * 25.4;
+    length = length * 25.4;
+    radius = radius * 25.4;
+    flangeWidth = flangeWidth * 25.4;
+  }
+  
+  // Calculate the developed length of the U-shape (flat pattern)
+  // For a U-shape: 2 * flangeWidth + width + 2 * (bend allowance)
+  let developedWidth = 2 * flangeWidth + width - 2 * thickness;
+  
+  // If radius is provided, add the arc length for each bend
+  if (radius > 0) {
+    // For two 90-degree bends
+    const bendAllowance = Math.PI * radius - 2 * radius;
+    developedWidth += 2 * bendAllowance;
+  }
+  
+  // Calculate the area of the developed flat pattern
+  const area = (developedWidth / 10) * (thickness / 10);
+  
+  // Calculate volume in cm³
+  const volume = area * (length / 10);
+  
+  // Calculate weight (volume in cm³ * density in g/cm³ / 1000 to get kg)
+  return volume * density / 1000;
+};
+
+/**
  * Calculate total price based on weight, price per kg, and quantity
  * @param {number} weight - Weight in kg
  * @param {number} pricePerKg - Price per kg
