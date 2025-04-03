@@ -1,42 +1,44 @@
 export const theme = {
   colors: {
-    // New color palette based on logo
-    primary: '#00bcd4', // Teal from the middle of the gradient
-    secondary: '#26a69a', // Teal-green from the end of the gradient
-    background: '#F5EFE6', // Keeping the light cream background
-    surface: '#E8DFCA', // Keeping the warm beige surface
+    // Primary colors based on copper gradient
+    primary: '#ff8a65', // Medium copper
+    secondary: '#d84315', // Dark copper
+    
+    // Background colors based on darker steel gradient
+    background: '#455a64', // Dark steel
+    surface: '#37474f', // Darker steel
     
     // Variations
-    primaryLight: '#29b6f6', // Light blue from the start of the gradient
-    secondaryLight: '#4db6ac', // Lighter teal-green
+    primaryLight: '#ffccbc', // Light copper
+    secondaryLight: '#ff8a65', // Medium copper
     
     // Text colors
-    text: '#1a237e', // Dark blue from the logo stroke
-    textLight: '#4F6F52', // Keeping medium green for secondary text
-    textOnPrimary: '#F5EFE6', // Light cream on dark backgrounds
+    text: '#ffffff', // White for better contrast on dark background
+    textLight: '#cfd8dc', // Light steel for secondary text
+    textOnPrimary: '#ffffff', // White from logo
     
     // Accent colors
-    accent1: '#29b6f6', // Light blue from the start of the gradient
-    accent2: '#00bcd4', // Teal from the middle of the gradient
-    accent3: '#26a69a', // Teal-green from the end of the gradient
+    accent1: '#90a4ae', // Medium steel
+    accent2: '#607d8b', // Dark steel
+    accent3: '#455a64', // Darker steel
     
     // Status colors
-    success: '#26a69a', // Teal-green
+    success: '#26a69a', // Keeping teal-green
     warning: '#D4AC2B', // Keeping gold
     danger: '#B22727', // Keeping red
     
     // Border colors
-    border: '#E8DFCA', // Keeping warm beige
+    border: '#37474f', // Darker steel
     
     // Hover states
-    primaryHover: '#00acc1', // Darker teal
-    secondaryHover: '#00897b', // Darker teal-green
+    primaryHover: '#d84315', // Dark copper
+    secondaryHover: '#bf360c', // Darker copper
     successHover: '#00897b', // Darker teal-green
     warningHover: '#C39B1A', // Keeping gold hover
     dangerHover: '#A11616', // Keeping red hover
-    accent1Hover: '#0288d1', // Darker light blue
-    accent2Hover: '#00acc1', // Darker teal
-    accent3Hover: '#00897b' // Darker teal-green
+    accent1Hover: '#607d8b', // Dark steel
+    accent2Hover: '#455a64', // Darker steel
+    accent3Hover: '#263238' // Darkest steel
   },
   transitions: {
     DEFAULT: 'all 0.2s ease-in-out',

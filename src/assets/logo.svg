@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="150" height="150">
     <defs>
         <linearGradient id="steelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:#cfd8dc; stop-opacity:1" />
@@ -19,11 +19,11 @@
             <stop offset="100%" style="stop-color:#9e9e9e; stop-opacity:1" />
         </linearGradient>
 
-        <pattern id="holeFill" patternUnits="userSpaceOnUse" width="4" height="4">
-            <rect width="4" height="4" fill="#424242"/>
-        </pattern>
+         <pattern id="holeFill" patternUnits="userSpaceOnUse" width="4" height="4">
+             <rect width="4" height="4" fill="#424242"/>
+         </pattern>
 
-        <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+         <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
             <feOffset dx="2" dy="2" result="offsetblur"/>
             <feFlood flood-color="#333" flood-opacity="0.5"/>
@@ -36,16 +36,18 @@
     </defs>
 
     <g filter="url(#dropShadow)">
-        <path d="M 15,55 H 55 V 95 H 15 Z M 22,62 H 48 V 88 H 22 Z" fill-rule="evenodd" fill="url(#steelGradient)" transform="rotate(-5 35 75)"/>
+            <path d="M 15,55 H 55 V 95 H 15 Z M 22,62 H 48 V 88 H 22 Z" fill-rule="evenodd" fill="url(#steelGradient)" transform="rotate(-5 35 75)"/>
 
-        <circle cx="50" cy="35" r="25" fill="url(#copperGradient)"/>
-        <circle cx="50" cy="35" r="18" fill="url(#holeFill)"/>
+            <circle cx="50" cy="35" r="25" fill="url(#copperGradient)"/>
+             <circle cx="50" cy="35" r="18" fill="url(#holeFill)"/>
 
-        <path d="M 50,50 H 90 V 60 H 60 V 90 H 50 Z" fill="url(#aluminumGradient)" transform="translate(0, 5) rotate(5 70 70)"/>
-    </g>
 
-    <g style="opacity:0.9;">
-        <rect x="46" y="30" width="8" height="40" fill="#ffffff" rx="2"/>
-        <rect x="30" y="46" width="40" height="8" fill="#ffffff" rx="2"/>
-    </g>
-</svg>
+            <path d="M 50,50 H 90 V 60 H 60 V 90 H 50 Z" fill="url(#aluminumGradient)" transform="translate(0, 5) rotate(5 70 70)"/>
+        </g>
+
+        <g style="opacity:0.9;">
+             <rect x="46" y="30" width="8" height="40" fill="#ffffff" rx="2"/>
+            <rect x="30" y="46" width="40" height="8" fill="#ffffff" rx="2"/>
+        </g>
+
+    </svg>

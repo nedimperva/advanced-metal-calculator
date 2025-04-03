@@ -4,6 +4,7 @@ import { theme } from '../../theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDate } from '../../utils/formatters';
 import { loadProjects, saveProject, addCalculationsToProject } from '../../utils/projects';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 const SavedCalculations = ({
   calculations,
@@ -14,6 +15,8 @@ const SavedCalculations = ({
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [calculationToDelete, setCalculationToDelete] = useState(null);
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -23,10 +26,15 @@ const SavedCalculations = ({
 
   // Create a separate function to handle calculation deletion
   const deleteCalculation = (calculationId) => {
-    console.log('Deleting calculation with ID:', calculationId);
-    // Call the parent component's onDelete function
-    if (typeof onDelete === 'function') {
-      onDelete(calculationId);
+    setCalculationToDelete(calculationId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (calculationToDelete) {
+      onDelete(calculationToDelete);
+      setDeleteDialogOpen(false);
+      setCalculationToDelete(null);
     }
   };
 
@@ -264,6 +272,18 @@ const SavedCalculations = ({
           )}
         </div>
       )}
+      
+      {/* Add the ConfirmDialog */}
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setCalculationToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title={t('deleteCalculation')}
+        message={t('deleteCalculationConfirm')}
+      />
     </div>
   );
 };

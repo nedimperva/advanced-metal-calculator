@@ -6,6 +6,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import PWAUpdateNotification from './components/PWAUpdateNotification';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { theme } from './theme';
+import logo from './assets/logo.svg';
 
 const AppContent = () => {
   const [activeView, setActiveView] = useState('calculator');
@@ -34,34 +35,7 @@ const AppContent = () => {
             {/* App Logo - always on the left for all screen sizes */}
             <div className="flex items-center">
               <div className="flex items-center justify-center mr-3">
-                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="h-8 w-8">
-                  <defs>
-                    <linearGradient id="colorfulGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" style={{ stopColor: "#29b6f6", stopOpacity: 1 }} />
-                      <stop offset="50%" style={{ stopColor: "#00bcd4", stopOpacity: 1 }} />
-                      <stop offset="100%" style={{ stopColor: "#26a69a", stopOpacity: 1 }} />
-                    </linearGradient>
-                    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-                      <feOffset dx="2" dy="2" result="offsetblur"/>
-                      <feFlood floodColor="#333" floodOpacity="0.5"/>
-                      <feComposite in2="offsetblur" operator="in"/>
-                      <feMerge>
-                        <feMergeNode/>
-                        <feMergeNode in="SourceGraphic"/>
-                      </feMerge>
-                    </filter>
-                  </defs>
-                  <path
-                    d="M 20,25 H 80 V 35 H 58 V 65 H 80 V 75 H 20 V 65 H 42 V 35 H 20 V 25 Z"
-                    fill="url(#colorfulGradient)"
-                    stroke="#1a237e"
-                    strokeWidth="1"
-                    filter="url(#dropShadow)"
-                  />
-                  <rect x="47" y="40" width="6" height="20" fill="#ffffff" rx="1.5"/>
-                  <rect x="40" y="47" width="20" height="6" fill="#ffffff" rx="1.5"/>
-                </svg>
+                <img src={logo} alt="Metal Calculator Logo" className="h-12 w-12" />
               </div>
               <span className="hidden md:block ml-1 font-semibold" style={{ color: theme.colors.primary }}>
                 {t('appTitle')}

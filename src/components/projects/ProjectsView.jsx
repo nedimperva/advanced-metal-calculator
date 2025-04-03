@@ -4,6 +4,7 @@ import ProjectModal from './ProjectModal';
 import { loadProjects, deleteProject, saveProject, deleteCalculationFromProject } from '../../utils/projects';
 import CalculationPreview from '../project/CalculationPreview';
 import { useLanguage } from '../../contexts/LanguageContext';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 const ProjectsView = () => {
   const [projects, setProjects] = useState([]);
@@ -11,6 +12,9 @@ const ProjectsView = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteType, setDeleteType] = useState(null); // 'project' or 'calculation'
+  const [itemToDelete, setItemToDelete] = useState(null);
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -49,33 +53,42 @@ const ProjectsView = () => {
   };
 
   const handleDeleteProject = (projectId) => {
-    if (window.confirm(t('confirmDeleteProject'))) {
-      // Use the utility function to delete the project
-      const updatedProjects = deleteProject(projectId);
-      if (updatedProjects) {
-        setProjects(updatedProjects);
-        
-        // If we're deleting the currently selected project, clear the selection
-        if (selectedProject && selectedProject.id === projectId) {
-          setSelectedProject(updatedProjects.length > 0 ? updatedProjects[0] : null);
-          setShowProjectDetails(false);
-        }
-      }
-    }
+    setDeleteType('project');
+    setItemToDelete(projectId);
+    setDeleteDialogOpen(true);
   };
 
   const handleDeleteCalculation = (calculationId) => {
-    if (window.confirm(t('confirmDeleteCalculation') || 'Are you sure you want to delete this calculation?')) {
-      if (selectedProject) {
-        const updatedProjects = deleteCalculationFromProject(selectedProject.id, calculationId);
-        if (updatedProjects) {
-          setProjects(updatedProjects);
-          // Update the selected project with the updated version
-          const updatedSelectedProject = updatedProjects.find(p => p.id === selectedProject.id);
-          setSelectedProject(updatedSelectedProject);
+    setDeleteType('calculation');
+    setItemToDelete(calculationId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteType === 'project' && itemToDelete) {
+      const updatedProjects = deleteProject(itemToDelete);
+      if (updatedProjects) {
+        setProjects(updatedProjects);
+        if (selectedProject && selectedProject.id === itemToDelete) {
+          setSelectedProject(null);
         }
       }
+    } else if (deleteType === 'calculation' && itemToDelete && selectedProject) {
+      const updatedProject = deleteCalculationFromProject(selectedProject.id, itemToDelete);
+      if (updatedProject) {
+        // Update the selected project
+        setSelectedProject(updatedProject);
+        
+        // Update the projects list
+        const updatedProjects = projects.map(p => 
+          p.id === updatedProject.id ? updatedProject : p
+        );
+        setProjects(updatedProjects);
+      }
     }
+    setDeleteDialogOpen(false);
+    setDeleteType(null);
+    setItemToDelete(null);
   };
 
   // Format date to match the screenshot
@@ -359,6 +372,19 @@ const ProjectsView = () => {
           }}
         />
       )}
+
+      {/* Add the ConfirmDialog */}
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setDeleteType(null);
+          setItemToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title={deleteType === 'project' ? t('deleteProject') : t('deleteCalculation')}
+        message={deleteType === 'project' ? t('deleteProjectConfirm') : t('deleteCalculationConfirm')}
+      />
     </div>
   );
 };

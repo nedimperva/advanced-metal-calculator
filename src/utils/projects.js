@@ -117,7 +117,7 @@ export const deleteCalculationFromProject = (projectId, calculationId) => {
     );
 
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
-    return updatedProjects;
+    return updatedProject;
   } catch (error) {
     console.error('Error deleting calculation from project:', error);
     return null;

@@ -13,7 +13,7 @@ const PricingInputs = ({ pricePerKg, setPricePerKg, quantity, setQuantity }) => 
 
   const handleQuantityChange = (e) => {
     const value = e.target.value;
-    setQuantity(value === '' ? '' : parseInt(value));
+    setQuantity(value === '' ? '' : parseFloat(value));
   };
   
   return (
@@ -52,6 +52,7 @@ const PricingInputs = ({ pricePerKg, setPricePerKg, quantity, setQuantity }) => 
             value={quantity === 0 ? '' : quantity}
             onChange={handleQuantityChange}
             min="0"
+            step="0.1"
             className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
               backgroundColor: theme.colors.background,

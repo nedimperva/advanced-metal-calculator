@@ -16,6 +16,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { theme } from '../../theme';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import ToggleSwitch from '../ui/ToggleSwitch';
+import logo from '../../assets/logo.svg';
 
 const MetalCalculator = () => {
   // Basic settings
@@ -322,20 +323,7 @@ const MetalCalculator = () => {
               <div className="flex items-center">
                 <div className="flex items-center justify-center p-2 rounded-md mr-2" 
                      style={{ backgroundColor: `${theme.colors.primary}15` }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" 
-                       stroke={theme.colors.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="4" y="2" width="16" height="20" rx="2" />
-                    <line x1="8" y1="6" x2="16" y2="6" />
-                    <line x1="8" y1="10" x2="10" y2="10" />
-                    <line x1="12" y1="10" x2="14" y2="10" />
-                    <line x1="16" y1="10" x2="16" y2="10" />
-                    <line x1="8" y1="14" x2="10" y2="14" />
-                    <line x1="12" y1="14" x2="14" y2="14" />
-                    <line x1="16" y1="14" x2="16" y2="14" />
-                    <line x1="8" y1="18" x2="10" y2="18" />
-                    <line x1="12" y1="18" x2="14" y2="18" />
-                    <line x1="16" y1="18" x2="16" y2="18" />
-                  </svg>
+                  <img src={logo} alt="Calculator" className="h-6 w-6" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-lg font-semibold" style={{ color: theme.colors.text }}>
@@ -378,15 +366,21 @@ const MetalCalculator = () => {
                   <select
                     value={selectedMaterial}
                     onChange={(e) => setSelectedMaterial(e.target.value)}
-                    className="bg-transparent border-0 focus:ring-0 text-sm p-1 flex-grow"
+                    className="bg-transparent border-0 focus:ring-0 text-sm p-1 flex-grow cursor-pointer"
                     style={{ 
                       color: theme.colors.text,
-                      outlineColor: theme.colors.primary
+                      outlineColor: theme.colors.primary,
+                      backgroundColor: `${theme.colors.primary}15`,
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      cursor: 'pointer'
                     }}
                   >
-                    <option value="">{t('selectMaterial')}</option>
+                    <option value="" style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}>{t('selectMaterial')}</option>
                     {Object.keys(materials).map((key) => (
-                      <option key={key} value={key}>{t(key)}</option>
+                      <option key={key} value={key} style={{ backgroundColor: theme.colors.surface, color: theme.colors.text }}>
+                        {t(key)}
+                      </option>
                     ))}
                   </select>
                 </div>
