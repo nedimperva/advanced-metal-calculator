@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Definitions for gradients -->
+  <defs>
+    <radialGradient id="steelGradientRadial" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#90a4ae" />
+      <stop offset="100%" stop-color="#607d8b" />
+    </radialGradient>
+    <linearGradient id="steelGradientVertical" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#90a4ae" />
+      <stop offset="100%" stop-color="#607d8b" />
+    </linearGradient>
+    <linearGradient id="copperGradientVertical" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff8a65" />
+      <stop offset="100%" stop-color="#d84315" />
+    </linearGradient>
+    <!-- Arrow marker definition -->
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ff8a65" />
+    </marker>
+  </defs>
+
+  <!-- U Profile with narrower sides (pressed) -->
+  <path d="M 25 25 V 85 H 85 V 70 H 38 V 40 H 85 V 25 Z"
+        fill="url(#steelGradientRadial)"
+        stroke="#d84315"
+        stroke-width="1.5"
+        transform="rotate(-90 55 55)" />
+  
+  <!-- 90-degree arrow pointing to the corner -->
+  <line x1="55" y1="30" x2="55" y2="53" stroke="#ff8a65" stroke-width="2" marker-end="url(#arrowhead)" />
+</svg> 

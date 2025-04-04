@@ -42,12 +42,12 @@ const ProfileCalculator = ({ profileData, onProfileDataChange, unit }) => {
   
   // Update available sizes when type changes
   useEffect(() => {
-    if (!profileData.type || !profiles[profileData.type]) {
+    if (!profileData.type || !profiles[profileData.type.toLowerCase()]) {
       setAvailableSizes([]);
       return;
     }
     
-    setAvailableSizes(profiles[profileData.type].sizes || []);
+    setAvailableSizes(profiles[profileData.type.toLowerCase()].sizes || []);
   }, [profileData.type]);
   
   // Get the appropriate image based on profile type
@@ -71,7 +71,7 @@ const ProfileCalculator = ({ profileData, onProfileDataChange, unit }) => {
   };
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-4">
       <div className="md:col-span-2 mb-4 flex justify-center">
         {profileData.type && (
           <img 
@@ -98,9 +98,11 @@ const ProfileCalculator = ({ profileData, onProfileDataChange, unit }) => {
           }}
         >
           <option value="">{t('selectType')}</option>
-          {Object.keys(profiles).map(type => (
-            <option key={type} value={type}>{profiles[type].name}</option>
-          ))}
+          <option value="hea">HEA</option>
+          <option value="heb">HEB</option>
+          <option value="ipn">IPN</option>
+          <option value="ipe">IPE</option>
+          <option value="upn">UPN</option>
         </select>
       </div>
       

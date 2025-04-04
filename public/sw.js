@@ -1,7 +1,7 @@
 // This is the service worker with the combined offline experience (Offline page + Offline copy of pages)
 
 const CACHE = "advanced-metal-calculator-offline";
-const OFFLINE_URL = "offline.html";
+const OFFLINE_URL = "/offline.html";
 const VERSION = "1.0.1"; // Current version
 
 // Install stage sets up the offline page in the cache and opens a new cache
@@ -11,11 +11,11 @@ self.addEventListener("install", event => {
     caches.open(CACHE).then(cache => {
       return cache.addAll([
         OFFLINE_URL,
-        "/",
-        "/index.html",
-        "/manifest.json",
-        "/icons/icon-192x192.png",
-        "/icons/icon-512x512.png"
+        "/advanced-metal-calculator/",
+        "/advanced-metal-calculator/index.html",
+        "/advanced-metal-calculator/manifest.json",
+        "/advanced-metal-calculator/icons/icon-192x192.png",
+        "/advanced-metal-calculator/icons/icon-512x512.png"
       ]);
     })
   );

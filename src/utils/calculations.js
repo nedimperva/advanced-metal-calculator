@@ -317,6 +317,40 @@ export const calculatePressBrakeUWeight = (pressBrakeUData, unit, density) => {
 };
 
 /**
+ * Calculate the weight of a press brake L-shape based on dimensions and density
+ * @param {Object} data - The press brake L-shape dimensions
+ * @param {string} unit - The unit of measurement ('mm' or 'in')
+ * @param {number} density - The density of the material in g/cm³
+ * @returns {number} - The weight in kg
+ */
+export const calculatePressBrakeLWeight = (data, unit, density) => {
+  const { width, height, thickness, length, radius, flangeWidth } = data;
+  
+  // Convert dimensions to meters if in mm
+  const scale = unit === 'mm' ? 0.001 : 1;
+  const w = width * scale;
+  const h = height * scale;
+  const t = thickness * scale;
+  const l = length * scale;
+  const r = radius * scale;
+  const fw = flangeWidth * scale;
+
+  // Calculate the volume of the L profile
+  // This includes the main body and the flange
+  const mainBodyVolume = (w * t * l);
+  const flangeVolume = (h * t * l);
+  
+  // Subtract the corner radius volume
+  const cornerVolume = (Math.PI * r * r * t) / 4;
+  
+  // Total volume in cubic meters
+  const totalVolume = mainBodyVolume + flangeVolume - cornerVolume;
+  
+  // Calculate weight in kg (density is in kg/m³)
+  return totalVolume * density;
+};
+
+/**
  * Calculate total price based on weight, price per kg, and quantity
  * @param {number} weight - Weight in kg
  * @param {number} pricePerKg - Price per kg

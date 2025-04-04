@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { materials } from '../../data/materials';
-import { calculatePipeWeight, calculateProfileWeight, calculatePlateWeight, calculateAngleWeight, calculateBarWeight, calculatePressBrakeAngleWeight, calculatePressBrakeUWeight, calculateTotalPrice } from '../../utils/calculations';
+import { calculatePipeWeight, calculateProfileWeight, calculatePlateWeight, calculateAngleWeight, calculateBarWeight, calculatePressBrakeAngleWeight, calculatePressBrakeUWeight, calculatePressBrakeLWeight, calculateTotalPrice } from '../../utils/calculations';
 import { loadSavedCalculations, saveCalculation, deleteCalculation } from '../../utils/storage';
 import { generateCalculationName } from '../../utils/generateCalculationName';
 import PlateCalculator from './PlateCalculator';
@@ -10,6 +10,7 @@ import AngleCalculator from './AngleCalculator';
 import BarCalculator from './BarCalculator';
 import PressBrakeAngleCalculator from './PressBrakeAngleCalculator';
 import PressBrakeUCalculator from './PressBrakeUCalculator';
+import PressBrakeLCalculator from './PressBrakeLCalculator';
 import PricingInputs from './PricingInputs';
 import SavedCalculations from './SavedCalculations';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -17,6 +18,22 @@ import { theme } from '../../theme';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import ToggleSwitch from '../ui/ToggleSwitch';
 import logo from '../../assets/logo.svg';
+import EqualAngle from '../../assets/profiles/EqualAngle.svg';
+import UnequalAngle from '../../assets/profiles/UnequalAngle.svg';
+import SquarePipe from '../../assets/profiles/SquarePipe.svg';
+import RoundPipe from '../../assets/profiles/RoundPipe.svg';
+import RectangularPipe from '../../assets/profiles/RectangularPipe.svg';
+import HEA from '../../assets/profiles/HEA.svg';
+import HEB from '../../assets/profiles/HEB.svg';
+import UProfile from '../../assets/profiles/UProfile.svg';
+import IPN from '../../assets/profiles/IPN.svg';
+import IPE from '../../assets/profiles/IPE.svg';
+import SteelPlate from '../../assets/profiles/SteelPlate.svg';
+import FlatBar from '../../assets/profiles/FlatBar.svg';
+import SquareBar from '../../assets/profiles/SquareBar.svg';
+import RoundBar from '../../assets/profiles/RoundBar.svg';
+import UPressBrake from '../../assets/profiles/UPressBrake.svg';
+import LPressBrake from '../../assets/profiles/LPressBrake.svg';
 
 const MetalCalculator = () => {
   // Basic settings
@@ -88,6 +105,14 @@ const MetalCalculator = () => {
     radius: 0,
     flangeWidth: 0
   });
+  const [pressBrakeLData, setPressBrakeLData] = useState({ 
+    width: 0, 
+    height: 0, 
+    thickness: 0, 
+    length: 0,
+    radius: 0,
+    flangeWidth: 0
+  });
   
   // Pricing states
   const [pricePerKg, setPricePerKg] = useState(2);
@@ -130,6 +155,8 @@ const MetalCalculator = () => {
           case 'profile':
             if (profileSubType === 'pressBrakeU') {
               calculatedWeight = calculatePressBrakeUWeight(pressBrakeUData, unit, density);
+            } else if (profileSubType === 'pressBrakeL') {
+              calculatedWeight = calculatePressBrakeLWeight(pressBrakeLData, unit, density);
             } else {
               calculatedWeight = calculateProfileWeight(profileData, unit, density);
             }
@@ -160,7 +187,7 @@ const MetalCalculator = () => {
     }, 500);
 
     return () => clearTimeout(calculationTimeout);
-  }, [selectedMaterial, calculationType, plateData, profileData, pipeData, angleData, barData, pressBrakeAngleData, pressBrakeUData, unit, angleSubType, profileSubType]);
+  }, [selectedMaterial, calculationType, plateData, profileData, pipeData, angleData, barData, pressBrakeAngleData, pressBrakeUData, pressBrakeLData, unit, angleSubType, profileSubType]);
 
   // Calculate total weight and prices when weight or quantity changes
   useEffect(() => {
@@ -206,6 +233,10 @@ const MetalCalculator = () => {
           currentCalculation.dimensions = pressBrakeUData;
           currentCalculation.subType = 'pressBrakeU';
           currentCalculation.name = generateCalculationName('pressBrakeU', pressBrakeUData, unit, language);
+        } else if (profileSubType === 'pressBrakeL') {
+          currentCalculation.dimensions = pressBrakeLData;
+          currentCalculation.subType = 'pressBrakeL';
+          currentCalculation.name = generateCalculationName('pressBrakeL', pressBrakeLData, unit, language);
         } else {
           currentCalculation.dimensions = profileData;
           currentCalculation.subType = 'standard';
@@ -308,7 +339,19 @@ const MetalCalculator = () => {
       setBarSubType('flat');
     } else if (type === 'profile') {
       setProfileSubType('standard');
+      setProfileData({ type: '', size: '', length: 0 });
+      setPressBrakeUData({ width: 0, height: 0, thickness: 0, length: 0, radius: 0, flangeWidth: 0 });
+      setPressBrakeLData({ width: 0, height: 0, thickness: 0, length: 0, radius: 0, flangeWidth: 0 });
     }
+  };
+
+  const profileIcons = {
+    'hea': HEA,
+    'heb': HEB,
+    'ipn': IPN,
+    'ipe': IPE,
+    'upn': UProfile,
+    'pressBrakeU': UPressBrake
   };
 
   return (
@@ -323,7 +366,69 @@ const MetalCalculator = () => {
               <div className="flex items-center">
                 <div className="flex items-center justify-center p-2 rounded-md mr-2" 
                      style={{ backgroundColor: `${theme.colors.primary}15` }}>
-                  <img src={logo} alt="Calculator" className="h-6 w-6" />
+                  {calculationType === 'profile' ? (
+                    profileData.type ? (
+                      <img 
+                        src={profileIcons[profileData.type]} 
+                        alt={profileData.type} 
+                        className="h-6 w-6" 
+                      />
+                    ) : profileSubType === 'pressBrakeU' ? (
+                      <img 
+                        src={UPressBrake} 
+                        alt="U Press Brake" 
+                        className="h-6 w-6" 
+                      />
+                    ) : (
+                      <img 
+                        src={logo} 
+                        alt="Calculator" 
+                        className="h-6 w-6" 
+                      />
+                    )
+                  ) : calculationType === 'pipe' ? (
+                    <img 
+                      src={pipeSubType === 'round' ? RoundPipe : 
+                           pipeSubType === 'square' ? SquarePipe : 
+                           RectangularPipe} 
+                      alt={pipeSubType === 'round' ? t('roundPipe') : 
+                           pipeSubType === 'square' ? t('squarePipe') : 
+                           t('rectangularPipe')} 
+                      className="h-6 w-6" 
+                    />
+                  ) : calculationType === 'angle' ? (
+                    <img 
+                      src={angleSubType === 'equal' ? EqualAngle : 
+                           angleSubType === 'unequal' ? UnequalAngle : 
+                           LPressBrake} 
+                      alt={angleSubType === 'equal' ? t('equalAngle') : 
+                           angleSubType === 'unequal' ? t('unequalAngle') : 
+                           t('pressBrakeAngle')} 
+                      className="h-6 w-6" 
+                    />
+                  ) : calculationType === 'bar' ? (
+                    <img 
+                      src={barSubType === 'flat' ? FlatBar : 
+                           barSubType === 'square' ? SquareBar : 
+                           RoundBar} 
+                      alt={barSubType === 'flat' ? t('flatBar') : 
+                           barSubType === 'square' ? t('squareBar') : 
+                           t('roundBar')} 
+                      className="h-6 w-6" 
+                    />
+                  ) : calculationType === 'plate' ? (
+                    <img 
+                      src={SteelPlate} 
+                      alt={t('plate')} 
+                      className="h-6 w-6" 
+                    />
+                  ) : (
+                    <img 
+                      src={logo} 
+                      alt="Calculator" 
+                      className="h-6 w-6" 
+                    />
+                  )}
                 </div>
                 <div className="flex flex-col">
                   <span className="text-lg font-semibold" style={{ color: theme.colors.text }}>
