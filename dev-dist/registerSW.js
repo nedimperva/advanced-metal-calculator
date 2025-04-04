@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/advanced-metal-calculator/dev-sw.js?dev-sw', { scope: '/advanced-metal-calculator/', type: 'classic' })

@@ -7,32 +7,13 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'robots.txt', 'icons/*.png'],
-      manifest: {
-        name: 'Advanced Metal Calculator',
-        short_name: 'Metal Calc',
-        description: 'A comprehensive calculator for metal weight, cost, and project management',
-        theme_color: '#1976d2',
-        icons: [
-          {
-            src: 'icons/icon-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: 'icons/icon-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-          },
-          {
-            src: 'icons/icon-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable',
-          }
-        ]
+      strategies: 'generateSW',
+      devOptions: {
+        enabled: true
       },
+      manifest: false,
       workbox: {
         runtimeCaching: [
           {

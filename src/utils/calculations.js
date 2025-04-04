@@ -273,33 +273,32 @@ export const calculatePressBrakeAngleWeight = (pressBrakeAngleData, unit, densit
 
 /**
  * Calculate the weight of a press brake U-shape based on dimensions and density
- * @param {Object} pressBrakeUData - The press brake U-shape dimensions
+ * @param {Object} data - The press brake U-shape dimensions
  * @param {string} unit - The unit of measurement ('mm' or 'in')
  * @param {number} density - The density of the material in g/cm³
  * @returns {number} - The weight in kg
  */
-export const calculatePressBrakeUWeight = (pressBrakeUData, unit, density) => {
-  if (!pressBrakeUData.width || !pressBrakeUData.height || !pressBrakeUData.thickness || !pressBrakeUData.length) return 0;
+export const calculatePressBrakeUWeight = (data, unit, density) => {
+  if (!data.width || !data.flangeWidth || !data.thickness || !data.length) return 0;
   
-  let { width, height, thickness, length, radius, flangeWidth } = pressBrakeUData;
-  radius = radius || 0; // Default radius to 0 if not provided
-  flangeWidth = flangeWidth || width / 2; // Default flange width to half of width if not provided
+  let { width, flangeWidth, thickness, length, radius } = data;
+  radius = radius || thickness; // Default radius to thickness if not specified
   
   // Convert to mm if using inches
   if (unit === 'in') {
     width = width * 25.4;
-    height = height * 25.4;
+    flangeWidth = flangeWidth * 25.4;
     thickness = thickness * 25.4;
     length = length * 25.4;
     radius = radius * 25.4;
-    flangeWidth = flangeWidth * 25.4;
   }
   
   // Calculate the developed length of the U-shape (flat pattern)
-  // For a U-shape: 2 * flangeWidth + width + 2 * (bend allowance)
-  let developedWidth = 2 * flangeWidth + width - 2 * thickness;
+  // For a U-shape: 2 * flangeWidth + webWidth + 2 * (bend allowance)
+  const webWidth = width - (2 * flangeWidth);
+  let developedWidth = 2 * flangeWidth + webWidth;
   
-  // If radius is provided, add the arc length for each bend
+  // Add bend allowance for the radius
   if (radius > 0) {
     // For two 90-degree bends
     const bendAllowance = Math.PI * radius - 2 * radius;
