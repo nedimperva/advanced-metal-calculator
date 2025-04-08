@@ -15,69 +15,96 @@ const PressBrakeUCalculator = ({ pressBrakeUData, onPressBrakeUDataChange, unit 
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('width')} ({unit})
-        </label>
-        <input
-          type="number"
-          value={pressBrakeUData.width || ''}
-          onChange={(e) => handleChange('width', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder={t('enterWidth')}
-        />
-      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.text }}>
+            {t('width')} ({unit})
+          </label>
+          <input
+            type="number"
+            value={pressBrakeUData.width || ''}
+            onChange={(e) => handleChange('width', e.target.value)}
+            className="w-full p-2 rounded border"
+            style={{ 
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              color: theme.colors.text
+            }}
+            placeholder={t('enterWidth')}
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('flangeWidth')} ({unit})
-        </label>
-        <input
-          type="number"
-          value={pressBrakeUData.flangeWidth || ''}
-          onChange={(e) => handleChange('flangeWidth', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder={t('enterFlangeWidth')}
-        />
-      </div>
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.text }}>
+            {t('flangeWidth')} ({unit})
+          </label>
+          <input
+            type="number"
+            value={pressBrakeUData.flangeWidth || ''}
+            onChange={(e) => handleChange('flangeWidth', e.target.value)}
+            className="w-full p-2 rounded border"
+            style={{ 
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              color: theme.colors.text
+            }}
+            placeholder={t('enterFlangeWidth')}
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('thickness')} ({unit})
-        </label>
-        <input
-          type="number"
-          value={pressBrakeUData.thickness || ''}
-          onChange={(e) => handleChange('thickness', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder={t('enterThickness')}
-        />
-      </div>
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.text }}>
+            {t('thickness')} ({unit})
+          </label>
+          <input
+            type="number"
+            value={pressBrakeUData.thickness || ''}
+            onChange={(e) => handleChange('thickness', e.target.value)}
+            className="w-full p-2 rounded border"
+            style={{ 
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              color: theme.colors.text
+            }}
+            placeholder={t('enterThickness')}
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('length')} ({unit})
-        </label>
-        <input
-          type="number"
-          value={pressBrakeUData.length || ''}
-          onChange={(e) => handleChange('length', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder={t('enterLength')}
-        />
-      </div>
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.text }}>
+            {t('length')} ({unit})
+          </label>
+          <input
+            type="number"
+            value={pressBrakeUData.length || ''}
+            onChange={(e) => handleChange('length', e.target.value)}
+            className="w-full p-2 rounded border"
+            style={{ 
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              color: theme.colors.text
+            }}
+            placeholder={t('enterLength')}
+          />
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('radius')} ({unit})
-        </label>
-        <input
-          type="number"
-          value={pressBrakeUData.radius || ''}
-          onChange={(e) => handleChange('radius', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder={t('enterRadius')}
-        />
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.text }}>
+            {t('radius')} ({unit})
+          </label>
+          <input
+            type="number"
+            value={pressBrakeUData.radius || ''}
+            onChange={(e) => handleChange('radius', e.target.value)}
+            className="w-full p-2 rounded border"
+            style={{ 
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              color: theme.colors.text
+            }}
+            placeholder={t('enterRadius')}
+          />
+        </div>
       </div>
     </div>
   );
