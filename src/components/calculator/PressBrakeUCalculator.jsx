@@ -17,7 +17,7 @@ const PressBrakeUCalculator = ({ pressBrakeUData, onPressBrakeUDataChange, unit 
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.text }}>
+          <label className="w-full p-2 rounded-md focus:ring-2" style={{ color: theme.colors.text }}>
             {t('width')} ({unit})
           </label>
           <input
@@ -26,29 +26,31 @@ const PressBrakeUCalculator = ({ pressBrakeUData, onPressBrakeUDataChange, unit 
             onChange={(e) => handleChange('width', e.target.value)}
             className="w-full p-2 rounded border"
             style={{ 
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.colors.background,
               borderColor: theme.colors.border,
-              color: theme.colors.text
+              color: theme.colors.text,
+              outlineColor: theme.colors.primary
             }}
-            placeholder={t('enterWidth')}
+            placeholder={t('width')}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.text }}>
-            {t('flangeWidth')} ({unit})
+            {t('Height')} ({unit})
           </label>
           <input
             type="number"
             value={pressBrakeUData.flangeWidth || ''}
             onChange={(e) => handleChange('flangeWidth', e.target.value)}
-            className="w-full p-2 rounded border"
+            className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.colors.background,
               borderColor: theme.colors.border,
-              color: theme.colors.text
+              color: theme.colors.text,
+              outlineColor: theme.colors.primary
             }}
-            placeholder={t('enterFlangeWidth')}
+            placeholder={t('flangeWidth')}
           />
         </div>
 
@@ -60,13 +62,14 @@ const PressBrakeUCalculator = ({ pressBrakeUData, onPressBrakeUDataChange, unit 
             type="number"
             value={pressBrakeUData.thickness || ''}
             onChange={(e) => handleChange('thickness', e.target.value)}
-            className="w-full p-2 rounded border"
+            className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.colors.background,
               borderColor: theme.colors.border,
-              color: theme.colors.text
+              color: theme.colors.text,
+              outlineColor: theme.colors.primary
             }}
-            placeholder={t('enterThickness')}
+            placeholder={t('thickness')}
           />
         </div>
 
@@ -78,13 +81,14 @@ const PressBrakeUCalculator = ({ pressBrakeUData, onPressBrakeUDataChange, unit 
             type="number"
             value={pressBrakeUData.length || ''}
             onChange={(e) => handleChange('length', e.target.value)}
-            className="w-full p-2 rounded border"
+            className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.colors.background,
               borderColor: theme.colors.border,
-              color: theme.colors.text
+              color: theme.colors.text,
+              outlineColor: theme.colors.primary
             }}
-            placeholder={t('enterLength')}
+            placeholder={t('length')}
           />
         </div>
 
@@ -96,13 +100,14 @@ const PressBrakeUCalculator = ({ pressBrakeUData, onPressBrakeUDataChange, unit 
             type="number"
             value={pressBrakeUData.radius || ''}
             onChange={(e) => handleChange('radius', e.target.value)}
-            className="w-full p-2 rounded border"
+            className="w-full p-2 border rounded-md focus:ring-2"
             style={{ 
-              backgroundColor: theme.colors.surface,
+              backgroundColor: theme.colors.background,
               borderColor: theme.colors.border,
-              color: theme.colors.text
+              color: theme.colors.text,
+              outlineColor: theme.colors.primary
             }}
-            placeholder={t('enterRadius')}
+            placeholder={t('radius')}
           />
         </div>
       </div>

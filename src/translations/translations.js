@@ -77,7 +77,7 @@ export const translations = {
     size: 'Size',
     angle: 'Angle',
     radius: 'Radius',
-    flangeWidth: 'Flange Width',
+    flangeWidth: 'Flange Width (height)',
     
     // Results
     results: 'Results',
@@ -173,7 +173,7 @@ export const translations = {
     
     // Material names
     steel: 'Čelik',
-    stainlesssteel: 'Nerđajući čelik',
+    stainlesssteel: 'Nehrđajući čelik',
     aluminum: 'Aluminijum',
     copper: 'Bakar',
     brass: 'Mesing',
@@ -183,12 +183,12 @@ export const translations = {
     nickel: 'Nikal',
     
     // Calculator Types
-    plate: 'Ploča',
+    plate: 'Lim',
     profile: 'Profil',
     pipe: 'Cijev',
-    angle: 'Ugaonik',
+    angle: 'L-Profil',
     bar: 'Šipka',
-    pressBrakeAngle: 'Savijeni Ugaonik',
+    pressBrakeAngle: 'Savijeni L-Profil',
     pressBrakeU: 'Savijeni U-Profil',
     
     // Pipe Subtypes
@@ -197,8 +197,8 @@ export const translations = {
     rectangularPipe: 'Pravougaona cijev',
     
     // Angle Subtypes
-    equalAngle: 'Jednaki ugaonik',
-    unequalAngle: 'Nejednaki ugaonik',
+    equalAngle: 'Jednaki L-Profil',
+    unequalAngle: 'Nejednaki L-Profil',
     
     // Bar Subtypes
     flatBar: 'Pljosnata šipka',
@@ -222,7 +222,7 @@ export const translations = {
     innerDiameter: 'Unutrašnji prečnik',
     wallThickness: 'Debljina zida',
     size: 'Veličina',
-    angle: 'Ugao',
+    angle: 'L-Profili',
     radius: 'Radijus',
     flangeWidth: 'Širina Prirubnice',
     

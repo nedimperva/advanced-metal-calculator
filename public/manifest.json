@@ -5,7 +5,7 @@
   "start_url": "/advanced-metal-calculator/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#1976d2",
+  "theme_color": "#37474f",
   "icons": [
     {
       "src": "/advanced-metal-calculator/icons/icon-192x192.png",
