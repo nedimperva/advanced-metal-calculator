@@ -5,7 +5,8 @@ const CalculationTypeSelector = ({ calculationType, setCalculationType }) => {
   const types = [
     { id: 'plate', label: 'Plate' },
     { id: 'profile', label: 'Profile' },
-    { id: 'pipe', label: 'Pipe' }
+    { id: 'pipe', label: 'Pipe' },
+    { id: 'product', label: 'Add Product' }
   ];
 
   return (
@@ -13,7 +14,7 @@ const CalculationTypeSelector = ({ calculationType, setCalculationType }) => {
       <label className="block text-sm font-medium mb-3" style={{ color: theme.colors.textLight }}>
         Calculation Type
       </label>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         {types.map((type) => (
           <button
             key={type.id}

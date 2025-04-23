@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { materials } from '../../data/materials';
 import { calculatePipeWeight, calculateProfileWeight, calculatePlateWeight, calculateAngleWeight, calculateBarWeight, calculatePressBrakeAngleWeight, calculatePressBrakeUWeight, calculatePressBrakeLWeight, calculateTotalPrice } from '../../utils/calculations';
 import { loadSavedCalculations, saveCalculation, deleteCalculation } from '../../utils/storage';
+import { loadProducts } from '../../utils/products.jsx';
 import { generateCalculationName } from '../../utils/generateCalculationName';
 import PlateCalculator from './PlateCalculator';
 import ProfileCalculator from './ProfileCalculator';
@@ -52,6 +53,11 @@ const MetalCalculator = () => {
   
   // Saved calculations
   const [savedCalculations, setSavedCalculations] = useState([]);
+
+  // Products
+  const [products, setProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState('');
+  const [productQuantity, setProductQuantity] = useState(1);
   
   // Get translation function
   const { t, language } = useLanguage();
@@ -66,6 +72,10 @@ const MetalCalculator = () => {
         localStorage.removeItem('savedCalculations');
       }
     }
+    
+    // Load products
+    const loadedProducts = loadProducts();
+    setProducts(loadedProducts);
   }, []);
 
   // Data states for different calculators
@@ -343,6 +353,47 @@ const MetalCalculator = () => {
       setPressBrakeUData({ width: 0, height: 0, thickness: 0, length: 0, radius: 0, flangeWidth: 0 });
       setPressBrakeLData({ width: 0, height: 0, thickness: 0, length: 0, radius: 0, flangeWidth: 0 });
     }
+  };
+
+  // Handle adding a product to calculations
+  const handleAddProductToCalculations = () => {
+    if (!selectedProduct || !productQuantity) return;
+    
+    setIsSaving(true);
+    
+    const product = products.find(p => p.id === selectedProduct);
+    
+    if (!product) {
+      setIsSaving(false);
+      return;
+    }
+
+    // Calculate total weight for this product instance
+    const productWeight = product.totalWeight;
+    const totalProductWeight = productWeight * productQuantity;
+    
+    const currentCalculation = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      type: 'product',
+      name: product.name,
+      description: product.description,
+      productId: product.id,
+      weight: productWeight,
+      pricePerKg: pricePerKg,
+      totalPrice: calculateTotalPrice(productWeight, pricePerKg, productQuantity),
+      quantity: productQuantity,
+      color: theme.colors.accent1 || theme.colors.primary
+    };
+
+    const updatedCalculations = [...savedCalculations, currentCalculation];
+    setSavedCalculations(updatedCalculations);
+    localStorage.setItem('savedCalculations', JSON.stringify(updatedCalculations));
+    
+    // Reset product selection
+    setSelectedProduct('');
+    setProductQuantity(1);
+    setIsSaving(false);
   };
 
   const profileIcons = {
@@ -713,77 +764,137 @@ const MetalCalculator = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {/* Left side - Calculator */}
             <div>
-              {calculationType && (
-                <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-                  {calculationType === 'plate' && (
-                    <PlateCalculator
-                      plateData={plateData}
-                      onPlateDataChange={setPlateData}
-                      unit={unit}
-                    />
-                  )}
+              {calculationType === 'product' ? (
+  <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+    <h3 className="text-lg font-medium mb-3" style={{ color: theme.colors.text }}>{t('addProduct')}</h3>
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>
+          {t('selectProduct')}
+        </label>
+        <select
+          value={selectedProduct}
+          onChange={(e) => setSelectedProduct(e.target.value)}
+          className="w-full p-2 border rounded-md focus:ring-2"
+          style={{ 
+            backgroundColor: theme.colors.background,
+            borderColor: theme.colors.border,
+            color: theme.colors.text,
+            outlineColor: theme.colors.primary
+          }}
+        >
+          <option value="">{t('selectProduct')}</option>
+          {products.map(product => (
+            <option key={product.id} value={product.id}>{product.name}</option>
+          ))}
+        </select>
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>
+          {t('quantity')}
+        </label>
+        <input
+          type="number"
+          value={productQuantity}
+          onChange={(e) => setProductQuantity(e.target.value === '' ? '' : parseFloat(e.target.value))}
+          className="w-full p-2 border rounded-md focus:ring-2"
+          style={{ 
+            backgroundColor: theme.colors.background,
+            borderColor: theme.colors.border,
+            color: theme.colors.text,
+            outlineColor: theme.colors.primary
+          }}
+          placeholder={t('quantity')}
+        />
+      </div>
+      
+      <button
+        onClick={handleAddProductToCalculations}
+        disabled={!selectedProduct || !productQuantity}
+        className="w-full py-2 px-4 rounded-md text-sm disabled:opacity-50"
+        style={{ 
+          backgroundColor: theme.colors.secondary,
+          color: theme.colors.textOnPrimary
+        }}
+      >
+        {t('addToCalculations')}
+      </button>
+    </div>
+  </div>
+) : (
+  calculationType && (
+    <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+      {calculationType === 'plate' && (
+        <PlateCalculator
+          plateData={plateData}
+          onPlateDataChange={setPlateData}
+          unit={unit}
+        />
+      )}
 
-                  {calculationType === 'profile' && profileSubType === 'standard' && (
-                    <ProfileCalculator
-                      profileData={profileData}
-                      onProfileDataChange={setProfileData}
-                      unit={unit}
-                    />
-                  )}
+      {calculationType === 'profile' && profileSubType === 'standard' && (
+        <ProfileCalculator
+          profileData={profileData}
+          onProfileDataChange={setProfileData}
+          unit={unit}
+        />
+      )}
 
-                  {calculationType === 'profile' && profileSubType === 'pressBrakeU' && (
-                    <PressBrakeUCalculator
-                      pressBrakeUData={pressBrakeUData}
-                      onPressBrakeUDataChange={(data) => {
-                        // Set radius to match thickness if not explicitly set
-                        if (data.thickness && (!data.radius || data.radius === 0)) {
-                          data.radius = data.thickness;
-                        }
-                        setPressBrakeUData(data);
-                      }}
-                      unit={unit}
-                    />
-                  )}
-                  
-                  {calculationType === 'pipe' && (
-                    <PipeCalculator
-                      pipeData={pipeData}
-                      onPipeDataChange={setPipeData}
-                      unit={unit}
-                    />
-                  )}
+      {calculationType === 'profile' && profileSubType === 'pressBrakeU' && (
+        <PressBrakeUCalculator
+          pressBrakeUData={pressBrakeUData}
+          onPressBrakeUDataChange={(data) => {
+            // Set radius to match thickness if not explicitly set
+            if (data.thickness && (!data.radius || data.radius === 0)) {
+              data.radius = data.thickness;
+            }
+            setPressBrakeUData(data);
+          }}
+          unit={unit}
+        />
+      )}
+      
+      {calculationType === 'pipe' && (
+        <PipeCalculator
+          pipeData={pipeData}
+          onPipeDataChange={setPipeData}
+          unit={unit}
+        />
+      )}
 
-                  {calculationType === 'angle' && angleSubType !== 'pressBrake' && (
-                    <AngleCalculator
-                      angleData={angleData}
-                      onAngleDataChange={setAngleData}
-                      unit={unit}
-                    />
-                  )}
+      {calculationType === 'angle' && angleSubType !== 'pressBrake' && (
+        <AngleCalculator
+          angleData={angleData}
+          onAngleDataChange={setAngleData}
+          unit={unit}
+        />
+      )}
 
-                  {calculationType === 'angle' && angleSubType === 'pressBrake' && (
-                    <PressBrakeAngleCalculator
-                      pressBrakeAngleData={pressBrakeAngleData}
-                      onPressBrakeAngleDataChange={(data) => {
-                        // Set radius to match thickness if not explicitly set
-                        if (data.thickness && (!data.radius || data.radius === 0)) {
-                          data.radius = data.thickness;
-                        }
-                        setPressBrakeAngleData(data);
-                      }}
-                      unit={unit}
-                    />
-                  )}
-                  
-                  {calculationType === 'bar' && (
-                    <BarCalculator
-                      barData={barData}
-                      onBarDataChange={setBarData}
-                      unit={unit}
-                    />
-                  )}
-                </div>
-              )}
+      {calculationType === 'angle' && angleSubType === 'pressBrake' && (
+        <PressBrakeAngleCalculator
+          pressBrakeAngleData={pressBrakeAngleData}
+          onPressBrakeAngleDataChange={(data) => {
+            // Set radius to match thickness if not explicitly set
+            if (data.thickness && (!data.radius || data.radius === 0)) {
+              data.radius = data.thickness;
+            }
+            setPressBrakeAngleData(data);
+          }}
+          unit={unit}
+        />
+      )}
+      
+      {calculationType === 'bar' && (
+        <BarCalculator
+          barData={barData}
+          onBarDataChange={setBarData}
+          unit={unit}
+        />
+      )}
+    </div>
+  )
+) }
             </div>
 
             {/* Right side - Pricing and Results */}

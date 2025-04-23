@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MetalCalculator from './components/calculator/MetalCalculator';
 import ProjectsView from './components/projects/ProjectsView';
+import ProductsView from './components/product/ProductsView';
 import LanguageSelector from './components/common/LanguageSelector';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import PWAUpdateNotification from './components/PWAUpdateNotification';
@@ -88,6 +89,28 @@ const AppContent = () => {
                   />
                 )}
               </button>
+              <button
+                onClick={() => setActiveView('products')}
+                className={`px-4 sm:px-6 h-full transition-all duration-300 relative flex items-center rounded-t-lg ${
+                  activeView === 'products' ? 'font-medium' : ''
+                }`}
+                style={{ 
+                  color: activeView === 'products' ? theme.colors.primary : theme.colors.textLight,
+                  backgroundColor: activeView === 'products' ? `${theme.colors.background}` : 'transparent',
+                  transform: activeView === 'products' ? 'translateY(0)' : 'translateY(2px)',
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M11 17a1 1 0 001.447.894l4-2A1 1 0 0017 15V9.236a1 1 0 00-1.447-.894l-4 2a1 1 0 00-.553.894V17zM15.211 6.276a1 1 0 000-1.788l-4.764-2.382a1 1 0 00-.894 0L4.789 4.488a1 1 0 000 1.788l4.764 2.382a1 1 0 00.894 0l4.764-2.382zM4.447 8.342A1 1 0 003 9.236V15a1 1 0 00.553.894l4 2A1 1 0 009 17v-5.764a1 1 0 00-.553-.894l-4-2z" />
+                </svg>
+                <span>{t('navProducts')}</span>
+                {activeView === 'products' && (
+                  <div
+                    className="absolute bottom-0 left-0 w-full h-1 rounded-t"
+                    style={{ backgroundColor: theme.colors.primary }}
+                  />
+                )}
+              </button>
             </div>
 
             {/* Language Selector - on the right */}
@@ -123,7 +146,9 @@ const AppContent = () => {
       </nav>
 
       <main className="flex-1 overflow-auto">
-        {activeView === 'calculator' ? <MetalCalculator /> : <ProjectsView />}
+        {activeView === 'calculator' ? <MetalCalculator /> : 
+         activeView === 'projects' ? <ProjectsView /> : 
+         <ProductsView />}
       </main>
       
       {/* PWA Install Prompt */}

@@ -129,14 +129,21 @@ const SavedCalculations = ({
                     <span 
                       className="text-xs px-2 py-1 rounded-md inline-block"
                       style={{ 
-                        backgroundColor: `${theme.colors.primary}20`,
-                        color: theme.colors.primary
+                        backgroundColor: calc.type === 'product' ? 
+                          `${theme.colors.accent1}20` : `${theme.colors.primary}20`,
+                        color: calc.type === 'product' ? 
+                          theme.colors.accent1 : theme.colors.primary
                       }}
                     >
-                      {calc.material}
+                      {calc.type === 'product' ? t('product') : t(calc.material)}
                     </span>
                     <div>
                       <h3 className="font-medium text-sm" style={{ color: theme.colors.text }}>{calc.name}</h3>
+                      {calc.description && (
+                        <p className="text-xs" style={{ color: theme.colors.textLight }}>
+                          {calc.description}
+                        </p>
+                      )}
                       <p className="text-xs" style={{ color: theme.colors.textLight }}>
                         {formatDate(calc.timestamp)}
                       </p>
