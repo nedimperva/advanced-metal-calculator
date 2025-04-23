@@ -123,3 +123,29 @@ export const deleteCalculationFromProject = (projectId, calculationId) => {
     return null;
   }
 };
+
+export const updateCalculationInProject = (projectId, updatedCalc) => {
+  try {
+    const projects = loadProjects();
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return null;
+
+    const updatedProject = {
+      ...project,
+      calculations: project.calculations.map(calc =>
+        calc.id === updatedCalc.id ? updatedCalc : calc
+      ),
+      updatedAt: new Date().toISOString()
+    };
+
+    const updatedProjects = projects.map(p =>
+      p.id === projectId ? updatedProject : p
+    );
+
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
+    return updatedProject;
+  } catch (error) {
+    console.error('Error updating calculation in project:', error);
+    return null;
+  }
+};

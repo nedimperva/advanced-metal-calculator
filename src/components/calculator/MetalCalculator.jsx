@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { materials } from '../../data/materials';
 import { calculatePipeWeight, calculateProfileWeight, calculatePlateWeight, calculateAngleWeight, calculateBarWeight, calculatePressBrakeAngleWeight, calculatePressBrakeUWeight, calculatePressBrakeLWeight, calculateTotalPrice } from '../../utils/calculations';
 import { loadSavedCalculations, saveCalculation, deleteCalculation } from '../../utils/storage';
+import { loadFormulas } from '../../utils/formulas';
+import { evaluate } from 'mathjs';
 import { generateCalculationName } from '../../utils/generateCalculationName';
 import PlateCalculator from './PlateCalculator';
 import ProfileCalculator from './ProfileCalculator';
@@ -124,6 +126,21 @@ const MetalCalculator = () => {
   const [piecePrice, setPiecePrice] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
 
+  // Formula support
+  const loadedFormulas = loadFormulas();
+  const [formulas, setFormulas] = useState(loadedFormulas);
+  const [selectedFormula, setSelectedFormula] = useState(loadedFormulas[0] || null);
+  const [formulaParams, setFormulaParams] = useState({});
+
+  // Initialize parameters for the selected formula
+  useEffect(() => {
+    if (selectedFormula) {
+      const init = {};
+      selectedFormula.parameters.forEach(p => init[p.key] = p.default);
+      setFormulaParams(init);
+    }
+  }, [selectedFormula]);
+
   // Get color for calculation type
   const getCalculationTypeColor = (type) => {
     switch (type) {
@@ -140,6 +157,10 @@ const MetalCalculator = () => {
 
   // Calculate weight when inputs change
   useEffect(() => {
+    if (calculationType === 'formula') {
+      setIsCalculating(false);
+      return;
+    }
     if (!selectedMaterial) return;
     
     setIsCalculating(true);
@@ -191,6 +212,10 @@ const MetalCalculator = () => {
 
   // Calculate total weight and prices when weight or quantity changes
   useEffect(() => {
+    if (calculationType === 'formula') {
+      setShowProgress(false);
+      return;
+    }
     setShowProgress(true);
     const priceTimeout = setTimeout(() => {
       // Handle empty or invalid values
@@ -205,6 +230,20 @@ const MetalCalculator = () => {
 
     return () => clearTimeout(priceTimeout);
   }, [weight, pricePerKg, quantity]);
+
+  // Evaluate custom formula
+  const handleCalculateFormula = () => {
+    if (!selectedFormula) return;
+    try {
+      const result = evaluate(selectedFormula.expression, formulaParams);
+      setWeight(0);
+      setTotalWeight(0);
+      setPiecePrice(0);
+      setTotalPrice(result);
+    } catch (error) {
+      console.error('Error evaluating formula:', error);
+    }
+  };
 
   // Handle saving calculation
   const handleSaveCalculation = () => {
@@ -261,6 +300,10 @@ const MetalCalculator = () => {
       case 'bar':
         currentCalculation.dimensions = barData;
         currentCalculation.name = generateCalculationName('bar', barData, unit, language);
+        break;
+      case 'formula':
+        currentCalculation.dimensions = formulaParams;
+        currentCalculation.name = selectedFormula?.name || '';
         break;
       default:
         break;
@@ -461,6 +504,7 @@ const MetalCalculator = () => {
                          profileSubType === 'pressBrakeU' ? t('pressBrakeU') : t('profile')}
                       </>
                     )}
+                    {calculationType === 'formula' && t('formula')}
                   </span>
                 </div>
               </div>
@@ -564,13 +608,24 @@ const MetalCalculator = () => {
               </button>
               <button
                 onClick={() => handleCalculationTypeChange('bar')}
-                className="py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base"
+                className={`py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base ${calculationType !== 'bar' ? 'border-r' : ''}`}
                 style={{ 
                   backgroundColor: calculationType === 'bar' ? theme.colors.primary : theme.colors.background,
-                  color: calculationType === 'bar' ? theme.colors.textOnPrimary : theme.colors.text
+                  color: calculationType === 'bar' ? theme.colors.textOnPrimary : theme.colors.text,
+                  borderColor: theme.colors.border
                 }}
               >
                 {t('bar')}
+              </button>
+              <button
+                onClick={() => handleCalculationTypeChange('formula')}
+                className="py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base"
+                style={{ 
+                  backgroundColor: calculationType === 'formula' ? theme.colors.primary : theme.colors.background,
+                  color: calculationType === 'formula' ? theme.colors.textOnPrimary : theme.colors.text
+                }}
+              >
+                {t('formula')}
               </button>
             </div>
           </div>
@@ -781,6 +836,41 @@ const MetalCalculator = () => {
                       onBarDataChange={setBarData}
                       unit={unit}
                     />
+                  )}
+                  {calculationType === 'formula' && (
+                    <div className="rounded-lg p-3 sm:p-4 border mt-4" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                      <label className="text-sm font-medium">{t('formula') || 'Formula'}</label>
+                      <select
+                        value={selectedFormula?.id || ''}
+                        onChange={e => { const f = formulas.find(f => f.id === e.target.value); setSelectedFormula(f); }}
+                        className="block w-full mt-1 p-2 border rounded"
+                        style={{ backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }}
+                      >
+                        {formulas.map(f => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
+                      {selectedFormula?.parameters.map(param => (
+                        <div key={param.key} className="mt-2">
+                          <label htmlFor={param.key} className="text-sm font-medium">{param.label}</label>
+                          <input
+                            id={param.key}
+                            type="number"
+                            value={formulaParams[param.key]}
+                            onChange={e => setFormulaParams({ ...formulaParams, [param.key]: parseFloat(e.target.value) || 0 })}
+                            className="block w-full mt-1 p-2 border rounded"
+                            style={{ backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }}
+                          />
+                        </div>
+                      ))}
+                      <button
+                        onClick={handleCalculateFormula}
+                        className="mt-4 px-4 py-2 rounded-md"
+                        style={{ backgroundColor: theme.colors.primary, color: theme.colors.textOnPrimary }}
+                      >
+                        {t('calculate') || 'Calculate'}
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

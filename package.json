@@ -16,6 +16,7 @@
     "generate-icons:fallback": "node scripts/generate-icons-fallback.js"
   },
   "dependencies": {
+    "mathjs": "^11.8.0",
     "prop-types": "^15.8.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

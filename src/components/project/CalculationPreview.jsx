@@ -1,20 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { theme } from '../../theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const CalculationPreview = ({ calculation, onDelete }) => {
+const CalculationPreview = ({ calculation, onDelete, onUpdate }) => {
   const { t } = useLanguage();
+  const [editing, setEditing] = useState(false);
+  const [note, setNote] = useState(calculation.note || '');
   const totalWeight = calculation.weight * calculation.quantity;
 
   return (
-    <div 
+    <div
+      role="region"
+      aria-label={`Calculation ${calculation.name}`}
+      tabIndex={0}
       className="rounded-lg p-3 border"
-      style={{ 
+      style={{
         backgroundColor: theme.colors.background,
         borderColor: theme.colors.border,
-        borderLeftWidth: '4px', 
-        borderLeftColor: calculation.color || theme.colors.primary 
+        borderLeftWidth: '4px',
+        borderLeftColor: calculation.color || theme.colors.primary
       }}
     >
       <div className="flex justify-between items-start">
@@ -49,8 +54,38 @@ const CalculationPreview = ({ calculation, onDelete }) => {
               </svg>
             </button>
           )}
+          <button
+            onClick={() => setEditing(true)}
+            className="ml-2 text-sm hover:underline"
+            aria-label={calculation.note ? t('editNote') : t('addNote') || (calculation.note ? 'Edit note' : 'Add note')}
+          >
+            {calculation.note ? t('editNote') || 'Edit note' : t('addNote') || 'Add note'}
+          </button>
         </div>
       </div>
+      {editing && (
+        <div className="mt-2">
+          <textarea
+            aria-label={t('calculationNoteInput') || 'Calculation note input'}
+            className="w-full p-2 border rounded mb-2"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+          />
+          <button
+            onClick={() => {
+              setEditing(false);
+              onUpdate({ ...calculation, note });
+            }}
+            className="px-3 py-1 bg-blue-500 text-white rounded"
+            aria-label={t('saveNote') || 'Save note'}
+          >
+            {t('saveNote') || 'Save note'}
+          </button>
+        </div>
+      )}
+      {!editing && calculation.note && (
+        <p className="mt-2 text-sm" style={{ color: theme.colors.textLight }}>{calculation.note}</p>
+      )}
     </div>
   );
 };
@@ -62,9 +97,11 @@ CalculationPreview.propTypes = {
     weight: PropTypes.number.isRequired,
     quantity: PropTypes.number.isRequired,
     totalPrice: PropTypes.number.isRequired,
-    color: PropTypes.string
+    color: PropTypes.string,
+    note: PropTypes.string
   }).isRequired,
-  onDelete: PropTypes.func
+  onDelete: PropTypes.func,
+  onUpdate: PropTypes.func
 };
 
 export default CalculationPreview;
