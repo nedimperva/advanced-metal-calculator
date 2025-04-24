@@ -2,6 +2,28 @@ import React from 'react';
 import { theme } from '../../theme';
 
 const ResultsPanel = ({ weight, totalWeight, unitPrice, totalPrice, quantity }) => {
+  const [currency, setCurrency] = React.useState('€');
+  React.useEffect(() => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('amc_settings'));
+      if (settings && settings.currency) {
+        setCurrency(settings.currency);
+      }
+    } catch {
+      setCurrency('€');
+    }
+    const handleStorage = () => {
+      try {
+        const settings = JSON.parse(localStorage.getItem('amc_settings'));
+        if (settings && settings.currency) {
+          setCurrency(settings.currency);
+        }
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   return (
     <div className="rounded-xl p-6 border" style={{ 
       backgroundColor: theme.colors.primary,
@@ -21,11 +43,11 @@ const ResultsPanel = ({ weight, totalWeight, unitPrice, totalPrice, quantity }) 
         </div>
         <div>
           <p className="text-sm" style={{ color: theme.colors.textOnPrimary, opacity: 0.8 }}>Unit Price</p>
-          <p className="text-2xl font-bold" style={{ color: theme.colors.textOnPrimary }}>${unitPrice.toFixed(2)}</p>
+          <p className="text-2xl font-bold" style={{ color: theme.colors.textOnPrimary }}>{currency}{unitPrice.toFixed(2)}</p>
         </div>
         <div>
           <p className="text-sm" style={{ color: theme.colors.textOnPrimary, opacity: 0.8 }}>Total Price</p>
-          <p className="text-2xl font-bold" style={{ color: theme.colors.textOnPrimary }}>${totalPrice.toFixed(2)}</p>
+          <p className="text-2xl font-bold" style={{ color: theme.colors.textOnPrimary }}>{currency}{totalPrice.toFixed(2)}</p>
         </div>
       </div>
     </div>

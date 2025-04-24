@@ -5,7 +5,31 @@ import { useLanguage } from '../../contexts/LanguageContext';
 
 const PricingInputs = ({ pricePerKg, setPricePerKg, quantity, setQuantity }) => {
   const { t } = useLanguage();
-  
+  const [currency, setCurrency] = React.useState('€');
+
+  React.useEffect(() => {
+    // Try to load currency from localStorage settings
+    try {
+      const settings = JSON.parse(localStorage.getItem('amc_settings'));
+      if (settings && settings.currency) {
+        setCurrency(settings.currency);
+      }
+    } catch {
+      setCurrency('€');
+    }
+    // Listen for storage changes from Settings
+    const handleStorage = () => {
+      try {
+        const settings = JSON.parse(localStorage.getItem('amc_settings'));
+        if (settings && settings.currency) {
+          setCurrency(settings.currency);
+        }
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const handlePriceChange = (e) => {
     const value = e.target.value;
     setPricePerKg(value === '' ? '' : parseFloat(value));
@@ -25,7 +49,7 @@ const PricingInputs = ({ pricePerKg, setPricePerKg, quantity, setQuantity }) => 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>
-            {t('pricePerKg')} ($)
+            {t('pricePerKg')} ({currency})
           </label>
           <input
             type="number"

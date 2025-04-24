@@ -6,6 +6,27 @@ import { formatDate } from '../../utils/formatters';
 
 const ProductPreview = ({ product, onEdit, onDelete }) => {
   const { t, language } = useLanguage();
+  const [currency, setCurrency] = React.useState('€');
+  React.useEffect(() => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('amc_settings'));
+      if (settings && settings.currency) {
+        setCurrency(settings.currency);
+      }
+    } catch {
+      setCurrency('€');
+    }
+    const handleStorage = () => {
+      try {
+        const settings = JSON.parse(localStorage.getItem('amc_settings'));
+        if (settings && settings.currency) {
+          setCurrency(settings.currency);
+        }
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   if (!product) return null;
 

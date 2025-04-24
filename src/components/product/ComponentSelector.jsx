@@ -15,14 +15,28 @@ import BarCalculator from '../calculator/BarCalculator';
 import PressBrakeAngleCalculator from '../calculator/PressBrakeAngleCalculator';
 import PressBrakeUCalculator from '../calculator/PressBrakeUCalculator';
 
+const SETTINGS_KEY = 'amc_settings';
+
 const ComponentSelector = ({ onAdd, onCancel }) => {
   const { t, language } = useLanguage();
   const [componentType, setComponentType] = useState('pipe');
   const [material, setMaterial] = useState('steel');
   const [quantity, setQuantity] = useState(1);
+  const [price, setPrice] = useState(0);
   const [weight, setWeight] = useState(0);
   const [unit, setUnit] = useState('mm');
   
+  // Load default price from settings/localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SETTINGS_KEY);
+      if (stored) {
+        const settings = JSON.parse(stored);
+        if (settings.defaultPrice !== undefined) setPrice(settings.defaultPrice);
+      }
+    } catch {}
+  }, []);
+
   // Subtypes for various component categories
   const [pipeSubType, setPipeSubType] = useState('rectangular');
   const [angleSubType, setAngleSubType] = useState('equal');
@@ -208,7 +222,8 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
                componentType === 'bar' ? barSubType : null,
       dimensions,
       weight: parseFloat(weight),
-      quantity: parseInt(quantity)
+      quantity: parseInt(quantity),
+      price: parseFloat(price)
     };
     
     onAdd(newComponent);
@@ -220,6 +235,16 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
   const resetForm = () => {
     setWeight(0);
     setQuantity(1);
+    // Reset price to default from settings
+    try {
+      const stored = localStorage.getItem(SETTINGS_KEY);
+      if (stored) {
+        const settings = JSON.parse(stored);
+        if (settings.defaultPrice !== undefined) setPrice(settings.defaultPrice);
+      } else {
+        setPrice(0);
+      }
+    } catch { setPrice(0); }
     
     // Reset to default values for each component type
     if (componentType === 'plate') {
@@ -411,6 +436,26 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
               }}
               min="1"
               step="1"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>
+              {t('pricePerUnit')}
+            </label>
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(parseFloat(e.target.value))}
+              className="w-full p-2 border rounded-md focus:ring-2"
+              style={{ 
+                backgroundColor: theme.colors.background,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+                outlineColor: theme.colors.primary
+              }}
+              min="0"
+              step="0.01"
               required
             />
           </div>

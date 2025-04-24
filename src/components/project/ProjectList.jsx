@@ -3,6 +3,28 @@ import PropTypes from 'prop-types';
 import ProjectPreview from './ProjectPreview';
 
 const ProjectList = ({ projects, onCreateProject, onAddToProject }) => {
+  const [currency, setCurrency] = React.useState('€');
+  React.useEffect(() => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('amc_settings'));
+      if (settings && settings.currency) {
+        setCurrency(settings.currency);
+      }
+    } catch {
+      setCurrency('€');
+    }
+    const handleStorage = () => {
+      try {
+        const settings = JSON.parse(localStorage.getItem('amc_settings'));
+        if (settings && settings.currency) {
+          setCurrency(settings.currency);
+        }
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -102,7 +124,7 @@ const ProjectList = ({ projects, onCreateProject, onAddToProject }) => {
                   }`}
                   onClick={() => setSelectedProjectId(project.id)}
                 >
-                  <ProjectPreview project={project} />
+                  <ProjectPreview project={project} currency={currency} />
                 </div>
               ))}
             </div>

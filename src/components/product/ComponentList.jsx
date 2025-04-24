@@ -180,100 +180,46 @@ const ComponentList = ({ components, onUpdateQuantity, onRemove }) => {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {components.map((component) => (
-        <div 
+        <div
           key={component.id}
-          className="p-3 border rounded-lg"
-          style={{ 
-            backgroundColor: theme.colors.background,
-            borderColor: theme.colors.border
-          }}
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 rounded border"
+          style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}
         >
-          <div className="flex justify-between">
-            <div className="flex items-center">
-              <div className="flex items-center justify-center p-1.5 rounded-md mr-2" 
-                style={{ backgroundColor: `${theme.colors.primary}15` }}>
-                <img 
-                  src={getComponentIcon(component)} 
-                  alt={component.type}
-                  className="h-5 w-5" 
-                />
-              </div>
-              <h4 className="font-medium text-sm" style={{ color: theme.colors.text }}>
+          <div className="flex items-center space-x-2 flex-1">
+            <img src={getComponentIcon(component)} alt="icon" className="h-7 w-7" />
+            <div>
+              <div className="font-medium" style={{ color: theme.colors.text }}>
                 {component.name}
-              </h4>
+              </div>
+              <div className="text-xs" style={{ color: theme.colors.textLight }}>
+                {t(component.material)} | {t(component.type)}
+              </div>
+              <div className="text-xs mt-1" style={{ color: theme.colors.textLight }}>
+                {t('quantity')}: <span className="font-semibold" style={{ color: theme.colors.text }}>{component.quantity}</span>
+                {' | '}
+                {t('pricePerUnit')}: <span className="font-semibold" style={{ color: theme.colors.text }}>{component.price?.toFixed(2) ?? '0.00'}</span> {t('currencySymbol') || '€'}
+                {' | '}
+                {t('total')}: <span className="font-semibold" style={{ color: theme.colors.text }}>{((component.price || 0) * (component.quantity || 1)).toFixed(2)}</span> {t('currencySymbol') || '€'}
+              </div>
             </div>
+          </div>
+          <div className="flex items-center space-x-3 mt-2 sm:mt-0">
+            <input
+              type="number"
+              min="1"
+              value={component.quantity}
+              onChange={e => onUpdateQuantity(component.id, parseInt(e.target.value) || 1)}
+              className="w-14 px-1 py-0.5 border rounded text-sm text-center"
+              style={{ borderColor: theme.colors.border, color: theme.colors.text }}
+            />
             <button
               onClick={() => onRemove(component.id)}
-              className="p-1 rounded-full hover:opacity-80"
-              style={{ color: theme.colors.danger }}
-              aria-label={t('removeComponent')}
+              className="ml-2 px-2 py-1 text-xs text-red-600 hover:text-red-800"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              {t('remove')}
             </button>
-          </div>
-          
-          {/* Component specifications based on type */}
-          {renderComponentSpecs(component)}
-          
-          <div className="flex flex-wrap gap-2 mt-2">
-            <span className="text-xs py-1 px-2 rounded-full" 
-              style={{ backgroundColor: `${theme.colors.surface}80`, color: theme.colors.textLight }}>
-              {t(component.material)}
-            </span>
-            <span className="text-xs py-1 px-2 rounded-full" 
-              style={{ backgroundColor: `${theme.colors.surface}80`, color: theme.colors.textLight }}>
-              {component.weight.toFixed(2)} kg
-            </span>
-            <span className="text-xs py-1 px-2 rounded-full" 
-              style={{ backgroundColor: `${theme.colors.primary}20`, color: theme.colors.primary }}>
-              {t('total')}: {(component.weight * component.quantity).toFixed(2)} kg
-            </span>
-          </div>
-          
-          <div className="flex mt-3 items-center justify-between">
-            <label className="text-xs" style={{ color: theme.colors.textLight }}>
-              {t('quantity')}:
-            </label>
-            <div className="flex items-center">
-              <button
-                onClick={() => onUpdateQuantity(component.id, Math.max(1, component.quantity - 1))}
-                className="w-6 h-6 flex items-center justify-center rounded-full"
-                style={{ 
-                  backgroundColor: theme.colors.background, 
-                  border: `1px solid ${theme.colors.border}`,
-                  color: theme.colors.text
-                }}
-              >
-                -
-              </button>
-              <input
-                type="number"
-                min="1"
-                value={component.quantity}
-                onChange={(e) => onUpdateQuantity(component.id, parseInt(e.target.value) || 1)}
-                className="w-12 mx-2 text-center p-1 text-sm border rounded"
-                style={{ 
-                  backgroundColor: theme.colors.background,
-                  borderColor: theme.colors.border,
-                  color: theme.colors.text
-                }}
-              />
-              <button
-                onClick={() => onUpdateQuantity(component.id, component.quantity + 1)}
-                className="w-6 h-6 flex items-center justify-center rounded-full"
-                style={{ 
-                  backgroundColor: theme.colors.background, 
-                  border: `1px solid ${theme.colors.border}`,
-                  color: theme.colors.text
-                }}
-              >
-                +
-              </button>
-            </div>
           </div>
         </div>
       ))}

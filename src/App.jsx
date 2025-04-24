@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MetalCalculator from './components/calculator/MetalCalculator';
 import ProjectsView from './components/projects/ProjectsView';
 import ProductsView from './components/product/ProductsView';
-import LanguageSelector from './components/common/LanguageSelector';
+import Settings from './components/Settings';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import PWAUpdateNotification from './components/PWAUpdateNotification';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
@@ -101,10 +101,32 @@ const AppContent = () => {
                 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M11 17a1 1 0 001.447.894l4-2A1 1 0 0017 15V9.236a1 1 0 00-1.447-.894l-4 2a1 1 0 00-.553.894V17zM15.211 6.276a1 1 0 000-1.788l-4.764-2.382a1 1 0 00-.894 0L4.789 4.488a1 1 0 000 1.788l4.764 2.382a1 1 0 00.894 0l4.764-2.382zM4.447 8.342A1 1 0 003 9.236V15a1 1 0 00.553.894l4 2A1 1 0 009 17v-5.764a1 1 0 00-.553-.894l-4-2z" />
+                  <path d="M11.3 1.046a1 1 0 00-2.6 0l-.25.832a1 1 0 01-.95.691H5.118a1 1 0 00-.99.858l-.143.986a1 1 0 01-.668.76l-.764.255a1 1 0 00-.553 1.393l.4.8a1 1 0 010 .894l-.4.8a1 1 0 00.553 1.393l.764.255a1 1 0 01.668.76l.143.986a1 1 0 00.99.858h2.382a1 1 0 01.95.691l.25.832a1 1 0 002.6 0l.25-.832a1 1 0 01.95-.691h2.382a1 1 0 00.99-.858l.143-.986a1 1 0 01.668-.76l.764-.255a1 1 0 00.553-1.393l-.4-.8a1 1 0 010-.894l.4-.8a1 1 0 00-.553-1.393l-.764-.255a1 1 0 01-.668-.76l-.143-.986a1 1 0 00-.99-.858h-2.382a1 1 0 01-.95-.691l-.25-.832z" />
                 </svg>
                 <span>{t('navProducts')}</span>
                 {activeView === 'products' && (
+                  <div
+                    className="absolute bottom-0 left-0 w-full h-1 rounded-t"
+                    style={{ backgroundColor: theme.colors.primary }}
+                  />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveView('settings')}
+                className={`px-4 sm:px-6 h-full transition-all duration-300 relative flex items-center rounded-t-lg ${
+                  activeView === 'settings' ? 'font-medium' : ''
+                }`}
+                style={{ 
+                  color: activeView === 'settings' ? theme.colors.primary : theme.colors.textLight,
+                  backgroundColor: activeView === 'settings' ? `${theme.colors.background}` : 'transparent',
+                  transform: activeView === 'settings' ? 'translateY(0)' : 'translateY(2px)',
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M11.3 1.046a1 1 0 00-2.6 0l-.25.832a1 1 0 01-.95.691H5.118a1 1 0 00-.99.858l-.143.986a1 1 0 01-.668.76l-.764.255a1 1 0 00-.553 1.393l.4.8a1 1 0 010 .894l-.4.8a1 1 0 00.553 1.393l.764.255a1 1 0 01.668.76l.143.986a1 1 0 00.99.858h2.382a1 1 0 01.95.691l.25.832a1 1 0 002.6 0l.25-.832a1 1 0 01.95-.691h2.382a1 1 0 00.99-.858l.143-.986a1 1 0 01.668-.76l.764-.255a1 1 0 00.553-1.393l-.4-.8a1 1 0 010-.894l.4-.8a1 1 0 00-.553-1.393l-.764-.255a1 1 0 01-.668-.76l-.143-.986a1 1 0 00-.99-.858h-2.382a1 1 0 01-.95-.691l-.25-.832z" />
+                </svg>
+                <span>{t('navSettings') || 'Settings'}</span>
+                {activeView === 'settings' && (
                   <div
                     className="absolute bottom-0 left-0 w-full h-1 rounded-t"
                     style={{ backgroundColor: theme.colors.primary }}
@@ -115,11 +137,6 @@ const AppContent = () => {
 
             {/* Language Selector - on the right */}
             <div className="flex items-center">
-              {/* Language selector for desktop */}
-              <div className="hidden sm:block">
-                <LanguageSelector />
-              </div>
-
               {/* Language selector for mobile */}
               <div className="sm:hidden language-menu-container relative">
                 <button 
@@ -145,10 +162,11 @@ const AppContent = () => {
         </div>
       </nav>
 
-      <main className="flex-1 h-full min-h-0">
-        {activeView === 'calculator' ? <MetalCalculator /> : 
-         activeView === 'projects' ? <ProjectsView /> : 
-         <ProductsView />}
+      <main className="flex-1 overflow-auto" style={{ backgroundColor: theme.colors.background }}>
+        {activeView === 'calculator' && <MetalCalculator />}
+        {activeView === 'projects' && <ProjectsView />}
+        {activeView === 'products' && <ProductsView />}
+        {activeView === 'settings' && <Settings />}
       </main>
       
       {/* PWA Install Prompt */}

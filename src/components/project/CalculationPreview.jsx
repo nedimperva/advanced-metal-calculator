@@ -6,6 +6,27 @@ import { useLanguage } from '../../contexts/LanguageContext';
 const CalculationPreview = ({ calculation, onDelete }) => {
   const { t } = useLanguage();
   const totalWeight = calculation.weight * calculation.quantity;
+  const [currency, setCurrency] = React.useState('€');
+  React.useEffect(() => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('amc_settings'));
+      if (settings && settings.currency) {
+        setCurrency(settings.currency);
+      }
+    } catch {
+      setCurrency('€');
+    }
+    const handleStorage = () => {
+      try {
+        const settings = JSON.parse(localStorage.getItem('amc_settings'));
+        if (settings && settings.currency) {
+          setCurrency(settings.currency);
+        }
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   return (
     <div 
@@ -30,7 +51,7 @@ const CalculationPreview = ({ calculation, onDelete }) => {
               {totalWeight.toFixed(2)} kg
             </div>
             <div className="text-sm mt-1" style={{ color: theme.colors.primary }}>
-              ${calculation.totalPrice.toFixed(2)}
+              {currency}{calculation.totalPrice.toFixed(2)}
             </div>
           </div>
           {onDelete && (

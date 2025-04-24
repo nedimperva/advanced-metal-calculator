@@ -2,7 +2,9 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { theme } from '../../theme';
 
-const ProjectPreview = ({ project, isExpanded = false }) => {
+const ProjectPreview = ({ project, isExpanded = false, currency: currencyProp }) => {
+  const currency = currencyProp || '€';
+
   // Calculate project statistics
   const totalItems = project.calculations.length;
   const totalWeight = project.calculations.reduce((sum, calc) => sum + (calc.weight * calc.quantity), 0);
@@ -57,13 +59,13 @@ const ProjectPreview = ({ project, isExpanded = false }) => {
           </div>
           
           <div className="p-3 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
-            <div className="text-xs uppercase font-medium" style={{ color: theme.colors.textLight }}>Weight</div>
-            <div className="text-xl font-bold" style={{ color: theme.colors.text }}>{totalWeight.toFixed(2)} kg</div>
+            <div className="text-xs uppercase font-medium" style={{ color: theme.colors.textLight }}>Price</div>
+            <div className="text-xl font-bold" style={{ color: theme.colors.text }}>{currency}{totalPrice.toFixed(2)}</div>
           </div>
           
           <div className="p-3 rounded-lg" style={{ backgroundColor: theme.colors.background }}>
             <div className="text-xs uppercase font-medium" style={{ color: theme.colors.textLight }}>Total Value</div>
-            <div className="text-xl font-bold" style={{ color: theme.colors.primary }}>${totalPrice.toFixed(2)}</div>
+            <div className="text-xl font-bold" style={{ color: theme.colors.primary }}>{currency}{totalPrice.toFixed(2)}</div>
           </div>
         </div>
       </div>
