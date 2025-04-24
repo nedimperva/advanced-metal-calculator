@@ -74,36 +74,36 @@ const ProductsView = () => {
     : products;
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex flex-wrap justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: theme.colors.text }}>
+    <div className="container mx-auto px-4 py-4">
+      <div className="flex flex-wrap justify-between items-center mb-4">
+        <h1 className="text-lg font-bold" style={{ color: theme.colors.text }}>
           {t('products')}
         </h1>
 
         <button
           onClick={handleAddNew}
-          className="px-4 py-2 rounded-lg flex items-center gap-2"
+          className="px-4 py-4 rounded-lg flex items-center gap-4"
           style={{ backgroundColor: theme.colors.primary, color: 'white' }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           {t('addProduct')}
         </button>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t('searchProducts')}
-          className="w-full px-4 py-2 rounded-lg border"
+          className="w-full px-4 py-4 rounded-lg border"
           style={{ borderColor: theme.colors.border }}
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
   {filteredProducts.map((product) => (
     <ProductPreview
       key={product.id}

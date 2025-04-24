@@ -29,10 +29,10 @@ const AppContent = () => {
   }, [showLanguageMenu]);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: theme.colors.background }}>
+    <div className="h-screen flex flex-col overflow-hidden text-sm" style={{ backgroundColor: theme.colors.background }}>
       <nav className="flex-none shadow-md" style={{ backgroundColor: theme.colors.surface }}>
         <div className="container mx-auto px-2 sm:px-6">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-12">
             {/* App Logo - always on the left for all screen sizes */}
             <div className="flex items-center">
               <div className="flex items-center justify-center mr-3">
