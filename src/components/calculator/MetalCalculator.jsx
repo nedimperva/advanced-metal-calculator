@@ -406,8 +406,8 @@ const MetalCalculator = () => {
   };
 
   return (
-    <div className="h-full overflow-auto" style={{ backgroundColor: theme.colors.background }}>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+    <div className="h-full w-full" style={{ backgroundColor: theme.colors.background }}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full w-full">
         {/* Left Column - Calculator */}
         <div className="lg:col-span-2 p-2 sm:p-4 flex flex-col gap-3 sm:gap-4">
           {/* Header and Controls */}
@@ -484,33 +484,25 @@ const MetalCalculator = () => {
                 <div className="flex flex-col">
                   <span className="text-lg font-semibold" style={{ color: theme.colors.text }}>
                     {calculationType === 'pipe' && (
-                      <>
-                        {pipeSubType === 'round' ? t('roundPipe') : 
-                         pipeSubType === 'square' ? t('squarePipe') : 
-                         pipeSubType === 'rectangular' ? t('rectangularPipe') : t('pipe')}
-                      </>
+                      pipeSubType === 'round' ? t('roundPipe') : 
+                      pipeSubType === 'square' ? t('squarePipe') : 
+                      pipeSubType === 'rectangular' ? t('rectangularPipe') : t('pipe')
                     )}
                     {calculationType === 'angle' && (
-                      <>
-                        {angleSubType === 'equal' ? t('equalAngle') : 
-                         angleSubType === 'unequal' ? t('unequalAngle') : 
-                         angleSubType === 'pressBrake' ? t('pressBrakeAngle') : t('angle')}
-                      </>
+                      angleSubType === 'equal' ? t('equalAngle') : 
+                      angleSubType === 'unequal' ? t('unequalAngle') : 
+                      angleSubType === 'pressBrake' ? t('pressBrakeAngle') : t('angle')
                     )}
                     {calculationType === 'bar' && (
-                      <>
-                        {barSubType === 'flat' ? t('flatBar') : 
-                         barSubType === 'square' ? t('squareBar') : 
-                         barSubType === 'round' ? t('roundBar') : t('bar')}
-                      </>
+                      barSubType === 'flat' ? t('flatBar') : 
+                      barSubType === 'square' ? t('squareBar') : 
+                      barSubType === 'round' ? t('roundBar') : t('bar')
                     )}
                     {calculationType === 'plate' && t('plate')}
                     {calculationType === 'profile' && (
-                      <>
-                        {profileData.size ? profileData.size : 
-                         profileData.type ? profileData.type.toUpperCase() : 
-                         profileSubType === 'pressBrakeU' ? t('pressBrakeU') : t('profile')}
-                      </>
+                      profileData.size ? profileData.size : 
+                      profileData.type ? profileData.type.toUpperCase() : 
+                      profileSubType === 'pressBrakeU' ? t('pressBrakeU') : t('profile')
                     )}
                   </span>
                 </div>
@@ -563,68 +555,79 @@ const MetalCalculator = () => {
                     }}>
                     in
                   </span>
-                </div>
               </div>
             </div>
-            
-            {/* Calculation Type Tabs */}
-            <div className="flex flex-wrap border rounded-md overflow-hidden" style={{ borderColor: theme.colors.border }}>
-              <button
-                onClick={() => handleCalculationTypeChange('plate')}
-                className={`py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base ${calculationType !== 'plate' ? 'border-r' : ''}`}
-                style={{ 
-                  backgroundColor: calculationType === 'plate' ? theme.colors.primary : theme.colors.background,
-                  color: calculationType === 'plate' ? theme.colors.textOnPrimary : theme.colors.text,
-                  borderColor: theme.colors.border
-                }}
-              >
-                {t('plate')}
-              </button>
-              <button
-                onClick={() => handleCalculationTypeChange('profile')}
-                className={`py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base ${calculationType !== 'profile' ? 'border-r' : ''}`}
-                style={{ 
-                  backgroundColor: calculationType === 'profile' ? theme.colors.primary : theme.colors.background,
-                  color: calculationType === 'profile' ? theme.colors.textOnPrimary : theme.colors.text,
-                  borderColor: theme.colors.border
-                }}
-              >
-                {t('profile')}
-              </button>
-              <button
-                onClick={() => handleCalculationTypeChange('pipe')}
-                className={`py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base ${calculationType !== 'pipe' ? 'border-r' : ''}`}
-                style={{ 
-                  backgroundColor: calculationType === 'pipe' ? theme.colors.primary : theme.colors.background,
-                  color: calculationType === 'pipe' ? theme.colors.textOnPrimary : theme.colors.text,
-                  borderColor: theme.colors.border
-                }}
-              >
-                {t('pipe')}
-              </button>
-              <button
-                onClick={() => handleCalculationTypeChange('angle')}
-                className={`py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base ${calculationType !== 'angle' ? 'border-r' : ''}`}
-                style={{ 
-                  backgroundColor: calculationType === 'angle' ? theme.colors.primary : theme.colors.background,
-                  color: calculationType === 'angle' ? theme.colors.textOnPrimary : theme.colors.text,
-                  borderColor: theme.colors.border
-                }}
-              >
-                {t('angle')}
-              </button>
-              <button
-                onClick={() => handleCalculationTypeChange('bar')}
-                className="py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base"
-                style={{ 
-                  backgroundColor: calculationType === 'bar' ? theme.colors.primary : theme.colors.background,
-                  color: calculationType === 'bar' ? theme.colors.textOnPrimary : theme.colors.text
-                }}
-              >
-                {t('bar')}
-              </button>
-            </div>
           </div>
+          
+          {/* Calculation Type Tabs */}
+          <div className="flex flex-wrap border rounded-md overflow-hidden" style={{ borderColor: theme.colors.border }}>
+            <button
+              onClick={() => handleCalculationTypeChange('plate')}
+              className={`py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base ${calculationType !== 'plate' ? 'border-r' : ''}`}
+              style={{ 
+                backgroundColor: calculationType === 'plate' ? theme.colors.primary : theme.colors.background,
+                color: calculationType === 'plate' ? theme.colors.textOnPrimary : theme.colors.text,
+                borderColor: theme.colors.border
+              }}
+            >
+              {t('plate')}
+            </button>
+            <button
+              onClick={() => handleCalculationTypeChange('profile')}
+              className={`py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base ${calculationType !== 'profile' ? 'border-r' : ''}`}
+              style={{ 
+                backgroundColor: calculationType === 'profile' ? theme.colors.primary : theme.colors.background,
+                color: calculationType === 'profile' ? theme.colors.textOnPrimary : theme.colors.text,
+                borderColor: theme.colors.border
+              }}
+            >
+              {t('profile')}
+            </button>
+            <button
+              onClick={() => handleCalculationTypeChange('pipe')}
+              className={`py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base ${calculationType !== 'pipe' ? 'border-r' : ''}`}
+              style={{ 
+                backgroundColor: calculationType === 'pipe' ? theme.colors.primary : theme.colors.background,
+                color: calculationType === 'pipe' ? theme.colors.textOnPrimary : theme.colors.text,
+                borderColor: theme.colors.border
+              }}
+            >
+              {t('pipe')}
+            </button>
+            <button
+              onClick={() => handleCalculationTypeChange('angle')}
+              className={`py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base ${calculationType !== 'angle' ? 'border-r' : ''}`}
+              style={{ 
+                backgroundColor: calculationType === 'angle' ? theme.colors.primary : theme.colors.background,
+                color: calculationType === 'angle' ? theme.colors.textOnPrimary : theme.colors.text,
+                borderColor: theme.colors.border
+              }}
+            >
+              {t('angle')}
+            </button>
+            <button
+              onClick={() => handleCalculationTypeChange('bar')}
+              className="py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base border-r"
+              style={{ 
+                backgroundColor: calculationType === 'bar' ? theme.colors.primary : theme.colors.background,
+                color: calculationType === 'bar' ? theme.colors.textOnPrimary : theme.colors.text,
+                borderColor: theme.colors.border
+              }}
+            >
+              {t('bar')}
+            </button>
+            <button
+              onClick={() => handleCalculationTypeChange('productsTab')}
+              className="py-2 px-2 sm:px-4 text-center flex-1 rounded-t-md transition-colors text-sm sm:text-base"
+              style={{ 
+                backgroundColor: calculationType === 'productsTab' ? theme.colors.primary : theme.colors.background,
+                color: calculationType === 'productsTab' ? theme.colors.textOnPrimary : theme.colors.text,
+                borderColor: theme.colors.border
+              }}
+            >
+              {t('products')}
+            </button>
+          </div>  
 
           {/* Pipe Sub-Type Tabs */}
           {calculationType === 'pipe' && (
@@ -764,137 +767,157 @@ const MetalCalculator = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {/* Left side - Calculator */}
             <div>
-              {calculationType === 'product' ? (
-  <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-    <h3 className="text-lg font-medium mb-3" style={{ color: theme.colors.text }}>{t('addProduct')}</h3>
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>
-          {t('selectProduct')}
-        </label>
-        <select
-          value={selectedProduct}
-          onChange={(e) => setSelectedProduct(e.target.value)}
-          className="w-full p-2 border rounded-md focus:ring-2"
-          style={{ 
-            backgroundColor: theme.colors.background,
-            borderColor: theme.colors.border,
-            color: theme.colors.text,
-            outlineColor: theme.colors.primary
-          }}
-        >
-          <option value="">{t('selectProduct')}</option>
-          {products.map(product => (
-            <option key={product.id} value={product.id}>{product.name}</option>
-          ))}
-        </select>
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>
-          {t('quantity')}
-        </label>
-        <input
-          type="number"
-          value={productQuantity}
-          onChange={(e) => setProductQuantity(e.target.value === '' ? '' : parseFloat(e.target.value))}
-          className="w-full p-2 border rounded-md focus:ring-2"
-          style={{ 
-            backgroundColor: theme.colors.background,
-            borderColor: theme.colors.border,
-            color: theme.colors.text,
-            outlineColor: theme.colors.primary
-          }}
-          placeholder={t('quantity')}
-        />
-      </div>
-      
-      <button
-        onClick={handleAddProductToCalculations}
-        disabled={!selectedProduct || !productQuantity}
-        className="w-full py-2 px-4 rounded-md text-sm disabled:opacity-50"
-        style={{ 
-          backgroundColor: theme.colors.secondary,
-          color: theme.colors.textOnPrimary
-        }}
-      >
-        {t('addToCalculations')}
-      </button>
-    </div>
-  </div>
-) : (
-  calculationType && (
-    <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-      {calculationType === 'plate' && (
-        <PlateCalculator
-          plateData={plateData}
-          onPlateDataChange={setPlateData}
-          unit={unit}
-        />
-      )}
+              {calculationType === 'productsTab' ? (
+                <div className="rounded-lg p-3 sm:p-4 border overflow-y-auto max-h-96" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                  <h3 className="text-lg font-medium mb-3" style={{ color: theme.colors.text }}>{t('products')}</h3>
+                  {products.length === 0 ? (
+                    <div className="text-sm text-gray-500">{t('noProducts')}</div>
+                  ) : (
+                    <ul className="divide-y divide-gray-200">
+                      {products.map(product => (
+                        <li key={product.id} className="py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="font-medium" style={{ color: theme.colors.text }}>{product.name}</div>
+                            {product.description && (
+                              <div className="text-xs text-gray-500">{product.description}</div>
+                            )}
+                          </div>
+                          <button
+                            className="mt-2 sm:mt-0 sm:ml-4 py-1 px-3 rounded bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600"
+                            onClick={() => {
+                              setSelectedProduct(product.id);
+                              setProductQuantity(1);
+                              handleAddProductToCalculations();
+                            }}
+                          >
+                            {t('addToCalculations')}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : calculationType === 'product' ? (
+                <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                  <h3 className="text-lg font-medium mb-3" style={{ color: theme.colors.text }}>{t('addProduct')}</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>{t('selectProduct')}</label>
+                      <select
+                        value={selectedProduct}
+                        onChange={(e) => setSelectedProduct(e.target.value)}
+                        className="w-full p-2 border rounded-md focus:ring-2"
+                        style={{ 
+                          backgroundColor: theme.colors.background,
+                          borderColor: theme.colors.border,
+                          color: theme.colors.text,
+                          outlineColor: theme.colors.primary
+                        }}
+                      >
+                        <option value="">{t('selectProduct')}</option>
+                        {products.map(product => (
+                          <option key={product.id} value={product.id}>{product.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>{t('quantity')}</label>
+                      <input
+                        type="number"
+                        value={productQuantity}
+                        onChange={(e) => setProductQuantity(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        className="w-full p-2 border rounded-md focus:ring-2"
+                        style={{ 
+                          backgroundColor: theme.colors.background,
+                          borderColor: theme.colors.border,
+                          color: theme.colors.text,
+                          outlineColor: theme.colors.primary
+                        }}
+                        placeholder={t('quantity')}
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={handleAddProductToCalculations}
+                      disabled={!selectedProduct || !productQuantity}
+                      className="w-full py-2 px-4 rounded-md text-sm disabled:opacity-50"
+                      style={{ 
+                        backgroundColor: theme.colors.secondary,
+                        color: theme.colors.textOnPrimary
+                      }}
+                    >
+                      {t('addToCalculations')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                calculationType && (
+                  <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                    {calculationType === 'plate' && (
+                      <PlateCalculator
+                        plateData={plateData}
+                        onPlateDataChange={setPlateData}
+                        unit={unit}
+                      />
+                    )}
 
-      {calculationType === 'profile' && profileSubType === 'standard' && (
-        <ProfileCalculator
-          profileData={profileData}
-          onProfileDataChange={setProfileData}
-          unit={unit}
-        />
-      )}
+                    {calculationType === 'profile' && profileSubType === 'standard' && (
+                      <ProfileCalculator
+                        profileData={profileData}
+                        onProfileDataChange={setProfileData}
+                        unit={unit}
+                      />
+                    )}
 
-      {calculationType === 'profile' && profileSubType === 'pressBrakeU' && (
-        <PressBrakeUCalculator
-          pressBrakeUData={pressBrakeUData}
-          onPressBrakeUDataChange={(data) => {
-            // Set radius to match thickness if not explicitly set
-            if (data.thickness && (!data.radius || data.radius === 0)) {
-              data.radius = data.thickness;
-            }
-            setPressBrakeUData(data);
-          }}
-          unit={unit}
-        />
-      )}
-      
-      {calculationType === 'pipe' && (
-        <PipeCalculator
-          pipeData={pipeData}
-          onPipeDataChange={setPipeData}
-          unit={unit}
-        />
-      )}
+                    {calculationType === 'profile' && profileSubType === 'pressBrakeU' && (
+                      <PressBrakeUCalculator
+                        pressBrakeUData={pressBrakeUData}
+                        onPressBrakeUDataChange={(data) => {
+                          // Set radius to match thickness if not explicitly set
+                          if (data.thickness && (!data.radius || data.radius === 0)) {
+                            data.radius = data.thickness;
+                          }
+                          setPressBrakeUData(data);
+                        }}
+                        unit={unit}
+                      />
+                    )}
+                    
+                    {calculationType === 'pipe' && (
+                      <PipeCalculator
+                        pipeData={pipeData}
+                        onPipeDataChange={setPipeData}
+                        unit={unit}
+                      />
+                    )}
 
-      {calculationType === 'angle' && angleSubType !== 'pressBrake' && (
-        <AngleCalculator
-          angleData={angleData}
-          onAngleDataChange={setAngleData}
-          unit={unit}
-        />
-      )}
+                    {calculationType === 'angle' && angleSubType !== 'pressBrake' && (
+                      <AngleCalculator
+                        angleData={angleData}
+                        onAngleDataChange={setAngleData}
+                        unit={unit}
+                      />
+                    )}
 
-      {calculationType === 'angle' && angleSubType === 'pressBrake' && (
-        <PressBrakeAngleCalculator
-          pressBrakeAngleData={pressBrakeAngleData}
-          onPressBrakeAngleDataChange={(data) => {
-            // Set radius to match thickness if not explicitly set
-            if (data.thickness && (!data.radius || data.radius === 0)) {
-              data.radius = data.thickness;
-            }
-            setPressBrakeAngleData(data);
-          }}
-          unit={unit}
-        />
-      )}
-      
-      {calculationType === 'bar' && (
-        <BarCalculator
-          barData={barData}
-          onBarDataChange={setBarData}
-          unit={unit}
-        />
-      )}
-    </div>
-  )
-) }
+                    {calculationType === 'angle' && angleSubType === 'pressBrake' && (
+                      <PressBrakeAngleCalculator
+                        pressBrakeAngleData={pressBrakeAngleData}
+                        onPressBrakeAngleDataChange={setPressBrakeAngleData}
+                        unit={unit}
+                      />
+                    )}
+                    
+                    {calculationType === 'bar' && (
+                      <BarCalculator
+                        barData={barData}
+                        onBarDataChange={setBarData}
+                        unit={unit}
+                      />
+                    )}
+                  </div>
+                )
+              )}
             </div>
 
             {/* Right side - Pricing and Results */}
@@ -971,13 +994,14 @@ const MetalCalculator = () => {
         </div>
 
         {/* Saved Calculations - Responsive for all screen sizes */}
-        <div className="h-full p-2 sm:p-4">
+        <div className="h-full p-2 sm:p-4 lg:col-span-1 flex flex-col">
           <SavedCalculations
             calculations={savedCalculations}
             onDelete={handleDeleteCalculation}
             onClearAll={clearCalculations}
           />
         </div>
+      </div>
       </div>
     </div>
   );

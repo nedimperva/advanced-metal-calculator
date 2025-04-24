@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ProductPreview from './ProductPreview';
 import ProductModal from './ProductModal';
-import { loadProducts, deleteProduct } from '../../utils/products';
+import { loadProducts, deleteProduct, saveProduct } from '../../utils/products';
 import { theme } from '../../theme';
 import LoadingSpinner from '../common/LoadingSpinner';
 
@@ -40,8 +40,16 @@ const ProductsView = () => {
   };
 
   const handleAddNew = () => {
-    setCurrentProduct(null);
-    setModalMode('create');
+    // Create a blank product object with required fields
+    setCurrentProduct({
+      id: Date.now().toString(),
+      name: '',
+      description: '',
+      components: [],
+      totalWeight: 0,
+      updatedAt: new Date().toISOString(),
+    });
+    setModalMode('edit');
     setIsModalOpen(true);
   };
 
@@ -123,7 +131,10 @@ const ProductsView = () => {
             handleModalClose(true);
           }
         }}
-        onSave={() => handleModalClose(true)}
+        onSave={product => {
+          saveProduct(product);
+          handleModalClose(true);
+        }}
       />
     </div>
   );

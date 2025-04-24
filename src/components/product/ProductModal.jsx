@@ -175,9 +175,20 @@ const ProductModal = ({ product, isOpen, onSave, onClose, mode = 'view', onEdit,
               {internalMode === 'edit' && (
                 <form onSubmit={handleSave}>
                   <div className="mb-4">
-                    <h2 className="text-lg sm:text-xl font-medium" style={{ color: theme.colors.text }}>
-                      {name}
-                    </h2>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder={t('enterProductName')}
+                      className="w-full text-lg sm:text-xl font-medium p-2 border rounded-md focus:ring-2"
+                      style={{
+                        color: theme.colors.text,
+                        backgroundColor: theme.colors.background,
+                        borderColor: theme.colors.border,
+                        outlineColor: theme.colors.primary
+                      }}
+                      required
+                    />
                   </div>
                   <div className="mb-2 text-sm" style={{ color: theme.colors.textLight }}>
                     <textarea

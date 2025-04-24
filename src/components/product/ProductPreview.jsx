@@ -9,9 +9,14 @@ const ProductPreview = ({ product, onEdit, onDelete }) => {
 
   if (!product) return null;
 
+  // Defensive: ensure components is always an array
+  const components = Array.isArray(product.components) ? product.components : [];
+  // Defensive: ensure totalWeight is a valid number
+  const totalWeight = typeof product.totalWeight === 'number' && !isNaN(product.totalWeight) ? product.totalWeight : 0;
+
   // Format date
   const updatedAt = product.updatedAt ? formatDate(product.updatedAt, language) : '';
-  const totalComponents = product.components.reduce((sum, c) => sum + c.quantity, 0);
+  const totalComponents = components.reduce((sum, c) => sum + (c.quantity || 0), 0);
 
   return (
     <div className="border rounded-lg p-4" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
@@ -49,16 +54,16 @@ const ProductPreview = ({ product, onEdit, onDelete }) => {
       <div className="mt-3 pt-3 border-t" style={{ borderColor: theme.colors.border }}>
         <h4 className="text-sm font-medium mb-2" style={{ color: theme.colors.text }}>{t('components')}</h4>
         <div className="space-y-2 max-h-40 overflow-y-auto">
-          {product.components.map((component, idx) => (
+          {components.map((component, idx) => (
             <div key={idx} className="flex justify-between items-center p-2 rounded-md" style={{ backgroundColor: 'rgba(69,90,100,0.5)' }}>
               <div>
                 <p className="text-sm" style={{ color: theme.colors.text }}>{component.name} ({component.quantity}x)</p>
                 <p className="text-xs" style={{ color: theme.colors.textLight }}>
-                  {component.material ? `${component.material} - ` : ''}{component.weight.toFixed(2)} kg
+                  {component.material ? `${component.material} - ` : ''}{typeof component.weight === 'number' ? component.weight.toFixed(2) : '0.00'} kg
                 </p>
               </div>
               <span className="text-xs font-medium" style={{ color: theme.colors.secondary }}>
-                {(component.weight * component.quantity).toFixed(2)} kg
+                {typeof component.weight === 'number' && typeof component.quantity === 'number' ? (component.weight * component.quantity).toFixed(2) : '0.00'} kg
               </span>
             </div>
           ))}
@@ -72,7 +77,7 @@ const ProductPreview = ({ product, onEdit, onDelete }) => {
         </div>
         <div className="text-center p-2 rounded-md" style={{ backgroundColor: theme.colors.background }}>
           <p className="text-xs" style={{ color: theme.colors.textLight }}>{t('totalWeight')}</p>
-          <p className="text-sm font-medium" style={{ color: theme.colors.secondary }}>{product.totalWeight.toFixed(2)} kg</p>
+          <p className="text-sm font-medium" style={{ color: theme.colors.secondary }}>{totalWeight.toFixed(2)} kg</p>
         </div>
       </div>
     </div>

@@ -145,7 +145,7 @@ const AppContent = () => {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 h-full min-h-0">
         {activeView === 'calculator' ? <MetalCalculator /> : 
          activeView === 'projects' ? <ProjectsView /> : 
          <ProductsView />}
