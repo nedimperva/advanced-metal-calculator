@@ -15,6 +15,10 @@ const ProductsView = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [modalMode, setModalMode] = useState('view');
   
+  // State for per-product quantity and price
+  const [productQuantities, setProductQuantities] = useState({});
+  const [productPrices, setProductPrices] = useState({});
+  
   // Fetch products on component mount
   useEffect(() => {
     loadProductsList();
@@ -104,19 +108,51 @@ const ProductsView = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-  {filteredProducts.map((product) => (
-    <ProductPreview
-      key={product.id}
-      product={product}
-      onEdit={handleEdit}
-      onDelete={async (id) => {
-        if (window.confirm(t('deleteProductConfirmation'))) {
-          await deleteProduct(id);
-          loadProducts();
-        }
-      }}
-    />
-  ))}
+  {filteredProducts.map((product) => {
+    const quantity = productQuantities[product.id] || 1;
+    const price = productPrices[product.id] !== undefined ? productPrices[product.id] : (product.pricePerUnit || '');
+    return (
+      <div key={product.id} className="flex flex-col gap-2 border rounded-lg p-4" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+        <ProductPreview
+          product={{ ...product, quantity, pricePerUnit: price }}
+          onEdit={handleEdit}
+          onDelete={async (id) => {
+            if (window.confirm(t('deleteProductConfirmation'))) {
+              await deleteProduct(id);
+              loadProducts();
+            }
+          }}
+        />
+        <div className="flex flex-row gap-2 items-center mt-2">
+          <input
+            type="number"
+            min="1"
+            value={quantity}
+            onChange={e => setProductQuantities(q => ({ ...q, [product.id]: Number(e.target.value) }))}
+            className="w-20 px-2 py-1 rounded border"
+            style={{ borderColor: theme.colors.border }}
+            placeholder={t('quantity')}
+          />
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={price}
+            onChange={e => setProductPrices(p => ({ ...p, [product.id]: e.target.value }))}
+            className="w-24 px-2 py-1 rounded border"
+            style={{ borderColor: theme.colors.border }}
+            placeholder={t('pricePerUnit')}
+          />
+          <button
+            className="ml-2 px-4 py-1 rounded bg-orange-500 text-white hover:bg-orange-600"
+            onClick={() => {/* TODO: handle add to calculation with product, quantity, price */}}
+          >
+            {t('addToCalculation')}
+          </button>
+        </div>
+      </div>
+    );
+  })}
 </div>
 
       <ProductModal

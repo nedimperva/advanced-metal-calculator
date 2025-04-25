@@ -6,7 +6,8 @@ const CalculationTypeSelector = ({ calculationType, setCalculationType }) => {
     { id: 'plate', label: 'Plate' },
     { id: 'profile', label: 'Profile' },
     { id: 'pipe', label: 'Pipe' },
-    { id: 'product', label: 'Add Product' }
+    { id: 'angle', label: 'Angle' },
+    { id: 'bar', label: 'Bar' }
   ];
 
   return (

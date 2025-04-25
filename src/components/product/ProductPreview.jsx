@@ -35,6 +35,14 @@ const ProductPreview = ({ product, onEdit, onDelete }) => {
   // Defensive: ensure totalWeight is a valid number
   const totalWeight = typeof product.totalWeight === 'number' && !isNaN(product.totalWeight) ? product.totalWeight : 0;
 
+  // Defensive: ensure quantity and pricePerUnit are valid
+  const quantity = typeof product.quantity === 'number' && !isNaN(product.quantity) ? product.quantity : 1;
+  const pricePerUnit = typeof product.pricePerUnit === 'number' || (typeof product.pricePerUnit === 'string' && product.pricePerUnit !== '') ? Number(product.pricePerUnit) : null;
+
+  // Calculate totals
+  const totalWeightAll = totalWeight * quantity;
+  const totalPriceAll = pricePerUnit !== null ? (quantity * pricePerUnit) : null;
+
   // Format date
   const updatedAt = product.updatedAt ? formatDate(product.updatedAt, language) : '';
   const totalComponents = components.reduce((sum, c) => sum + (c.quantity || 0), 0);
@@ -67,10 +75,31 @@ const ProductPreview = ({ product, onEdit, onDelete }) => {
           </button>
         </div>
       </div>
-      {/* Updated At */}
-      <div className="text-xs" style={{ color: theme.colors.textLight }}>
-        {t('updatedAt')}: {updatedAt}
+      {/* Components/Description */}
+      <div className="text-sm mt-2 mb-2" style={{ color: theme.colors.textSecondary }}>
+        {product.description}
       </div>
+
+      {/* Components count, weight, price */}
+      <div className="flex flex-row gap-4 items-center text-sm mb-2">
+        <span>{t('components')}: {totalComponents}</span>
+        <span>{t('weight')}: <b>{totalWeight.toFixed(2)} kg</b></span>
+        {quantity > 1 && (
+          <span>{t('quantity')}: <b>{quantity}</b></span>
+        )}
+      </div>
+      {(quantity > 1 || pricePerUnit !== null) && (
+        <div className="flex flex-row gap-4 items-center text-sm mb-2">
+          <span>{t('totalWeight')}: <b>{totalWeightAll.toFixed(2)} kg</b></span>
+          {pricePerUnit !== null && (
+            <span>{t('totalPrice')}: <b>{totalPriceAll.toFixed(2)} {currency}</b></span>
+          )}
+        </div>
+      )}
+      <div className="flex flex-row gap-4 items-center text-sm mb-2">
+        <span>{t('lastUpdated')}: {updatedAt}</span>
+      </div>
+
       {/* Components List */}
       <div className="mt-3 pt-3 border-t" style={{ borderColor: theme.colors.border }}>
         <h4 className="text-sm font-medium mb-2" style={{ color: theme.colors.text }}>{t('components')}</h4>
