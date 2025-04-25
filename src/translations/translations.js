@@ -6,6 +6,7 @@ export const translations = {
     navCalculator: 'Calculator',
     navProjects: 'Projects',
     navProducts: 'Products',
+    navSettings: 'Settings',
     
     // Common
     save: 'Save',
@@ -183,6 +184,7 @@ export const translations = {
     navCalculator: 'Kalkulator',
     navProjects: 'Projekti',
     navProducts: 'Proizvodi',
+    navSettings: 'Postavke',
     
     // Common
     save: 'Sačuvaj',

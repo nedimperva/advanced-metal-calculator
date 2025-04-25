@@ -367,7 +367,7 @@ const MetalCalculator = () => {
         {/* Main Column: Calculator UI ONLY */}
         <div className="lg:col-span-2 p-4 sm:p-4 flex flex-col gap-6 sm:gap-4">
           {/* Header and Controls */}
-          <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+          <div className="rounded-lg p-3 sm:p-2 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-6">
               {/* Modern calculator icon instead of text title */}
               <div className="flex items-center">
@@ -518,7 +518,7 @@ const MetalCalculator = () => {
 
           {/* Calculation Type Tabs */}
           {/* Main Tab Navigation */}
-          <div className="flex flex-wrap gap-x-4 mb-4 px-2">
+          <div className="flex flex-wrap gap-x-2 mb-2 px-0">
             {['plate', 'profile', 'pipe', 'angle', 'bar'].map((type, idx, arr) => (
               <button
                 key={type}
@@ -748,9 +748,9 @@ const MetalCalculator = () => {
             </div>
 
             {/* Right side - Pricing and Results */}
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-3 sm:space-y-4" >
               {/* Pricing Inputs */}
-              <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <div className="rounded-lg p-3 sm:p-0 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                  <PricingInputs
                   pricePerKg={pricePerKg}
                   setPricePerKg={setPricePerKg}
