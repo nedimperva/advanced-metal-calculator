@@ -205,18 +205,30 @@ const ComponentList = ({ components, onUpdateQuantity, onRemove }) => {
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-3 mt-2 sm:mt-0">
+          <div className="flex flex-row items-center gap-2 mt-2 sm:mt-0 min-w-[180px]">
+            <label htmlFor={`component-quantity-input-${component.id}`} className="text-xs font-medium flex items-center" style={{ color: theme.colors.textLight }}>
+              <svg className="inline mr-1 align-text-bottom" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 12h18M12 3v18"/></svg>
+              {t('quantity')}
+            </label>
             <input
+              id={`component-quantity-input-${component.id}`}
               type="number"
               min="1"
               value={component.quantity}
               onChange={e => onUpdateQuantity(component.id, parseInt(e.target.value) || 1)}
-              className="w-14 px-1 py-0.5 border rounded text-sm text-center"
-              style={{ borderColor: theme.colors.border, color: theme.colors.text }}
+              className="w-20 px-2 py-1 border rounded-md text-sm text-center focus:ring-2"
+              style={{
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+                backgroundColor: theme.colors.background,
+                outlineColor: theme.colors.primary
+              }}
+              aria-label={t('quantity')}
             />
             <button
               onClick={() => onRemove(component.id)}
-              className="ml-2 px-2 py-1 text-xs text-red-600 hover:text-red-800"
+              className="px-2 py-1 text-xs text-red-600 hover:text-red-800 rounded"
+              style={{ background: 'transparent' }}
             >
               {t('remove')}
             </button>

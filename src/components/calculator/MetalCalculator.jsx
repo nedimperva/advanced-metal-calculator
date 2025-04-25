@@ -58,15 +58,20 @@ const MetalCalculator = () => {
   const { t, language } = useLanguage();
 
   useEffect(() => {
-    const saved = localStorage.getItem('savedCalculations');
-    if (saved) {
-      try {
-        setSavedCalculations(JSON.parse(saved));
-      } catch (error) {
-        console.error('Error loading saved calculations:', error);
-        localStorage.removeItem('savedCalculations');
+    const loadCalcs = () => {
+      const saved = localStorage.getItem('savedCalculations');
+      if (saved) {
+        try {
+          setSavedCalculations(JSON.parse(saved));
+        } catch (error) {
+          console.error('Error loading saved calculations:', error);
+          localStorage.removeItem('savedCalculations');
+        }
       }
-    }
+    };
+    loadCalcs();
+    window.addEventListener('calculation-added', loadCalcs);
+    return () => window.removeEventListener('calculation-added', loadCalcs);
   }, []);
 
   // Data states for different calculators

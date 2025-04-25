@@ -22,17 +22,17 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
   const [componentType, setComponentType] = useState('pipe');
   const [material, setMaterial] = useState('steel');
   const [quantity, setQuantity] = useState(1);
-  const [price, setPrice] = useState(0);
+  const [pricePerKg, setPricePerKg] = useState(0);
   const [weight, setWeight] = useState(0);
   const [unit, setUnit] = useState('mm');
   
-  // Load default price from settings/localStorage on mount
+  // Load default price per kg from settings/localStorage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(SETTINGS_KEY);
       if (stored) {
         const settings = JSON.parse(stored);
-        if (settings.defaultPrice !== undefined) setPrice(settings.defaultPrice);
+        if (settings.defaultPrice !== undefined) setPricePerKg(settings.defaultPrice);
       }
     } catch {}
   }, []);
@@ -176,6 +176,9 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
     let dimensions;
     let componentName = '';
     
+    // Calculate total price for this component
+    const totalPrice = parseFloat(pricePerKg) * parseFloat(weight) * parseInt(quantity);
+    
     switch (componentType) {
       case 'plate':
         dimensions = { ...plateData };
@@ -223,7 +226,8 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
       dimensions,
       weight: parseFloat(weight),
       quantity: parseInt(quantity),
-      price: parseFloat(price)
+      pricePerKg: parseFloat(pricePerKg),
+      totalPrice: totalPrice
     };
     
     onAdd(newComponent);
@@ -240,11 +244,11 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
       const stored = localStorage.getItem(SETTINGS_KEY);
       if (stored) {
         const settings = JSON.parse(stored);
-        if (settings.defaultPrice !== undefined) setPrice(settings.defaultPrice);
+        if (settings.defaultPrice !== undefined) setPricePerKg(settings.defaultPrice);
       } else {
-        setPrice(0);
+        setPricePerKg(0);
       }
-    } catch { setPrice(0); }
+    } catch { setPricePerKg(0); }
     
     // Reset to default values for each component type
     if (componentType === 'plate') {
@@ -436,26 +440,6 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
               }}
               min="1"
               step="1"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: theme.colors.textLight }}>
-              {t('pricePerUnit')}
-            </label>
-            <input
-              type="number"
-              value={price}
-              onChange={(e) => setPrice(parseFloat(e.target.value))}
-              className="w-full p-2 border rounded-md focus:ring-2"
-              style={{ 
-                backgroundColor: theme.colors.background,
-                borderColor: theme.colors.border,
-                color: theme.colors.text,
-                outlineColor: theme.colors.primary
-              }}
-              min="0"
-              step="0.01"
               required
             />
           </div>
@@ -670,6 +654,48 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
         </div>
       )}
 
+      {/* Price per kg input */}
+      <div className="rounded-lg p-3 sm:p-4 border mb-4" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+        <div className="flex justify-between items-center mb-2">
+          <label htmlFor="pricePerKg" className="text-sm font-medium" style={{ color: theme.colors.textLight }}>{t('pricePerKg')}:</label>
+          <input
+            id="pricePerKg"
+            type="number"
+            min="0"
+            step="0.01"
+            value={pricePerKg}
+            onChange={e => setPricePerKg(e.target.value)}
+            className="w-24 px-2 py-1 rounded border"
+            style={{ borderColor: theme.colors.border }}
+            placeholder={t('pricePerKg')}
+          />
+        </div>
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium" style={{ color: theme.colors.textLight }}>
+            {t('calculatedWeight')}:
+          </span>
+          <span className="text-lg font-semibold" style={{ color: theme.colors.primary }}>
+            {weight.toFixed(2)} kg
+          </span>
+        </div>
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium" style={{ color: theme.colors.textLight }}>
+            {t('totalComponentWeight')}:
+          </span>
+          <span className="text-lg font-semibold" style={{ color: theme.colors.text }}>
+            {(weight * quantity).toFixed(2)} kg
+          </span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-medium" style={{ color: theme.colors.textLight }}>
+            {t('totalPrice')}:
+          </span>
+          <span className="text-lg font-semibold" style={{ color: theme.colors.secondary }}>
+            {(pricePerKg * weight * quantity).toFixed(2)}
+          </span>
+        </div>
+      </div>
+      
       {/* Calculator Components */}
       <div className="rounded-lg p-3 sm:p-4 border mb-4" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
         {componentType === 'plate' && (
@@ -741,26 +767,6 @@ const ComponentSelector = ({ onAdd, onCancel }) => {
         )}
       </div>
 
-      {/* Weight Result */}
-      <div className="rounded-lg p-3 sm:p-4 border mb-4" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-medium" style={{ color: theme.colors.textLight }}>
-            {t('calculatedWeight')}:
-          </span>
-          <span className="text-lg font-semibold" style={{ color: theme.colors.primary }}>
-            {weight.toFixed(2)} kg
-          </span>
-        </div>
-        <div className="flex justify-between items-center mt-2">
-          <span className="text-sm font-medium" style={{ color: theme.colors.textLight }}>
-            {t('totalComponentWeight')}:
-          </span>
-          <span className="text-lg font-semibold" style={{ color: theme.colors.text }}>
-            {(weight * quantity).toFixed(2)} kg
-          </span>
-        </div>
-      </div>
-      
       {/* Action buttons */}
       <div className="flex justify-end space-x-3 pt-2">
         <button
@@ -797,5 +803,7 @@ ComponentSelector.propTypes = {
   onAdd: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired
 };
+
+import styles from './productScrollbar.module.css';
 
 export default ComponentSelector;

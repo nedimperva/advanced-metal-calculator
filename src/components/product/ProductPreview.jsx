@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { theme } from '../../theme';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDate } from '../../utils/formatters';
+import styles from './productScrollbar.module.css';
 
 const ProductPreview = ({ product, onEdit, onDelete }) => {
   const { t, language } = useLanguage();
@@ -35,13 +36,11 @@ const ProductPreview = ({ product, onEdit, onDelete }) => {
   // Defensive: ensure totalWeight is a valid number
   const totalWeight = typeof product.totalWeight === 'number' && !isNaN(product.totalWeight) ? product.totalWeight : 0;
 
-  // Defensive: ensure quantity and pricePerUnit are valid
-  const quantity = typeof product.quantity === 'number' && !isNaN(product.quantity) ? product.quantity : 1;
-  const pricePerUnit = typeof product.pricePerUnit === 'number' || (typeof product.pricePerUnit === 'string' && product.pricePerUnit !== '') ? Number(product.pricePerUnit) : null;
-
-  // Calculate totals
-  const totalWeightAll = totalWeight * quantity;
-  const totalPriceAll = pricePerUnit !== null ? (quantity * pricePerUnit) : null;
+  // Calculate product total price from all components
+  const totalPriceAll = components.reduce(
+    (sum, c) => sum + (typeof c.totalPrice === 'number' ? c.totalPrice : ((c.pricePerKg || 0) * (c.weight || 0) * (c.quantity || 1))),
+    0
+  );
 
   // Format date
   const updatedAt = product.updatedAt ? formatDate(product.updatedAt, language) : '';
@@ -75,59 +74,36 @@ const ProductPreview = ({ product, onEdit, onDelete }) => {
           </button>
         </div>
       </div>
-      {/* Components/Description */}
-      <div className="text-sm mt-2 mb-2" style={{ color: theme.colors.textSecondary }}>
-        {product.description}
-      </div>
-
-      {/* Components count, weight, price */}
-      <div className="flex flex-row gap-4 items-center text-sm mb-2">
-        <span>{t('components')}: {totalComponents}</span>
-        <span>{t('weight')}: <b>{totalWeight.toFixed(2)} kg</b></span>
-        {quantity > 1 && (
-          <span>{t('quantity')}: <b>{quantity}</b></span>
-        )}
-      </div>
-      {(quantity > 1 || pricePerUnit !== null) && (
-        <div className="flex flex-row gap-4 items-center text-sm mb-2">
-          <span>{t('totalWeight')}: <b>{totalWeightAll.toFixed(2)} kg</b></span>
-          {pricePerUnit !== null && (
-            <span>{t('totalPrice')}: <b>{totalPriceAll.toFixed(2)} {currency}</b></span>
-          )}
+      {/* Description (only if available) */}
+      {product.description && (
+        <div className="text-sm mb-1" style={{ color: theme.colors.textLight, fontStyle: 'italic' }}>
+          {product.description}
         </div>
       )}
-      <div className="flex flex-row gap-4 items-center text-sm mb-2">
-        <span>{t('lastUpdated')}: {updatedAt}</span>
+      {/* Last updated */}
+      <div className="text-xs mb-2" style={{ color: theme.colors.textLight }}>
+        {t('lastUpdated')}: {updatedAt}
       </div>
 
-      {/* Components List */}
-      <div className="mt-3 pt-3 border-t" style={{ borderColor: theme.colors.border }}>
-        <h4 className="text-sm font-medium mb-2" style={{ color: theme.colors.text }}>{t('components')}</h4>
-        <div className="space-y-2 max-h-40 overflow-y-auto">
-          {components.map((component, idx) => (
-            <div key={idx} className="flex justify-between items-center p-2 rounded-md" style={{ backgroundColor: 'rgba(69,90,100,0.5)' }}>
-              <div>
-                <p className="text-sm" style={{ color: theme.colors.text }}>{component.name} ({component.quantity}x)</p>
-                <p className="text-xs" style={{ color: theme.colors.textLight }}>
-                  {component.material ? `${component.material} - ` : ''}{typeof component.weight === 'number' ? component.weight.toFixed(2) : '0.00'} kg
-                </p>
-              </div>
-              <span className="text-xs font-medium" style={{ color: theme.colors.secondary }}>
-                {typeof component.weight === 'number' && typeof component.quantity === 'number' ? (component.weight * component.quantity).toFixed(2) : '0.00'} kg
-              </span>
+
+      {/* Summary & Actions aligned */}
+      {/* Shared width container for summary and actions */}
+      <div className="w-full flex flex-col items-center">
+        <div className="w-full max-w-[340px]">
+          <div className="mt-2 pt-2 border-t grid grid-cols-3 gap-1 w-full" style={{ borderColor: theme.colors.border }}>
+            <div className="flex flex-col items-center justify-center w-full h-full rounded-none" style={{ backgroundColor: theme.colors.background }}>
+              <span className="text-xs leading-tight w-full text-center" style={{ color: theme.colors.textLight }}>{t('totalComponents')}</span>
+              <span className="text-base font-semibold font-mono tabular-nums min-w-[60px] w-full text-center" style={{ color: theme.colors.primary, fontVariantNumeric: 'tabular-nums', minWidth: 60 }}>{totalComponents}</span>
             </div>
-          ))}
-        </div>
-      </div>
-      {/* Summary */}
-      <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-3" style={{ borderColor: theme.colors.border }}>
-        <div className="text-center p-2 rounded-md" style={{ backgroundColor: theme.colors.background }}>
-          <p className="text-xs" style={{ color: theme.colors.textLight }}>{t('totalComponents')}</p>
-          <p className="text-sm font-medium" style={{ color: theme.colors.text }}>{totalComponents}</p>
-        </div>
-        <div className="text-center p-2 rounded-md" style={{ backgroundColor: theme.colors.background }}>
-          <p className="text-xs" style={{ color: theme.colors.textLight }}>{t('totalWeight')}</p>
-          <p className="text-sm font-medium" style={{ color: theme.colors.secondary }}>{totalWeight.toFixed(2)} kg</p>
+            <div className="flex flex-col items-center justify-center w-full h-full rounded-none" style={{ backgroundColor: theme.colors.background }}>
+              <span className="text-xs leading-tight w-full text-center" style={{ color: theme.colors.textLight }}>{t('totalWeight')}</span>
+              <span className="text-base font-semibold font-mono tabular-nums min-w-[60px] w-full text-center" style={{ color: theme.colors.primary, fontVariantNumeric: 'tabular-nums', minWidth: 60 }}>{totalWeight.toFixed(2)} kg</span>
+            </div>
+            <div className="flex flex-col items-center justify-center w-full h-full rounded-none" style={{ backgroundColor: theme.colors.background }}>
+              <span className="text-xs leading-tight w-full text-center" style={{ color: theme.colors.textLight }}>{t('totalPrice')}</span>
+              <span className="text-base font-semibold font-mono tabular-nums min-w-[60px] w-full text-center" style={{ color: theme.colors.primary, fontVariantNumeric: 'tabular-nums', minWidth: 60 }}>{totalPriceAll.toFixed(2)} {currency}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

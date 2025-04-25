@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'metalCalculator.savedCalculations';
+const STORAGE_KEY = 'savedCalculations';
 
 export const loadSavedCalculations = () => {
   try {
