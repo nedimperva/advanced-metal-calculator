@@ -167,6 +167,11 @@ export const translations = {
     later: 'Later',
     offlineMessage: 'You are currently offline',
     backToProjects: 'Back to Projects',
+    showMyCalculations: 'Show My Calculations',
+    hideMyCalculations: 'Hide My Calculations',
+    pinCalculations: 'Pin Calculations',
+    unpinCalculations: 'Unpin Calculations',
+    pinnedTooltip: 'Sidebar is pinned and cannot be closed',
     
     // Update Notification
     updateAvailable: 'Update Available',
@@ -337,6 +342,11 @@ export const translations = {
     side: 'Stranica',
     material: 'Materijal',
     totalPrice: 'Ukupna cijena',
+    showMyCalculations: 'Prikaži moje kalkulacije',
+    hideMyCalculations: 'Sakrij moje kalkulacije',
+    pinCalculations: 'Zakači kalkulacije',
+    unpinCalculations: 'Otkači kalkulacije',
+    pinnedTooltip: 'Bočna traka je zakačena i ne može se zatvoriti',
 
     // PWA
     installApp: 'Instaliraj Aplikaciju',
