@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// Mobile improvements: responsive grid, sidebar, touch-friendly UI
 import { useLanguage } from '../../contexts/LanguageContext';
 import ProductPreview from './ProductPreview';
 import ProductModal from './ProductModal';
@@ -25,6 +26,15 @@ const ProductsView = () => {
   // State for calculations panel
   const [showCalculations, setShowCalculations] = useState(false);
   const [calculations, setCalculations] = useState([]);
+  // Always-updating count of saved calculations
+  const [calculationsCount, setCalculationsCount] = useState(() => {
+    try {
+      const saved = localStorage.getItem('savedCalculations');
+      return saved ? JSON.parse(saved).length : 0;
+    } catch {
+      return 0;
+    }
+  });
   const [sidebarPinned, setSidebarPinned] = useState(() => {
     // Persist pin state in localStorage
     try {
@@ -56,6 +66,31 @@ const ProductsView = () => {
       }
     }
   }, [showCalculations]);
+
+  // Keep calculationsCount in sync with localStorage (auto-updating badge)
+  useEffect(() => {
+    // Handler to update count from localStorage
+    const updateCount = () => {
+      try {
+        const saved = localStorage.getItem('savedCalculations');
+        setCalculationsCount(saved ? JSON.parse(saved).length : 0);
+      } catch {
+        setCalculationsCount(0);
+      }
+    };
+    // Listen for calculation-added event (in-app)
+    window.addEventListener('calculation-added', updateCount);
+    // Listen for storage event (cross-tab)
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'savedCalculations') updateCount();
+    });
+    // On mount
+    updateCount();
+    return () => {
+      window.removeEventListener('calculation-added', updateCount);
+      window.removeEventListener('storage', updateCount);
+    };
+  }, []);
 
   // Listen for calculation changes from other tabs/pages
   useEffect(() => {
@@ -168,47 +203,103 @@ const ProductsView = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-4">
-      <div className="flex flex-wrap justify-between items-center mb-4">
-        <h1 className="text-lg font-bold" style={{ color: theme.colors.text }}>
+    <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-6">
+      <div className="flex flex-wrap justify-between items-center mb-2 sm:mb-6">
+        <h1 className="text-base sm:text-2xl font-bold" style={{ color: theme.colors.text }}>
           {t('products')}
         </h1>
-
-        <button
-          onClick={handleAddNew}
-          className="px-4 py-4 rounded-lg flex items-center gap-4"
-          style={{ backgroundColor: theme.colors.primary, color: 'white' }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          {t('addProduct')}
-        </button>
+        {/* Action buttons group: right-aligned */}
+        <div className="flex gap-2 items-center w-full sm:w-auto justify-end">
+          <button
+            onClick={handleAddNew}
+            className="w-full sm:w-auto px-3 py-3 sm:px-4 sm:py-2 rounded-lg flex items-center gap-2 sm:gap-4 text-sm sm:text-base bg-primary"
+            style={{ backgroundColor: theme.colors.primary, color: 'white' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="hidden sm:inline">{t('addProduct')}</span>
+          </button>
+          {/* Desktop: Icon-only "Show My Calculations" button with tooltip */}
+          {/* Desktop: Icon-only "Show My Calculations" button with badge and theme colors */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!sidebarPinned) setShowCalculations((v) => !v);
+              if (sidebarPinned && !showCalculations) setShowCalculations(true);
+            }}
+            className={`hidden sm:inline-flex items-center justify-center p-2 rounded-full border shadow-sm transition-colors duration-150 relative ${sidebarPinned ? 'opacity-60 cursor-not-allowed' : ''}`}
+            style={{
+              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.accent1,
+            }}
+            title={sidebarPinned ? t('pinnedTooltip') : t('showMyCalculations')}
+            aria-label={t('showMyCalculations')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: theme.colors.textOnPrimary }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8M8 11h8m-8 4h8M5 5v14h14V5H5z" /></svg>
+            {/* Badge with calculation count (auto-updating) */}
+            {calculationsCount > 0 && (
+              <span
+                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 text-xs rounded-full flex items-center justify-center font-bold border"
+                style={{
+                  backgroundColor: theme.colors.primary,
+                  color: theme.colors.textOnPrimary,
+                  borderColor: theme.colors.surface,
+                  boxShadow: '0 0 0 2px ' + theme.colors.surface,
+                  zIndex: 1,
+                }}
+                aria-label={t('savedCalculationsCount', { count: calculationsCount })}
+              >
+                {calculationsCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
-
-      {/* Right Sidebar Toggle Button (floating) */}
+      {/* Mobile: Floating button at bottom */}
+      {/* Mobile: Floating button at bottom, with badge */}
       <button
         onClick={() => {
           if (!sidebarPinned) setShowCalculations((v) => !v);
-          // If unpinning and sidebar is hidden, allow opening
           if (sidebarPinned && !showCalculations) setShowCalculations(true);
         }}
-        className={`fixed top-1/2 right-0 z-40 transform -translate-y-1/2 px-4 py-2 rounded-l-lg border shadow-lg ${sidebarPinned ? 'opacity-60 cursor-not-allowed' : ''}`}
+        className={`fixed z-40 sm:hidden bottom-0 left-0 right-0 px-4 py-3 rounded-t-lg border shadow-lg bg-white ${sidebarPinned ? 'opacity-60 cursor-not-allowed' : ''}`}
         style={{
           backgroundColor: showCalculations ? theme.colors.accent1 : theme.colors.surface,
           color: showCalculations ? theme.colors.textOnPrimary : theme.colors.text,
           borderColor: theme.colors.border,
           fontWeight: 500,
-          borderRight: 'none',
+          borderTop: '1px solid ' + theme.colors.border,
         }}
         title={sidebarPinned ? t('pinnedTooltip') : ''}
       >
-        {showCalculations ? t('hideMyCalculations') : t('showMyCalculations')}
+        <span className="relative flex items-center justify-center">
+          {showCalculations ? t('hideMyCalculations') : t('showMyCalculations')}
+          {/* Badge with calculation count (auto-updating) */}
+          {calculationsCount > 0 && (
+            <span
+              className="absolute -top-2 -right-4 min-w-[18px] h-[18px] px-1 text-xs rounded-full flex items-center justify-center font-bold border"
+              style={{
+                backgroundColor: theme.colors.primary,
+                color: theme.colors.textOnPrimary,
+                borderColor: theme.colors.surface,
+                boxShadow: '0 0 0 2px ' + theme.colors.surface,
+                zIndex: 1,
+              }}
+              aria-label={t('savedCalculationsCount', { count: calculationsCount })}
+            >
+              {calculationsCount}
+            </span>
+          )}
+        </span>
       </button>
 
-      {/* Right Sidebar for My Calculations */}
+      {/* Responsive sidebar: bottom sheet on mobile, right drawer on desktop */}
       <div
-        className={`fixed top-0 right-0 h-full w-full sm:w-[400px] max-w-full z-50 transition-transform duration-300 ease-in-out ${showCalculations ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed z-50 transition-transform duration-300 ease-in-out
+          w-full sm:w-[400px] max-w-full
+          ${showCalculations ? 'translate-y-0 sm:translate-x-0' : 'translate-y-full sm:translate-x-full'}
+          bottom-0 sm:bottom-auto sm:top-0 right-0 h-full sm:h-full`}
         style={{
           boxShadow: showCalculations ? 'rgba(0,0,0,0.15) -4px 0 16px' : 'none',
           backgroundColor: theme.colors.surface,
@@ -253,6 +344,7 @@ const ProductsView = () => {
             )}
           </div>
           <div className="flex-1 overflow-y-auto p-2">
+            {/* Make calculations content scrollable and take full height on mobile */}
             <SavedCalculations
               calculations={calculations}
               onDelete={handleDeleteCalculation}
@@ -271,13 +363,13 @@ const ProductsView = () => {
         />
       )}
 
-      <div className="mb-4">
+      <div className="mb-3 sm:mb-4">
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t('searchProducts')}
-          className="w-full px-4 py-4 rounded-lg border"
+          className="w-full px-2 py-2 sm:px-4 sm:py-4 rounded-lg border text-sm sm:text-base"
           style={{ borderColor: theme.colors.border }}
         />
       </div>

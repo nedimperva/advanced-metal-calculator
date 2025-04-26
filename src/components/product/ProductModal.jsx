@@ -1,3 +1,4 @@
+// Mobile improvements: responsive modal layout, touch-friendly UI
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { theme } from '../../theme';
@@ -94,17 +95,17 @@ const ProductModal = ({ product, isOpen, onSave, onClose, mode = 'view', onEdit,
 
         {/* Modal panel */}
         <div 
-          className="inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full w-full"
-          style={{ maxWidth: '90vw' }}
+          className="inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full sm:my-8 sm:align-middle sm:max-w-lg"
+          style={{ maxWidth: '100vw' }}
         >
           <div className="w-full rounded-lg" style={{ backgroundColor: theme.colors.surface }}>
-            <div className="p-4 sm:p-6">
+            <div className="p-3 sm:p-6">
               {/* VIEW MODE */}
               {internalMode === 'view' && product && (
                 <div>
-                  <div className="mb-4">
-                    <h2 className="text-lg sm:text-xl font-medium" style={{ color: theme.colors.text }}>
-                      {product.name}
+                  <div className="mb-3 sm:mb-4">
+                    <h2 className="text-base sm:text-xl font-medium" style={{ color: theme.colors.text }}>
+                      {name}
                     </h2>
                   </div>
                   <div className="mb-2 text-sm" style={{ color: theme.colors.textLight }}>

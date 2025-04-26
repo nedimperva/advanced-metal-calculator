@@ -1,3 +1,4 @@
+// Mobile improvements: responsive card, font sizes, touch-friendly buttons
 import React from 'react';
 import PropTypes from 'prop-types';
 import { theme } from '../../theme';
@@ -47,10 +48,10 @@ const ProductPreview = ({ product, onEdit, onDelete }) => {
   const totalComponents = components.reduce((sum, c) => sum + (c.quantity || 0), 0);
 
   return (
-    <div className="border rounded-lg p-4" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+    <div className="border rounded-lg p-2 sm:p-4" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
       {/* Header: Name + Actions */}
       <div className="flex justify-between items-start mb-3">
-        <h3 className="text-lg font-medium" style={{ color: theme.colors.text }}>{product.name}</h3>
+        <h3 className="text-base sm:text-lg font-medium" style={{ color: theme.colors.text }}>{product.name}</h3>
         <div className="flex gap-2">
           <button
             className="p-2 rounded-full hover:opacity-80"
