@@ -362,13 +362,13 @@ const MetalCalculator = () => {
   };
 
   return (
-    <div className="h-full w-full" style={{ backgroundColor: theme.colors.background }}>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full w-full">
+    <div className="h-full w-full flex flex-col" style={{ backgroundColor: theme.colors.background }}>
+      <div className="flex flex-1 flex-col lg:flex-row gap-0.5 h-full w-full min-h-0">
         {/* Main Column: Calculator UI ONLY */}
-        <div className="lg:col-span-2 p-4 sm:p-4 flex flex-col gap-6 sm:gap-4">
+        <div className="flex flex-col flex-1 min-w-0 p-0.5 md:p-1 gap-1">
           {/* Header and Controls */}
-          <div className="rounded-lg p-3 sm:p-2 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-6">
+          <div className="rounded-lg p-1 sm:p-0.5 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 gap-1">
               {/* Modern calculator icon instead of text title */}
               <div className="flex items-center">
                 <div className="flex items-center justify-center p-4 rounded-md mr-2"
@@ -676,12 +676,12 @@ const MetalCalculator = () => {
          {/* END Corrected Sub-tabs Block */}
 
           {/* Calculator and Results */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-4">
+          <div className="flex flex-col md:flex-row gap-4 min-h-0 flex-1">
             {/* Left side - Calculator */}
-            <div>
+            <div className="flex-1 min-w-0 flex flex-col">
                {/* Only render calculator UIs for supported types */}
                {calculationType && (
-                 <div className="rounded-lg p-3 sm:p-4 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+                 <div className="rounded-lg p-2 sm:p-3 border flex-1 min-h-0" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                    {calculationType === 'plate' && (
                      <PlateCalculator
                        plateData={plateData}
@@ -748,9 +748,9 @@ const MetalCalculator = () => {
             </div>
 
             {/* Right side - Pricing and Results */}
-            <div className="space-y-3 sm:space-y-4" >
+            <div className="flex flex-col justify-between w-full lg:w-[420px] flex-shrink-0 space-y-1">
               {/* Pricing Inputs */}
-              <div className="rounded-lg p-3 sm:p-0 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
+              <div className="rounded-lg p-2 sm:p-2 border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.border }}>
                  <PricingInputs
                   pricePerKg={pricePerKg}
                   setPricePerKg={setPricePerKg}
@@ -821,7 +821,7 @@ const MetalCalculator = () => {
         </div>
 
          {/* Saved Calculations - Sidebar only */}
-        <div className="h-full p-4 sm:p-4 lg:col-span-1 flex flex-col">
+        <div className="flex flex-col w-full lg:w-[420px] flex-shrink-0 p-0.5 md:p-1 h-full">
           <SavedCalculations
             calculations={savedCalculations}
             onDelete={handleDeleteCalculation}
