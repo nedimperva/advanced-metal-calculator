@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import MetalCalculator from './components/calculator/MetalCalculator';
+import ResponsiveCalculator from './components/ResponsiveCalculator';
 import ProjectsView from './components/projects/ProjectsView';
 import ProductsView from './components/product/ProductsView';
 import Settings from './components/Settings';
@@ -165,7 +165,7 @@ const AppContent = () => {
       </nav>
 
       <main className="flex-1 overflow-auto" style={{ backgroundColor: theme.colors.background }}>
-        {activeView === 'calculator' && <MetalCalculator />}
+        {activeView === 'calculator' && <ResponsiveCalculator />}
         {activeView === 'projects' && <ProjectsView />}
         {activeView === 'products' && <ProductsView />}
         {activeView === 'settings' && <Settings />}
