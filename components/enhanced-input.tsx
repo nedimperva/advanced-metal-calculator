@@ -38,14 +38,6 @@ import {
   ResultsSkeleton, 
   DimensionInputsSkeleton 
 } from "@/components/loading-states"
-import { 
-  EnhancedInput, 
-  EnhancedInputGroup, 
-  ValidationSummary,
-  FractionInput,
-  DimensionPresets,
-  SmartSuggestions
-} from "@/components/enhanced-input"
 
 interface EnhancedInputProps {
   label: string
@@ -567,14 +559,14 @@ export function getSmartSuggestions(
   // Get preset suggestions for this profile type
   const presets = DIMENSION_PRESETS[profileType as keyof typeof DIMENSION_PRESETS]
   if (presets) {
-    const values = presets.presets
-      .map(preset => {
-        const value = preset[dimensionKey as keyof typeof preset]
-        return typeof value === 'number' ? value : undefined
-      })
-      .filter((val): val is number => val !== undefined && val !== currentNum)
-      .slice(0, 5)
-    suggestions.push(...values)
+    const values: number[] = []
+    presets.presets.forEach(preset => {
+      const value = preset[dimensionKey as keyof typeof preset]
+      if (typeof value === 'number' && value !== currentNum) {
+        values.push(value)
+      }
+    })
+    suggestions.push(...values.slice(0, 5))
   }
   
   // Add increment/decrement suggestions based on current value
@@ -603,7 +595,7 @@ interface FractionInputProps extends Omit<EnhancedInputProps, 'onChange'> {
   showPresets?: boolean
   showSuggestions?: boolean
   allDimensions?: Record<string, string>
-  onCopyFromProfile?: (dimensions: Record<string, string>) => void
+  onCopyFromProfile?: (dimensions: Record<string, number>) => void
 }
 
 export function FractionInput({
@@ -778,7 +770,14 @@ export function FractionInput({
                         className="flex items-center justify-between p-2 rounded border hover:bg-muted cursor-pointer"
                         onClick={() => {
                           if (onCopyFromProfile) {
-                            onCopyFromProfile(preset as Record<string, string>)
+                            // Convert preset to numbers
+                            const numericPreset: Record<string, number> = {}
+                            Object.entries(preset).forEach(([key, value]) => {
+                              if (key !== 'name' && typeof value === 'number') {
+                                numericPreset[key] = value
+                              }
+                            })
+                            onCopyFromProfile(numericPreset)
                           }
                         }}
                       >
@@ -802,14 +801,20 @@ export function FractionInput({
 // Dimension presets component
 interface DimensionPresetsProps {
   profileType: string
-  onApplyPreset: (dimensions: Record<string, string>) => void
+  onApplyPreset: (dimensions: Record<string, number>) => void
   className?: string
 }
 
 export function DimensionPresets({ profileType, onApplyPreset, className }: DimensionPresetsProps) {
+  console.log('DimensionPresets received profileType:', profileType)
   const presets = DIMENSION_PRESETS[profileType as keyof typeof DIMENSION_PRESETS]
+  console.log('Found presets:', presets)
   
-  if (!presets) return null
+  if (!presets) {
+    console.log('No presets found for profileType:', profileType)
+    console.log('Available profile types:', Object.keys(DIMENSION_PRESETS))
+    return null
+  }
 
   return (
     <Card className={cn("", className)}>
@@ -827,7 +832,18 @@ export function DimensionPresets({ profileType, onApplyPreset, className }: Dime
                 variant="outline"
                 size="sm"
                 className="text-xs h-8"
-                onClick={() => onApplyPreset(preset as Record<string, string>)}
+                onClick={() => {
+                  console.log('Preset clicked:', preset.name, preset)
+                  // Convert preset to numeric values
+                  const numericPreset: Record<string, number> = {}
+                  Object.entries(preset).forEach(([key, value]) => {
+                    if (key !== 'name' && typeof value === 'number') {
+                      numericPreset[key] = value
+                    }
+                  })
+                  console.log('Calling onApplyPreset with:', numericPreset)
+                  onApplyPreset(numericPreset)
+                }}
               >
                 {preset.name}
               </Button>

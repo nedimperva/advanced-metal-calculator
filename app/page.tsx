@@ -32,13 +32,11 @@ import {
 import { 
   EnhancedInput, 
   EnhancedInputGroup, 
-  ValidationSummary 
-} from "@/components/enhanced-input"
-import { 
+  ValidationSummary,
   FractionInput,
   DimensionPresets,
   SmartSuggestions
-} from "@/components/advanced-input"
+} from "@/components/enhanced-input"
 import { 
   validateCalculationInputs, 
   validateTemperature, 
@@ -430,10 +428,16 @@ export default function MetalWeightCalculator() {
 
   // Handle copying dimensions from preset
   const handleCopyFromPreset = useCallback((presetDimensions: Record<string, number>) => {
+    console.log('handleCopyFromPreset called with:', presetDimensions)
+    console.log('Current profileType:', profileType)
+    console.log('Current dimensions before:', dimensions)
+    
     const stringDimensions: Record<string, string> = {}
     Object.entries(presetDimensions).forEach(([key, value]) => {
       stringDimensions[key] = value.toString()
     })
+    
+    console.log('Converted stringDimensions:', stringDimensions)
     
     setCalculatorStateImmediate({ 
       ...calculatorState, 
@@ -442,6 +446,8 @@ export default function MetalWeightCalculator() {
     })
     setCustomInput(true)
     setCalculationError(null)
+    
+    console.log('Updated calculator state with new dimensions')
   }, [calculatorState, setCalculatorStateImmediate])
 
   const saveCalculation = async () => {
