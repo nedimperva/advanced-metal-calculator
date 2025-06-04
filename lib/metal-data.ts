@@ -1,0 +1,886 @@
+// Enhanced material database with comprehensive properties
+export interface MaterialGrade {
+  name: string
+  density: number // g/cm³
+  color: string
+  // Mechanical Properties
+  yieldStrength: number // MPa
+  tensileStrength: number // MPa
+  elasticModulus: number // GPa
+  poissonRatio: number
+  hardness?: string // HB, HRC, etc.
+  
+  // Thermal Properties
+  thermalExpansion: number // per °C × 10⁻⁶
+  thermalConductivity: number // W/m·K
+  specificHeat: number // J/kg·K
+  meltingPoint: number // °C
+  
+  // Cost and Availability
+  relativeCost: number // 1-5 scale (1=cheapest, 5=most expensive)
+  availability: 'excellent' | 'good' | 'fair' | 'limited'
+  
+  // Standards and Certifications
+  standards: string[]
+  applications: string[]
+  
+  // Temperature Effects (density changes with temperature)
+  temperatureCoefficient?: number // density change per °C
+}
+
+export const MATERIALS = {
+  steel: {
+    name: "Carbon & Alloy Steels",
+    grades: {
+      // Structural Steels
+      a36: { 
+        name: "A36 Structural Steel", 
+        density: 7.85, 
+        color: "bg-gray-600",
+        yieldStrength: 250,
+        tensileStrength: 400,
+        elasticModulus: 200,
+        poissonRatio: 0.26,
+        hardness: "120 HB",
+        thermalExpansion: 11.7,
+        thermalConductivity: 50,
+        specificHeat: 490,
+        meltingPoint: 1425,
+        relativeCost: 1,
+        availability: 'excellent' as const,
+        standards: ["ASTM A36", "EN S235"],
+        applications: ["Building frames", "Bridges", "General construction"],
+        temperatureCoefficient: -0.0004
+      },
+      a572: { 
+        name: "A572 Grade 50 HSLA", 
+        density: 7.85, 
+        color: "bg-gray-700",
+        yieldStrength: 345,
+        tensileStrength: 450,
+        elasticModulus: 200,
+        poissonRatio: 0.26,
+        hardness: "140 HB",
+        thermalExpansion: 11.7,
+        thermalConductivity: 50,
+        specificHeat: 490,
+        meltingPoint: 1425,
+        relativeCost: 2,
+        availability: 'excellent' as const,
+        standards: ["ASTM A572", "ASTM A992"],
+        applications: ["High-rise buildings", "Heavy construction", "Pressure vessels"],
+        temperatureCoefficient: -0.0004
+      },
+      a992: { 
+        name: "A992 Grade 50 Wide Flange", 
+        density: 7.85, 
+        color: "bg-gray-800",
+        yieldStrength: 345,
+        tensileStrength: 450,
+        elasticModulus: 200,
+        poissonRatio: 0.26,
+        hardness: "140 HB",
+        thermalExpansion: 11.7,
+        thermalConductivity: 50,
+        specificHeat: 490,
+        meltingPoint: 1425,
+        relativeCost: 2,
+        availability: 'excellent' as const,
+        standards: ["ASTM A992"],
+        applications: ["Structural beams", "Building frames", "Infrastructure"],
+        temperatureCoefficient: -0.0004
+      },
+      mild: { 
+        name: "Mild Steel (1018)", 
+        density: 7.87, 
+        color: "bg-gray-500",
+        yieldStrength: 370,
+        tensileStrength: 440,
+        elasticModulus: 205,
+        poissonRatio: 0.29,
+        hardness: "126 HB",
+        thermalExpansion: 11.7,
+        thermalConductivity: 51,
+        specificHeat: 486,
+        meltingPoint: 1415,
+        relativeCost: 1,
+        availability: 'excellent' as const,
+        standards: ["AISI 1018", "SAE 1018"],
+        applications: ["General machining", "Shafts", "Gears"],
+        temperatureCoefficient: -0.0004
+      },
+      
+      // High Strength Steels
+      a514: {
+        name: "A514 High Strength Steel",
+        density: 7.85,
+        color: "bg-red-700",
+        yieldStrength: 690,
+        tensileStrength: 760,
+        elasticModulus: 200,
+        poissonRatio: 0.26,
+        hardness: "230 HB",
+        thermalExpansion: 11.7,
+        thermalConductivity: 50,
+        specificHeat: 490,
+        meltingPoint: 1425,
+        relativeCost: 3,
+        availability: 'good' as const,
+        standards: ["ASTM A514"],
+        applications: ["Cranes", "Earth moving equipment", "Military vehicles"],
+        temperatureCoefficient: -0.0004
+      },
+      
+      // Tool Steels
+      d2: {
+        name: "D2 Tool Steel",
+        density: 7.7,
+        color: "bg-purple-700",
+        yieldStrength: 1700,
+        tensileStrength: 1900,
+        elasticModulus: 210,
+        poissonRatio: 0.27,
+        hardness: "60 HRC",
+        thermalExpansion: 11.2,
+        thermalConductivity: 20,
+        specificHeat: 460,
+        meltingPoint: 1425,
+        relativeCost: 4,
+        availability: 'fair' as const,
+        standards: ["AISI D2", "DIN 1.2379"],
+        applications: ["Dies", "Punches", "Cutting tools"],
+        temperatureCoefficient: -0.0003
+      },
+    },
+  },
+  
+  stainless: {
+    name: "Stainless Steels",
+    grades: {
+      // Austenitic Stainless
+      s304: { 
+        name: "304 Stainless Steel", 
+        density: 8.0, 
+        color: "bg-gray-400",
+        yieldStrength: 215,
+        tensileStrength: 505,
+        elasticModulus: 193,
+        poissonRatio: 0.29,
+        hardness: "201 HB",
+        thermalExpansion: 17.3,
+        thermalConductivity: 16.2,
+        specificHeat: 500,
+        meltingPoint: 1450,
+        relativeCost: 3,
+        availability: 'excellent' as const,
+        standards: ["AISI 304", "EN 1.4301"],
+        applications: ["Food equipment", "Chemical processing", "Architecture"],
+        temperatureCoefficient: -0.0005
+      },
+      s316: { 
+        name: "316 Stainless Steel", 
+        density: 8.0, 
+        color: "bg-gray-300",
+        yieldStrength: 205,
+        tensileStrength: 515,
+        elasticModulus: 193,
+        poissonRatio: 0.29,
+        hardness: "217 HB",
+        thermalExpansion: 16.0,
+        thermalConductivity: 16.2,
+        specificHeat: 500,
+        meltingPoint: 1450,
+        relativeCost: 4,
+        availability: 'excellent' as const,
+        standards: ["AISI 316", "EN 1.4401"],
+        applications: ["Marine", "Pharmaceutical", "Chemical"],
+        temperatureCoefficient: -0.0005
+      },
+      s321: {
+        name: "321 Stainless Steel",
+        density: 8.0,
+        color: "bg-gray-350",
+        yieldStrength: 205,
+        tensileStrength: 515,
+        elasticModulus: 193,
+        poissonRatio: 0.29,
+        hardness: "217 HB",
+        thermalExpansion: 16.6,
+        thermalConductivity: 16.2,
+        specificHeat: 500,
+        meltingPoint: 1450,
+        relativeCost: 4,
+        availability: 'good' as const,
+        standards: ["AISI 321", "EN 1.4541"],
+        applications: ["High temperature", "Exhaust systems", "Heat exchangers"],
+        temperatureCoefficient: -0.0005
+      },
+      
+      // Duplex Stainless
+      s2205: {
+        name: "2205 Duplex Stainless",
+        density: 7.8,
+        color: "bg-indigo-500",
+        yieldStrength: 448,
+        tensileStrength: 620,
+        elasticModulus: 200,
+        poissonRatio: 0.28,
+        hardness: "290 HB",
+        thermalExpansion: 13.7,
+        thermalConductivity: 17,
+        specificHeat: 480,
+        meltingPoint: 1450,
+        relativeCost: 5,
+        availability: 'good' as const,
+        standards: ["ASTM A240", "EN 1.4462"],
+        applications: ["Offshore", "Chemical processing", "Pulp & paper"],
+        temperatureCoefficient: -0.0004
+      },
+      
+      // Martensitic Stainless
+      s420: {
+        name: "420 Stainless Steel",
+        density: 7.8,
+        color: "bg-red-400",
+        yieldStrength: 380,
+        tensileStrength: 650,
+        elasticModulus: 200,
+        poissonRatio: 0.27,
+        hardness: "40 HRC",
+        thermalExpansion: 10.2,
+        thermalConductivity: 25,
+        specificHeat: 460,
+        meltingPoint: 1450,
+        relativeCost: 3,
+        availability: 'good' as const,
+        standards: ["AISI 420", "EN 1.4021"],
+        applications: ["Cutlery", "Valves", "Fasteners"],
+        temperatureCoefficient: -0.0004
+      },
+    },
+  },
+  
+  aluminum: {
+    name: "Aluminum Alloys",
+    grades: {
+      // 6000 Series (Al-Mg-Si)
+      "6061": { 
+        name: "6061-T6 Aluminum", 
+        density: 2.7, 
+        color: "bg-blue-400",
+        yieldStrength: 276,
+        tensileStrength: 310,
+        elasticModulus: 68.9,
+        poissonRatio: 0.33,
+        hardness: "95 HB",
+        thermalExpansion: 23.6,
+        thermalConductivity: 167,
+        specificHeat: 896,
+        meltingPoint: 582,
+        relativeCost: 2,
+        availability: 'excellent' as const,
+        standards: ["ASTM B221", "EN AW-6061"],
+        applications: ["Structural", "Marine", "Automotive"],
+        temperatureCoefficient: -0.0007
+      },
+      "6063": { 
+        name: "6063-T5 Aluminum", 
+        density: 2.7, 
+        color: "bg-blue-500",
+        yieldStrength: 214,
+        tensileStrength: 241,
+        elasticModulus: 68.9,
+        poissonRatio: 0.33,
+        hardness: "73 HB",
+        thermalExpansion: 23.4,
+        thermalConductivity: 201,
+        specificHeat: 896,
+        meltingPoint: 585,
+        relativeCost: 2,
+        availability: 'excellent' as const,
+        standards: ["ASTM B221", "EN AW-6063"],
+        applications: ["Extrusions", "Window frames", "Architectural"],
+        temperatureCoefficient: -0.0007
+      },
+      
+      // 7000 Series (Al-Zn)
+      "7075": { 
+        name: "7075-T6 Aluminum", 
+        density: 2.81, 
+        color: "bg-blue-600",
+        yieldStrength: 503,
+        tensileStrength: 572,
+        elasticModulus: 71.7,
+        poissonRatio: 0.33,
+        hardness: "150 HB",
+        thermalExpansion: 23.2,
+        thermalConductivity: 130,
+        specificHeat: 960,
+        meltingPoint: 477,
+        relativeCost: 3,
+        availability: 'good' as const,
+        standards: ["ASTM B211", "AMS 4045"],
+        applications: ["Aerospace", "High stress", "Aircraft structures"],
+        temperatureCoefficient: -0.0007
+      },
+      
+      // 5000 Series (Al-Mg)
+      "5052": { 
+        name: "5052-H32 Aluminum", 
+        density: 2.68, 
+        color: "bg-blue-300",
+        yieldStrength: 193,
+        tensileStrength: 228,
+        elasticModulus: 70.3,
+        poissonRatio: 0.33,
+        hardness: "60 HB",
+        thermalExpansion: 23.8,
+        thermalConductivity: 138,
+        specificHeat: 903,
+        meltingPoint: 607,
+        relativeCost: 2,
+        availability: 'excellent' as const,
+        standards: ["ASTM B209", "EN AW-5052"],
+        applications: ["Marine", "Fuel tanks", "Sheet metal work"],
+        temperatureCoefficient: -0.0007
+      },
+      "5083": {
+        name: "5083-H111 Aluminum",
+        density: 2.66,
+        color: "bg-cyan-400",
+        yieldStrength: 145,
+        tensileStrength: 290,
+        elasticModulus: 70.3,
+        poissonRatio: 0.33,
+        hardness: "75 HB",
+        thermalExpansion: 23.8,
+        thermalConductivity: 117,
+        specificHeat: 900,
+        meltingPoint: 570,
+        relativeCost: 3,
+        availability: 'good' as const,
+        standards: ["ASTM B209", "EN AW-5083"],
+        applications: ["Marine", "Pressure vessels", "Cryogenic"],
+        temperatureCoefficient: -0.0007
+      },
+      
+      // 2000 Series (Al-Cu)
+      "2024": {
+        name: "2024-T4 Aluminum",
+        density: 2.78,
+        color: "bg-orange-400",
+        yieldStrength: 324,
+        tensileStrength: 469,
+        elasticModulus: 73.1,
+        poissonRatio: 0.33,
+        hardness: "120 HB",
+        thermalExpansion: 22.9,
+        thermalConductivity: 121,
+        specificHeat: 875,
+        meltingPoint: 502,
+        relativeCost: 3,
+        availability: 'good' as const,
+        standards: ["ASTM B211", "AMS 4037"],
+        applications: ["Aircraft", "Aerospace", "Truck wheels"],
+        temperatureCoefficient: -0.0007
+      },
+    },
+  },
+  
+  copper: {
+    name: "Copper & Alloys",
+    grades: {
+      // Pure Copper
+      pure: { 
+        name: "C101 Pure Copper", 
+        density: 8.96, 
+        color: "bg-orange-600",
+        yieldStrength: 33,
+        tensileStrength: 220,
+        elasticModulus: 110,
+        poissonRatio: 0.34,
+        hardness: "40 HB",
+        thermalExpansion: 16.5,
+        thermalConductivity: 401,
+        specificHeat: 385,
+        meltingPoint: 1085,
+        relativeCost: 4,
+        availability: 'excellent' as const,
+        standards: ["ASTM B152", "EN CW004A"],
+        applications: ["Electrical", "Plumbing", "Heat exchangers"],
+        temperatureCoefficient: -0.0005
+      },
+      
+      // Brasses
+      brass360: { 
+        name: "C360 Free Cutting Brass", 
+        density: 8.5, 
+        color: "bg-yellow-600",
+        yieldStrength: 124,
+        tensileStrength: 338,
+        elasticModulus: 101,
+        poissonRatio: 0.33,
+        hardness: "65 HB",
+        thermalExpansion: 20.9,
+        thermalConductivity: 113,
+        specificHeat: 380,
+        meltingPoint: 885,
+        relativeCost: 3,
+        availability: 'excellent' as const,
+        standards: ["ASTM B16", "ASTM B124"],
+        applications: ["Machining", "Gears", "Valves"],
+        temperatureCoefficient: -0.0006
+      },
+      brass260: { 
+        name: "C260 Cartridge Brass", 
+        density: 8.53, 
+        color: "bg-yellow-500",
+        yieldStrength: 76,
+        tensileStrength: 300,
+        elasticModulus: 97,
+        poissonRatio: 0.33,
+        hardness: "55 HB",
+        thermalExpansion: 19.9,
+        thermalConductivity: 120,
+        specificHeat: 380,
+        meltingPoint: 915,
+        relativeCost: 3,
+        availability: 'excellent' as const,
+        standards: ["ASTM B19", "ASTM B36"],
+        applications: ["Cartridge cases", "Springs", "Musical instruments"],
+        temperatureCoefficient: -0.0006
+      },
+      
+      // Bronzes
+      phosphorBronze: { 
+        name: "C510 Phosphor Bronze", 
+        density: 8.8, 
+        color: "bg-orange-700",
+        yieldStrength: 130,
+        tensileStrength: 325,
+        elasticModulus: 103,
+        poissonRatio: 0.33,
+        hardness: "65 HB",
+        thermalExpansion: 17.8,
+        thermalConductivity: 50,
+        specificHeat: 380,
+        meltingPoint: 1000,
+        relativeCost: 4,
+        availability: 'good' as const,
+        standards: ["ASTM B139", "ASTM B103"],
+        applications: ["Springs", "Bearings", "Electrical contacts"],
+        temperatureCoefficient: -0.0005
+      },
+      siliconBronze: {
+        name: "C655 Silicon Bronze",
+        density: 8.53,
+        color: "bg-amber-600",
+        yieldStrength: 170,
+        tensileStrength: 380,
+        elasticModulus: 103,
+        poissonRatio: 0.33,
+        hardness: "75 HB",
+        thermalExpansion: 18.0,
+        thermalConductivity: 42,
+        specificHeat: 377,
+        meltingPoint: 1025,
+        relativeCost: 4,
+        availability: 'good' as const,
+        standards: ["ASTM B98", "ASTM B271"],
+        applications: ["Marine hardware", "Sculpture", "Architecture"],
+        temperatureCoefficient: -0.0005
+      },
+    },
+  },
+  
+  titanium: {
+    name: "Titanium Alloys",
+    grades: {
+      grade2: { 
+        name: "Grade 2 Pure Titanium", 
+        density: 4.51, 
+        color: "bg-purple-500",
+        yieldStrength: 275,
+        tensileStrength: 345,
+        elasticModulus: 103,
+        poissonRatio: 0.34,
+        hardness: "80 HRB",
+        thermalExpansion: 8.6,
+        thermalConductivity: 17,
+        specificHeat: 523,
+        meltingPoint: 1668,
+        relativeCost: 5,
+        availability: 'fair' as const,
+        standards: ["ASTM B265", "AMS 4902"],
+        applications: ["Chemical processing", "Medical implants", "Marine"],
+        temperatureCoefficient: -0.0003
+      },
+      grade5: {
+        name: "Grade 5 Ti-6Al-4V",
+        density: 4.43,
+        color: "bg-purple-600",
+        yieldStrength: 880,
+        tensileStrength: 950,
+        elasticModulus: 114,
+        poissonRatio: 0.34,
+        hardness: "36 HRC",
+        thermalExpansion: 8.6,
+        thermalConductivity: 6.7,
+        specificHeat: 560,
+        meltingPoint: 1604,
+        relativeCost: 5,
+        availability: 'fair' as const,
+        standards: ["ASTM B265", "AMS 4911"],
+        applications: ["Aerospace", "Medical implants", "Racing"],
+        temperatureCoefficient: -0.0003
+      },
+    },
+  },
+  
+  specialty: {
+    name: "Specialty Metals",
+    grades: {
+      // Nickel Alloys
+      inconel625: {
+        name: "Inconel 625",
+        density: 8.44,
+        color: "bg-green-600",
+        yieldStrength: 414,
+        tensileStrength: 827,
+        elasticModulus: 208,
+        poissonRatio: 0.31,
+        hardness: "220 HB",
+        thermalExpansion: 12.8,
+        thermalConductivity: 9.8,
+        specificHeat: 410,
+        meltingPoint: 1350,
+        relativeCost: 5,
+        availability: 'limited' as const,
+        standards: ["AMS 5599", "ASTM B443"],
+        applications: ["Aerospace", "Chemical processing", "Nuclear"],
+        temperatureCoefficient: -0.0004
+      },
+      
+      // Magnesium
+      az31b: {
+        name: "AZ31B Magnesium",
+        density: 1.77,
+        color: "bg-lime-400",
+        yieldStrength: 200,
+        tensileStrength: 260,
+        elasticModulus: 45,
+        poissonRatio: 0.35,
+        hardness: "73 HB",
+        thermalExpansion: 26.0,
+        thermalConductivity: 96,
+        specificHeat: 1050,
+        meltingPoint: 610,
+        relativeCost: 4,
+        availability: 'fair' as const,
+        standards: ["ASTM B90", "ASTM B107"],
+        applications: ["Automotive", "Electronics", "Aerospace"],
+        temperatureCoefficient: -0.0008
+      },
+      
+      // Zinc
+      zinc: { 
+        name: "Commercial Zinc", 
+        density: 7.14, 
+        color: "bg-gray-400",
+        yieldStrength: 21,
+        tensileStrength: 37,
+        elasticModulus: 108,
+        poissonRatio: 0.25,
+        hardness: "30 HB",
+        thermalExpansion: 30.2,
+        thermalConductivity: 116,
+        specificHeat: 388,
+        meltingPoint: 420,
+        relativeCost: 2,
+        availability: 'excellent' as const,
+        standards: ["ASTM B6"],
+        applications: ["Galvanizing", "Die casting", "Batteries"],
+        temperatureCoefficient: -0.0009
+      },
+      
+      // Lead
+      lead: { 
+        name: "Pure Lead", 
+        density: 11.34, 
+        color: "bg-gray-700",
+        yieldStrength: 12,
+        tensileStrength: 17,
+        elasticModulus: 16,
+        poissonRatio: 0.44,
+        hardness: "5 HB",
+        thermalExpansion: 28.9,
+        thermalConductivity: 35,
+        specificHeat: 129,
+        meltingPoint: 327,
+        relativeCost: 3,
+        availability: 'good' as const,
+        standards: ["ASTM B29"],
+        applications: ["Radiation shielding", "Batteries", "Soldering"],
+        temperatureCoefficient: -0.0009
+      },
+    },
+  },
+}
+
+// Profile types with their specific dimension requirements
+export const PROFILES = {
+  basic: {
+    name: "Basic Shapes",
+    types: {
+      rectangular: { name: "Rectangular Bar", dimensions: ["length", "width", "height"] },
+      round: { name: "Round Bar", dimensions: ["diameter"] },
+      square: { name: "Square Bar", dimensions: ["side"] },
+      flat: { name: "Flat Bar", dimensions: ["width", "thickness"] },
+      hexagonal: { name: "Hexagonal Bar", dimensions: ["distance"] },
+    },
+  },
+  beams: {
+    name: "I-Beams & H-Beams",
+    types: {
+      inp: { name: "INP - I-Beam Normal (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
+      ipn: { name: "IPN - I-Beam Narrow (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
+      hea: { name: "HEA - H-Beam Series A (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
+      heb: { name: "HEB - H-Beam Series B (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
+      hec: { name: "HEC - H-Beam Series C (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
+      wBeam: { name: "W-Beam (AISC/American)", dimensions: ["h", "b", "tw", "tf"] },
+    },
+  },
+  channels: {
+    name: "Channels & Angles",
+    types: {
+      unp: { name: "UNP - U-Channel Normal (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
+      uChannel: { name: "C-Channel (American)", dimensions: ["h", "b", "tw", "tf"] },
+      equalAngle: { name: "Equal Angle (L)", dimensions: ["a", "t", "r"] },
+      unequalAngle: { name: "Unequal Angle (L)", dimensions: ["a", "b", "t", "r"] },
+    },
+  },
+  hollow: {
+    name: "Hollow Sections",
+    types: {
+      rhs: { name: "RHS - Rectangular Hollow Section", dimensions: ["h", "b", "t"] },
+      shs: { name: "SHS - Square Hollow Section", dimensions: ["a", "t"] },
+      chs: { name: "CHS - Circular Hollow Section", dimensions: ["od", "t"] },
+      pipe: { name: "Pipe (Schedule)", dimensions: ["od", "wt"] },
+    },
+  },
+  special: {
+    name: "Special Sections",
+    types: {
+      tBeam: { name: "T-Beam", dimensions: ["h", "b", "tw", "tf"] },
+      bulbFlat: { name: "Bulb Flat", dimensions: ["h", "b", "t"] },
+      halfRound: { name: "Half Round", dimensions: ["d", "t"] },
+    },
+  },
+}
+
+// Standard sizes for common profiles
+export const STANDARD_SIZES = {
+  // European I-Beams Normal Profile
+  inp: [
+    { designation: "INP 80", dimensions: { h: "80", b: "42", tw: "3.9", tf: "5.9", r: "3.9" } },
+    { designation: "INP 100", dimensions: { h: "100", b: "50", tw: "4.5", tf: "6.8", r: "4.5" } },
+    { designation: "INP 120", dimensions: { h: "120", b: "58", tw: "5.1", tf: "7.7", r: "5.1" } },
+    { designation: "INP 140", dimensions: { h: "140", b: "66", tw: "5.7", tf: "8.6", r: "5.7" } },
+    { designation: "INP 160", dimensions: { h: "160", b: "74", tw: "6.3", tf: "9.5", r: "6.3" } },
+    { designation: "INP 180", dimensions: { h: "180", b: "82", tw: "6.9", tf: "10.4", r: "6.9" } },
+    { designation: "INP 200", dimensions: { h: "200", b: "90", tw: "7.5", tf: "11.3", r: "7.5" } },
+    { designation: "INP 220", dimensions: { h: "220", b: "98", tw: "8.1", tf: "12.2", r: "8.1" } },
+    { designation: "INP 240", dimensions: { h: "240", b: "106", tw: "8.7", tf: "13.1", r: "8.7" } },
+    { designation: "INP 260", dimensions: { h: "260", b: "113", tw: "9.4", tf: "14.1", r: "9.4" } },
+    { designation: "INP 280", dimensions: { h: "280", b: "119", tw: "10.1", tf: "15.2", r: "10.1" } },
+    { designation: "INP 300", dimensions: { h: "300", b: "125", tw: "10.8", tf: "16.2", r: "10.8" } },
+  ],
+  // European I-Beams Narrow Profile  
+  ipn: [
+    { designation: "IPN 80", dimensions: { h: "80", b: "42", tw: "3.9", tf: "5.9", r: "3.9" } },
+    { designation: "IPN 100", dimensions: { h: "100", b: "50", tw: "4.5", tf: "6.8", r: "4.5" } },
+    { designation: "IPN 120", dimensions: { h: "120", b: "58", tw: "5.1", tf: "7.7", r: "5.1" } },
+    { designation: "IPN 140", dimensions: { h: "140", b: "66", tw: "5.7", tf: "8.6", r: "5.7" } },
+    { designation: "IPN 160", dimensions: { h: "160", b: "74", tw: "6.3", tf: "9.5", r: "6.3" } },
+    { designation: "IPN 180", dimensions: { h: "180", b: "82", tw: "6.9", tf: "10.4", r: "6.9" } },
+    { designation: "IPN 200", dimensions: { h: "200", b: "90", tw: "7.5", tf: "11.3", r: "7.5" } },
+    { designation: "IPN 220", dimensions: { h: "220", b: "98", tw: "8.1", tf: "12.2", r: "8.1" } },
+    { designation: "IPN 240", dimensions: { h: "240", b: "106", tw: "8.7", tf: "13.1", r: "8.7" } },
+    { designation: "IPN 260", dimensions: { h: "260", b: "113", tw: "9.4", tf: "14.1", r: "9.4" } },
+    { designation: "IPN 280", dimensions: { h: "280", b: "119", tw: "10.1", tf: "15.2", r: "10.1" } },
+    { designation: "IPN 300", dimensions: { h: "300", b: "125", tw: "10.8", tf: "16.2", r: "10.8" } },
+  ],
+  // European H-Beams Series A (Lighter)
+  hea: [
+    { designation: "HEA 100", dimensions: { h: "96", b: "100", tw: "5", tf: "8", r: "12" } },
+    { designation: "HEA 120", dimensions: { h: "114", b: "120", tw: "5", tf: "8", r: "12" } },
+    { designation: "HEA 140", dimensions: { h: "133", b: "140", tw: "5.5", tf: "8.5", r: "12" } },
+    { designation: "HEA 160", dimensions: { h: "152", b: "160", tw: "6", tf: "9", r: "15" } },
+    { designation: "HEA 180", dimensions: { h: "171", b: "180", tw: "6", tf: "9.5", r: "15" } },
+    { designation: "HEA 200", dimensions: { h: "190", b: "200", tw: "6.5", tf: "10", r: "18" } },
+    { designation: "HEA 220", dimensions: { h: "210", b: "220", tw: "7", tf: "11", r: "18" } },
+    { designation: "HEA 240", dimensions: { h: "230", b: "240", tw: "7.5", tf: "12", r: "21" } },
+    { designation: "HEA 260", dimensions: { h: "250", b: "260", tw: "7.5", tf: "12.5", r: "24" } },
+    { designation: "HEA 280", dimensions: { h: "270", b: "280", tw: "8", tf: "13", r: "24" } },
+    { designation: "HEA 300", dimensions: { h: "290", b: "300", tw: "8.5", tf: "14", r: "27" } },
+    { designation: "HEA 320", dimensions: { h: "310", b: "300", tw: "9", tf: "15.5", r: "27" } },
+    { designation: "HEA 340", dimensions: { h: "330", b: "300", tw: "9.5", tf: "16.5", r: "27" } },
+    { designation: "HEA 360", dimensions: { h: "350", b: "300", tw: "10", tf: "17.5", r: "27" } },
+    { designation: "HEA 400", dimensions: { h: "390", b: "300", tw: "11", tf: "19", r: "27" } },
+    { designation: "HEA 450", dimensions: { h: "440", b: "300", tw: "11.5", tf: "21", r: "27" } },
+    { designation: "HEA 500", dimensions: { h: "490", b: "300", tw: "12", tf: "23", r: "27" } },
+    { designation: "HEA 550", dimensions: { h: "540", b: "300", tw: "12.5", tf: "24", r: "27" } },
+    { designation: "HEA 600", dimensions: { h: "590", b: "300", tw: "13", tf: "25", r: "27" } },
+  ],
+  // European H-Beams Series B (Heavier)
+  heb: [
+    { designation: "HEB 100", dimensions: { h: "100", b: "100", tw: "6", tf: "10", r: "12" } },
+    { designation: "HEB 120", dimensions: { h: "120", b: "120", tw: "6.5", tf: "11", r: "12" } },
+    { designation: "HEB 140", dimensions: { h: "140", b: "140", tw: "7", tf: "12", r: "12" } },
+    { designation: "HEB 160", dimensions: { h: "160", b: "160", tw: "8", tf: "13", r: "15" } },
+    { designation: "HEB 180", dimensions: { h: "180", b: "180", tw: "8.5", tf: "14", r: "15" } },
+    { designation: "HEB 200", dimensions: { h: "200", b: "200", tw: "9", tf: "15", r: "18" } },
+    { designation: "HEB 220", dimensions: { h: "220", b: "220", tw: "9.5", tf: "16", r: "18" } },
+    { designation: "HEB 240", dimensions: { h: "240", b: "240", tw: "10", tf: "17", r: "21" } },
+    { designation: "HEB 260", dimensions: { h: "260", b: "260", tw: "10", tf: "17.5", r: "24" } },
+    { designation: "HEB 280", dimensions: { h: "280", b: "280", tw: "10.5", tf: "18", r: "24" } },
+    { designation: "HEB 300", dimensions: { h: "300", b: "300", tw: "11", tf: "19", r: "27" } },
+    { designation: "HEB 320", dimensions: { h: "320", b: "300", tw: "11.5", tf: "20.5", r: "27" } },
+    { designation: "HEB 340", dimensions: { h: "340", b: "300", tw: "12", tf: "21.5", r: "27" } },
+    { designation: "HEB 360", dimensions: { h: "360", b: "300", tw: "12.5", tf: "22.5", r: "27" } },
+    { designation: "HEB 400", dimensions: { h: "400", b: "300", tw: "13.5", tf: "24", r: "27" } },
+    { designation: "HEB 450", dimensions: { h: "450", b: "300", tw: "14", tf: "26", r: "27" } },
+    { designation: "HEB 500", dimensions: { h: "500", b: "300", tw: "14.5", tf: "28", r: "27" } },
+    { designation: "HEB 550", dimensions: { h: "550", b: "300", tw: "15", tf: "29", r: "27" } },
+    { designation: "HEB 600", dimensions: { h: "600", b: "300", tw: "15.5", tf: "30", r: "27" } },
+  ],
+  // European U-Channels Normal Profile
+  unp: [
+    { designation: "UNP 50", dimensions: { h: "50", b: "38", tw: "5", tf: "7", r: "4.5" } },
+    { designation: "UNP 65", dimensions: { h: "65", b: "42", tw: "5.5", tf: "7.5", r: "5.5" } },
+    { designation: "UNP 80", dimensions: { h: "80", b: "45", tw: "6", tf: "8", r: "6" } },
+    { designation: "UNP 100", dimensions: { h: "100", b: "50", tw: "6", tf: "8.5", r: "7" } },
+    { designation: "UNP 120", dimensions: { h: "120", b: "55", tw: "7", tf: "9", r: "7" } },
+    { designation: "UNP 140", dimensions: { h: "140", b: "60", tw: "7", tf: "10", r: "7" } },
+    { designation: "UNP 160", dimensions: { h: "160", b: "65", tw: "7.5", tf: "10.5", r: "7.5" } },
+    { designation: "UNP 180", dimensions: { h: "180", b: "70", tw: "8", tf: "11", r: "8" } },
+    { designation: "UNP 200", dimensions: { h: "200", b: "75", tw: "8.5", tf: "11.5", r: "8.5" } },
+    { designation: "UNP 220", dimensions: { h: "220", b: "80", tw: "9", tf: "12.5", r: "9" } },
+    { designation: "UNP 240", dimensions: { h: "240", b: "85", tw: "9.5", tf: "13", r: "9.5" } },
+    { designation: "UNP 260", dimensions: { h: "260", b: "90", tw: "10", tf: "14", r: "10" } },
+    { designation: "UNP 280", dimensions: { h: "280", b: "95", tw: "10", tf: "15", r: "10" } },
+    { designation: "UNP 300", dimensions: { h: "300", b: "100", tw: "10", tf: "16", r: "10" } },
+    { designation: "UNP 320", dimensions: { h: "320", b: "100", tw: "14", tf: "17.5", r: "12" } },
+    { designation: "UNP 350", dimensions: { h: "350", b: "100", tw: "14", tf: "16", r: "12" } },
+    { designation: "UNP 380", dimensions: { h: "380", b: "102", tw: "13.5", tf: "16", r: "12" } },
+    { designation: "UNP 400", dimensions: { h: "400", b: "110", tw: "14", tf: "18", r: "12" } },
+  ],
+  // American W-Beams (for reference)
+  wBeam: [
+    { designation: "W4×13", dimensions: { h: "106.7", b: "103.1", tw: "7.1", tf: "10.9" } },
+    { designation: "W6×15", dimensions: { h: "152.4", b: "152.4", tw: "5.8", tf: "8.1" } },
+    { designation: "W8×21", dimensions: { h: "210.1", b: "133.4", tw: "6.4", tf: "10.2" } },
+    { designation: "W10×30", dimensions: { h: "264.9", b: "147.3", tw: "7.5", tf: "13.5" } },
+    { designation: "W12×40", dimensions: { h: "310.4", b: "165.1", tw: "8.0", tf: "14.6" } },
+    { designation: "W14×53", dimensions: { h: "355.6", b: "254.0", tw: "9.4", tf: "15.0" } },
+    { designation: "W16×57", dimensions: { h: "415.8", b: "178.8", tw: "10.3", tf: "16.5" } },
+    { designation: "W18×76", dimensions: { h: "463.6", b: "191.3", tw: "11.6", tf: "19.6" } },
+    { designation: "W21×93", dimensions: { h: "539.2", b: "211.1", tw: "13.1", tf: "21.7" } },
+    { designation: "W24×104", dimensions: { h: "609.6", b: "324.4", tw: "13.0", tf: "20.6" } },
+  ],
+  // Equal Angles
+  equalAngle: [
+    { designation: "L20×20×3", dimensions: { a: "20", t: "3", r: "3.5" } },
+    { designation: "L25×25×3", dimensions: { a: "25", t: "3", r: "3.5" } },
+    { designation: "L30×30×3", dimensions: { a: "30", t: "3", r: "5" } },
+    { designation: "L35×35×4", dimensions: { a: "35", t: "4", r: "5" } },
+    { designation: "L40×40×4", dimensions: { a: "40", t: "4", r: "6" } },
+    { designation: "L45×45×4.5", dimensions: { a: "45", t: "4.5", r: "7" } },
+    { designation: "L50×50×5", dimensions: { a: "50", t: "5", r: "7" } },
+    { designation: "L60×60×6", dimensions: { a: "60", t: "6", r: "8" } },
+    { designation: "L70×70×7", dimensions: { a: "70", t: "7", r: "9" } },
+    { designation: "L80×80×8", dimensions: { a: "80", t: "8", r: "10" } },
+    { designation: "L90×90×9", dimensions: { a: "90", t: "9", r: "11" } },
+    { designation: "L100×100×10", dimensions: { a: "100", t: "10", r: "12" } },
+    { designation: "L120×120×12", dimensions: { a: "120", t: "12", r: "13" } },
+    { designation: "L150×150×15", dimensions: { a: "150", t: "15", r: "16" } },
+    { designation: "L200×200×20", dimensions: { a: "200", t: "20", r: "18" } },
+  ],
+  // Unequal Angles
+  unequalAngle: [
+    { designation: "L30×20×3", dimensions: { a: "30", b: "20", t: "3", r: "5" } },
+    { designation: "L40×25×4", dimensions: { a: "40", b: "25", t: "4", r: "6" } },
+    { designation: "L45×30×4.5", dimensions: { a: "45", b: "30", t: "4.5", r: "7" } },
+    { designation: "L50×30×5", dimensions: { a: "50", b: "30", t: "5", r: "7" } },
+    { designation: "L60×40×6", dimensions: { a: "60", b: "40", t: "6", r: "8" } },
+    { designation: "L70×45×6.5", dimensions: { a: "70", b: "45", t: "6.5", r: "9" } },
+    { designation: "L80×60×7", dimensions: { a: "80", b: "60", t: "7", r: "10" } },
+    { designation: "L100×65×7", dimensions: { a: "100", b: "65", t: "7", r: "12" } },
+    { designation: "L100×75×8", dimensions: { a: "100", b: "75", t: "8", r: "12" } },
+    { designation: "L120×80×8", dimensions: { a: "120", b: "80", t: "8", r: "13" } },
+    { designation: "L150×90×10", dimensions: { a: "150", b: "90", t: "10", r: "16" } },
+    { designation: "L150×100×12", dimensions: { a: "150", b: "100", t: "12", r: "16" } },
+    { designation: "L200×100×10", dimensions: { a: "200", b: "100", t: "10", r: "18" } },
+    { designation: "L200×150×15", dimensions: { a: "200", b: "150", t: "15", r: "18" } },
+  ],
+  // Rectangular Hollow Sections
+  rhs: [
+    { designation: "RHS 40×20×2.5", dimensions: { h: "40", b: "20", t: "2.5" } },
+    { designation: "RHS 50×25×2.5", dimensions: { h: "50", b: "25", t: "2.5" } },
+    { designation: "RHS 60×40×3", dimensions: { h: "60", b: "40", t: "3" } },
+    { designation: "RHS 80×40×4", dimensions: { h: "80", b: "40", t: "4" } },
+    { designation: "RHS 100×50×4", dimensions: { h: "100", b: "50", t: "4" } },
+    { designation: "RHS 120×60×5", dimensions: { h: "120", b: "60", t: "5" } },
+    { designation: "RHS 140×80×5", dimensions: { h: "140", b: "80", t: "5" } },
+    { designation: "RHS 160×80×6", dimensions: { h: "160", b: "80", t: "6" } },
+    { designation: "RHS 200×100×6", dimensions: { h: "200", b: "100", t: "6" } },
+    { designation: "RHS 250×150×8", dimensions: { h: "250", b: "150", t: "8" } },
+    { designation: "RHS 300×200×10", dimensions: { h: "300", b: "200", t: "10" } },
+  ],
+  // Square Hollow Sections
+  shs: [
+    { designation: "SHS 20×20×2", dimensions: { a: "20", t: "2" } },
+    { designation: "SHS 25×25×2.5", dimensions: { a: "25", t: "2.5" } },
+    { designation: "SHS 30×30×3", dimensions: { a: "30", t: "3" } },
+    { designation: "SHS 40×40×3", dimensions: { a: "40", t: "3" } },
+    { designation: "SHS 50×50×4", dimensions: { a: "50", t: "4" } },
+    { designation: "SHS 60×60×4", dimensions: { a: "60", t: "4" } },
+    { designation: "SHS 80×80×5", dimensions: { a: "80", t: "5" } },
+    { designation: "SHS 100×100×6", dimensions: { a: "100", t: "6" } },
+    { designation: "SHS 120×120×8", dimensions: { a: "120", t: "8" } },
+    { designation: "SHS 150×150×10", dimensions: { a: "150", t: "10" } },
+    { designation: "SHS 200×200×12", dimensions: { a: "200", t: "12" } },
+  ],
+  // Circular Hollow Sections
+  chs: [
+    { designation: "CHS 21.3×2.3", dimensions: { od: "21.3", t: "2.3" } },
+    { designation: "CHS 26.9×2.3", dimensions: { od: "26.9", t: "2.3" } },
+    { designation: "CHS 33.7×2.6", dimensions: { od: "33.7", t: "2.6" } },
+    { designation: "CHS 42.4×2.6", dimensions: { od: "42.4", t: "2.6" } },
+    { designation: "CHS 48.3×2.6", dimensions: { od: "48.3", t: "2.6" } },
+    { designation: "CHS 60.3×2.9", dimensions: { od: "60.3", t: "2.9" } },
+    { designation: "CHS 76.1×2.9", dimensions: { od: "76.1", t: "2.9" } },
+    { designation: "CHS 88.9×3.2", dimensions: { od: "88.9", t: "3.2" } },
+    { designation: "CHS 101.6×3.6", dimensions: { od: "101.6", t: "3.6" } },
+    { designation: "CHS 114.3×3.6", dimensions: { od: "114.3", t: "3.6" } },
+    { designation: "CHS 139.7×4.0", dimensions: { od: "139.7", t: "4.0" } },
+    { designation: "CHS 168.3×4.0", dimensions: { od: "168.3", t: "4.0" } },
+    { designation: "CHS 193.7×5.0", dimensions: { od: "193.7", t: "5.0" } },
+    { designation: "CHS 219.1×6.3", dimensions: { od: "219.1", t: "6.3" } },
+    { designation: "CHS 273.0×6.3", dimensions: { od: "273.0", t: "6.3" } },
+  ],
+  // Pipes (Schedule)
+  pipe: [
+    { designation: '1/2" Sch 40', dimensions: { od: "21.3", wt: "2.77" } },
+    { designation: '3/4" Sch 40', dimensions: { od: "26.7", wt: "2.87" } },
+    { designation: '1" Sch 40', dimensions: { od: "33.4", wt: "3.38" } },
+    { designation: '1-1/2" Sch 40', dimensions: { od: "48.3", wt: "3.68" } },
+    { designation: '2" Sch 40', dimensions: { od: "60.3", wt: "3.91" } },
+    { designation: '3" Sch 40', dimensions: { od: "88.9", wt: "5.49" } },
+    { designation: '4" Sch 40', dimensions: { od: "114.3", wt: "6.02" } },
+    { designation: '6" Sch 40', dimensions: { od: "168.3", wt: "7.11" } },
+    { designation: '8" Sch 40', dimensions: { od: "219.1", wt: "8.18" } },
+    { designation: '10" Sch 40', dimensions: { od: "273.0", wt: "9.27" } },
+    { designation: '12" Sch 40', dimensions: { od: "323.8", wt: "10.31" } },
+  ],
+}
