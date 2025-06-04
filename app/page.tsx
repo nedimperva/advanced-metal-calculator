@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,12 +9,43 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Calculator, Save, Share2, History, Download, ChevronRight } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, Undo, Redo, BarChart3, Layers } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { useDebouncedUndoRedo } from "@/hooks/use-undo-redo"
 import { cn } from "@/lib/utils"
+import { animations, animationPresets, safeAnimation, createStaggeredAnimation } from "@/lib/animations"
 import ProfileSelector from "@/components/profile-selector"
 import MaterialSelector from "@/components/material-selector"
+import { ErrorBoundary } from "@/components/error-boundary"
+import { CalculationBreakdown } from "@/components/calculation-breakdown"
+import { CalculationComparison } from "@/components/calculation-comparison"
+import { 
+  LoadingSpinner, 
+  CalculationLoading, 
+  MaterialSelectorSkeleton, 
+  ResultsSkeleton, 
+  DimensionInputsSkeleton 
+} from "@/components/loading-states"
+import { 
+  EnhancedInput, 
+  EnhancedInputGroup, 
+  ValidationSummary 
+} from "@/components/enhanced-input"
+import { 
+  FractionInput,
+  DimensionPresets,
+  SmartSuggestions
+} from "@/components/advanced-input"
+import { 
+  validateCalculationInputs, 
+  validateTemperature, 
+  createError, 
+  ErrorType,
+  type ValidationResult 
+} from "@/lib/validation"
 import { MATERIALS, PROFILES, STANDARD_SIZES } from "@/lib/metal-data"
 import { LENGTH_UNITS, WEIGHT_UNITS } from "@/lib/unit-conversions"
 import { 
@@ -27,29 +58,112 @@ import type { Calculation, ProfileData, MaterialData, StructuralProperties } fro
 import type { MaterialGrade } from "@/lib/metal-data"
 import BackgroundElements from "@/components/background-elements"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { MobileEnhancedInput, useDimensionSuggestions } from "@/components/mobile-enhanced-input"
+import { SwipeTabs } from "@/components/swipe-tabs"
 
 export default function MetalWeightCalculator() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
 
+  // State for undo/redo
+  interface CalculatorState {
+    profileCategory: string
+    profileType: string
+    standardSize: string
+    material: string
+    grade: string
+    dimensions: Record<string, string>
+    length: string
+    lengthUnit: string
+    weightUnit: string
+    operatingTemperature: string
+    useTemperatureEffects: boolean
+  }
+
+  const initialState: CalculatorState = {
+    profileCategory: "beams",
+    profileType: "hea",
+    standardSize: "",
+    material: "steel",
+    grade: "a36",
+    dimensions: {},
+    length: "1000",
+    lengthUnit: "mm",
+    weightUnit: "kg",
+    operatingTemperature: "20",
+    useTemperatureEffects: false
+  }
+
+  const {
+    state: calculatorState,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    set: setCalculatorState,
+    setImmediate: setCalculatorStateImmediate
+  } = useDebouncedUndoRedo(initialState, 1000)
+
+  // Profile selection state (derived from undo/redo state)
+  const profileCategory = calculatorState.profileCategory
+  const profileType = calculatorState.profileType
+  const standardSize = calculatorState.standardSize
+  const material = calculatorState.material
+  const grade = calculatorState.grade
+  const dimensions = calculatorState.dimensions
+  const length = calculatorState.length
+  const lengthUnit = calculatorState.lengthUnit
+  const weightUnit = calculatorState.weightUnit
+  const operatingTemperature = calculatorState.operatingTemperature
+  const useTemperatureEffects = calculatorState.useTemperatureEffects
+
+  // Helper functions to update state
+  const setProfileCategory = useCallback((value: string) => {
+    setCalculatorState({ ...calculatorState, profileCategory: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setProfileType = useCallback((value: string) => {
+    setCalculatorState({ ...calculatorState, profileType: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setStandardSize = useCallback((value: string) => {
+    setCalculatorState({ ...calculatorState, standardSize: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setMaterial = useCallback((value: string) => {
+    setCalculatorState({ ...calculatorState, material: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setGrade = useCallback((value: string) => {
+    setCalculatorState({ ...calculatorState, grade: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setDimensions = useCallback((value: Record<string, string>) => {
+    setCalculatorState({ ...calculatorState, dimensions: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setLength = useCallback((value: string) => {
+    setCalculatorState({ ...calculatorState, length: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setLengthUnit = useCallback((value: string) => {
+    setCalculatorState({ ...calculatorState, lengthUnit: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setWeightUnit = useCallback((value: string) => {
+    setCalculatorState({ ...calculatorState, weightUnit: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setOperatingTemperature = useCallback((value: string) => {
+    setCalculatorState({ ...calculatorState, operatingTemperature: value })
+  }, [calculatorState, setCalculatorState])
+
+  const setUseTemperatureEffects = useCallback((value: boolean) => {
+    setCalculatorState({ ...calculatorState, useTemperatureEffects: value })
+  }, [calculatorState, setCalculatorState])
+
   // Profile selection state
-  const [profileCategory, setProfileCategory] = useState("beams")
-  const [profileType, setProfileType] = useState("hea")
   const [selectedProfile, setSelectedProfile] = useState<ProfileData | null>(null)
-  const [standardSize, setStandardSize] = useState("")
-
-  // Material selection state
-  const [material, setMaterial] = useState("steel")
-  const [grade, setGrade] = useState("a36")
   const [selectedMaterial, setSelectedMaterial] = useState<MaterialGrade | null>(null)
-
-  // Units and Temperature
-  const [lengthUnit, setLengthUnit] = useState("mm")
-  const [weightUnit, setWeightUnit] = useState("kg")
-  const [operatingTemperature, setOperatingTemperature] = useState<string>("20")
-  const [useTemperatureEffects, setUseTemperatureEffects] = useState(false)
-
-  // Dimensions
-  const [dimensions, setDimensions] = useState<Record<string, string>>({})
   const [customInput, setCustomInput] = useState(false)
 
   // Enhanced Results - using StructuralProperties
@@ -57,72 +171,155 @@ export default function MetalWeightCalculator() {
   const [weight, setWeight] = useState(0)
   const [crossSectionalArea, setCrossSectionalArea] = useState(0)
   const [volume, setVolume] = useState(0)
-  const [length, setLength] = useState("1000")
 
   // History
   const [calculations, setCalculations] = useState<Calculation[]>([])
   const [activeTab, setActiveTab] = useState("calculator")
 
+  // Comparison state
+  const [comparisonCalculations, setComparisonCalculations] = useState<Set<string>>(new Set())
+
+  // Error handling and validation state
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([])
+  const [isCalculating, setIsCalculating] = useState(false)
+  const [isLoadingMaterials, setIsLoadingMaterials] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [calculationError, setCalculationError] = useState<string | null>(null)
+  const [lastValidation, setLastValidation] = useState<ValidationResult>({
+    isValid: true,
+    errors: [],
+    warnings: []
+  })
+
   // Load saved calculations on mount
   useEffect(() => {
-    const saved = localStorage.getItem("metal-calculations")
-    if (saved) {
+    const loadSavedCalculations = async () => {
       try {
-        const parsed = JSON.parse(saved).map((calc: any) => ({
-          ...calc,
-          timestamp: new Date(calc.timestamp),
-        }))
-        setCalculations(parsed)
+        const saved = localStorage.getItem("metal-calculations")
+        if (saved) {
+          const parsed = JSON.parse(saved).map((calc: any) => ({
+            ...calc,
+            timestamp: new Date(calc.timestamp),
+          }))
+          setCalculations(parsed)
+        }
       } catch (error) {
         console.error("Error loading saved calculations:", error)
+        toast({
+          title: "Loading Error",
+          description: "Failed to load saved calculations.",
+          variant: "destructive",
+        })
       }
     }
+
+    loadSavedCalculations()
   }, [])
 
   // Update selected profile and material when type/grade changes
   useEffect(() => {
-    const profile =
-      PROFILES[profileCategory as keyof typeof PROFILES]?.types[
-        profileType as keyof (typeof PROFILES)[keyof typeof PROFILES]["types"]
-      ]
-    setSelectedProfile(profile || null)
+    try {
+      const profile =
+        PROFILES[profileCategory as keyof typeof PROFILES]?.types[
+          profileType as keyof (typeof PROFILES)[keyof typeof PROFILES]["types"]
+        ]
+      setSelectedProfile(profile || null)
 
-    // Reset standard size when profile changes
-    setStandardSize("")
+      // Reset standard size when profile changes
+      setStandardSize("")
 
-    // Reset custom dimensions when profile changes
-    if (!customInput) {
-      setDimensions({})
+      // Reset custom dimensions when profile changes
+      if (!customInput) {
+        setDimensions({})
+      }
+
+      // Clear calculation error when profile changes
+      setCalculationError(null)
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      setCalculationError("Failed to load profile data")
     }
   }, [profileCategory, profileType, customInput])
 
   useEffect(() => {
-    const materialData =
-      MATERIALS[material as keyof typeof MATERIALS]?.grades[
-        grade as keyof (typeof MATERIALS)[keyof typeof MATERIALS]["grades"]
-      ] as MaterialGrade | undefined
-    setSelectedMaterial(materialData || null)
+    try {
+      setIsLoadingMaterials(true)
+      const materialData =
+        MATERIALS[material as keyof typeof MATERIALS]?.grades[
+          grade as keyof (typeof MATERIALS)[keyof typeof MATERIALS]["grades"]
+        ] as MaterialGrade | undefined
+      setSelectedMaterial(materialData || null)
+      setCalculationError(null)
+    } catch (error) {
+      console.error("Error updating material:", error)
+      setCalculationError("Failed to load material data")
+    } finally {
+      setIsLoadingMaterials(false)
+    }
   }, [material, grade])
 
   // Update dimensions when standard size changes
   useEffect(() => {
     if (standardSize && selectedProfile) {
-      const sizes = STANDARD_SIZES[profileType as keyof typeof STANDARD_SIZES]
-      const selectedSizeData = sizes?.find((size) => size.designation === standardSize)
+      try {
+        const sizes = STANDARD_SIZES[profileType as keyof typeof STANDARD_SIZES]
+        const selectedSizeData = sizes?.find((size) => size.designation === standardSize)
 
-      if (selectedSizeData) {
-        setDimensions(selectedSizeData.dimensions)
-        setCustomInput(false)
+        if (selectedSizeData) {
+          setDimensions(selectedSizeData.dimensions)
+          setCustomInput(false)
+          setCalculationError(null)
+        }
+      } catch (error) {
+        console.error("Error updating standard size:", error)
+        setCalculationError("Failed to load standard size data")
       }
     }
   }, [standardSize, profileType, selectedProfile])
 
-  // Enhanced calculation using structural properties with temperature effects
-  useEffect(() => {
-    if (selectedProfile && selectedMaterial) {
+  // Validate inputs
+  const validateInputs = useCallback(() => {
+    if (!selectedProfile || !selectedMaterial) {
+      return { isValid: false, errors: ["Please select a profile and material"], warnings: [] }
+    }
+
+    const validation = validateCalculationInputs(
+      profileType,
+      dimensions,
+      length,
+      selectedMaterial,
+      operatingTemperature
+    )
+
+    setLastValidation(validation)
+    setValidationErrors(validation.errors)
+    setValidationWarnings(validation.warnings)
+
+    return validation
+  }, [profileType, dimensions, length, selectedMaterial, operatingTemperature, selectedProfile])
+
+  // Enhanced calculation with error handling
+  const performCalculation = useCallback(async () => {
+    if (!selectedProfile || !selectedMaterial) return
+
+    setIsCalculating(true)
+    setCalculationError(null)
+
+    try {
+      // Validate inputs first
+      const validation = validateInputs()
+      if (!validation.isValid) {
+        setIsCalculating(false)
+        return
+      }
+
       const lengthValue = Number.parseFloat(length) || 0
       const lengthFactor = LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].factor
       const tempValue = Number.parseFloat(operatingTemperature) || 20
+
+      // Simulate calculation delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 150))
 
       // Calculate enhanced structural properties with optional temperature effects
       const properties = useTemperatureEffects 
@@ -141,6 +338,10 @@ export default function MetalWeightCalculator() {
             lengthFactor
           )
       
+      if (!properties || properties.area <= 0) {
+        throw new Error("Invalid calculation result - check input dimensions")
+      }
+
       setStructuralProperties(properties)
       setCrossSectionalArea(properties.area)
 
@@ -158,66 +359,145 @@ export default function MetalWeightCalculator() {
         WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].factor,
       )
 
+      if (calculatedWeight <= 0) {
+        throw new Error("Invalid weight calculation - check input values")
+      }
+
       setWeight(calculatedWeight)
-    } else {
+
+    } catch (error) {
+      console.error("Calculation error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Unknown calculation error"
+      setCalculationError(errorMessage)
       setStructuralProperties(null)
       setCrossSectionalArea(0)
       setVolume(0)
       setWeight(0)
-    }
-  }, [dimensions, length, lengthUnit, weightUnit, selectedProfile, selectedMaterial, profileType, operatingTemperature, useTemperatureEffects])
 
-  const updateDimension = (key: string, value: string) => {
-    setDimensions((prev) => ({ ...prev, [key]: value }))
+      toast({
+        title: "Calculation Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsCalculating(false)
+    }
+  }, [
+    selectedProfile, 
+    selectedMaterial, 
+    dimensions, 
+    length, 
+    lengthUnit, 
+    weightUnit, 
+    profileType, 
+    operatingTemperature, 
+    useTemperatureEffects, 
+    validateInputs
+  ])
+
+  // Trigger calculation when key inputs change - fix circular dependency
+  useEffect(() => {
+    // Only trigger calculation if we have the necessary data
+    if (selectedProfile && selectedMaterial && Object.keys(dimensions).length > 0) {
+      performCalculation()
+    }
+  }, [selectedProfile, selectedMaterial, dimensions, length, lengthUnit, weightUnit, operatingTemperature, useTemperatureEffects, profileType])
+
+  // Additional calculation trigger when performCalculation dependencies change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (selectedProfile && selectedMaterial && length && Object.keys(dimensions).length > 0) {
+        performCalculation()
+      }
+    }, 100)
+    
+    return () => clearTimeout(timeoutId)
+  }, [performCalculation])
+
+  const updateDimension = useCallback((key: string, value: string) => {
+    const newDimensions = { ...dimensions, [key]: value }
+    
+    // Update state immediately for better UX
+    setCalculatorStateImmediate({ ...calculatorState, dimensions: newDimensions })
+    
     // If user is editing dimensions, switch to custom input mode
     if (!customInput) {
       setCustomInput(true)
-      setStandardSize("")
+      setCalculatorStateImmediate({ ...calculatorState, standardSize: "", dimensions: newDimensions })
     }
-  }
+    setCalculationError(null)
+  }, [dimensions, calculatorState, setCalculatorStateImmediate, customInput])
 
-  const saveCalculation = () => {
+  // Handle copying dimensions from preset
+  const handleCopyFromPreset = useCallback((presetDimensions: Record<string, number>) => {
+    const stringDimensions: Record<string, string> = {}
+    Object.entries(presetDimensions).forEach(([key, value]) => {
+      stringDimensions[key] = value.toString()
+    })
+    
+    setCalculatorStateImmediate({ 
+      ...calculatorState, 
+      dimensions: stringDimensions,
+      standardSize: "",
+    })
+    setCustomInput(true)
+    setCalculationError(null)
+  }, [calculatorState, setCalculatorStateImmediate])
+
+  const saveCalculation = async () => {
     if (weight <= 0 || !selectedProfile || !selectedMaterial || !structuralProperties) {
       toast({
         title: "Cannot save calculation",
-        description: "Please select a valid profile and material first.",
+        description: "Please ensure all inputs are valid and calculation is complete.",
         variant: "destructive",
       })
       return
     }
 
-    const newCalculation: Calculation = {
-      id: Date.now().toString(),
-      profileCategory,
-      profileType,
-      profileName: selectedProfile.name,
-      standardSize: standardSize || "Custom",
-      material,
-      grade,
-      materialName: selectedMaterial.name,
-      dimensions: { ...dimensions, length },
-      weight,
-      weightUnit,
-      crossSectionalArea: structuralProperties.area,
-      // Enhanced structural properties
-      momentOfInertiaX: structuralProperties.momentOfInertiaX,
-      momentOfInertiaY: structuralProperties.momentOfInertiaY,
-      sectionModulusX: structuralProperties.sectionModulusX,
-      sectionModulusY: structuralProperties.sectionModulusY,
-      radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
-      radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
-      perimeter: structuralProperties.perimeter,
-      timestamp: new Date(),
+    setIsSaving(true)
+    try {
+      const newCalculation: Calculation = {
+        id: Date.now().toString(),
+        profileCategory,
+        profileType,
+        profileName: selectedProfile.name,
+        standardSize: standardSize || "Custom",
+        material,
+        grade,
+        materialName: selectedMaterial.name,
+        dimensions: { ...dimensions, length },
+        weight,
+        weightUnit,
+        crossSectionalArea: structuralProperties.area,
+        // Enhanced structural properties
+        momentOfInertiaX: structuralProperties.momentOfInertiaX,
+        momentOfInertiaY: structuralProperties.momentOfInertiaY,
+        sectionModulusX: structuralProperties.sectionModulusX,
+        sectionModulusY: structuralProperties.sectionModulusY,
+        radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
+        radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
+        perimeter: structuralProperties.perimeter,
+        timestamp: new Date(),
+      }
+
+      const updated = [newCalculation, ...calculations.slice(0, 19)] // Keep last 20
+      setCalculations(updated)
+      localStorage.setItem("metal-calculations", JSON.stringify(updated))
+
+      toast({
+        title: "Calculation saved",
+        description: "Your calculation has been saved to history.",
+      })
+    } catch (error) {
+      console.error("Error saving calculation:", error)
+      toast({
+        title: "Saving Error",
+        description: "Failed to save calculation.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
     }
-
-    const updated = [newCalculation, ...calculations.slice(0, 19)] // Keep last 20
-    setCalculations(updated)
-    localStorage.setItem("metal-calculations", JSON.stringify(updated))
-
-    toast({
-      title: "Calculation saved",
-      description: "Your calculation has been saved to history.",
-    })
   }
 
   const exportCalculation = () => {
@@ -286,7 +566,7 @@ export default function MetalWeightCalculator() {
       ...(useTemperatureEffects && structuralProperties.adjustedDensity ? {
         operatingTemperature: `${operatingTemperature}°C`,
         adjustedDensity: `${structuralProperties.adjustedDensity.toFixed(4)} g/cm³`,
-        densityChange: `${((structuralProperties.adjustedDensity - selectedMaterial.density) / selectedMaterial.density * 100).toFixed(2)}%`,
+        densityChange: `${((structuralProperties.adjustedDensity - (selectedMaterial?.density || 0)) / (selectedMaterial?.density || 1) * 100).toFixed(2)}%`,
         temperatureCoefficient: `${selectedMaterial.temperatureCoefficient || 0} /°C`,
       } : {}),
       
@@ -401,16 +681,17 @@ export default function MetalWeightCalculator() {
 
     const getInputDescription = (key: string): string => {
       const descriptions: Record<string, string> = {
-        h: "Overall height of the profile",
-        b: "Overall width of the flange",
-        tw: "Thickness of the vertical web",
-        tf: "Thickness of the horizontal flange",
-        t: "Material thickness",
-        r: "Corner radius (fillet)",
-        od: "Outside diameter",
-        wt: "Wall thickness for pipes",
+        h: "Overall height of the profile - critical for moment calculations",
+        b: "Overall width of the flange - affects lateral stability",
+        tw: "Thickness of the vertical web - resists shear forces",
+        tf: "Thickness of the horizontal flange - resists bending",
+        t: "Material thickness - affects all structural properties",
+        r: "Corner radius (fillet) - stress concentration factor",
+        od: "Outside diameter - determines overall size",
+        wt: "Wall thickness for pipes - affects strength and weight",
         a: "Equal dimension for square profiles",
         diameter: "Full diameter of round section",
+        distance: "Distance across flats for hexagonal profiles",
       }
       return descriptions[key] || ""
     }
@@ -423,59 +704,107 @@ export default function MetalWeightCalculator() {
       )
     }
 
+    // Use mobile-enhanced inputs on mobile devices
+    const InputComponent = isDesktop ? FractionInput : FractionInput
+
     return (
-      <div className="space-y-4">
+      <EnhancedInputGroup
+        title="Profile Dimensions"
+        description={`Enter dimensions for ${selectedProfile.name}`}
+        isLoading={isCalculating}
+        hasErrors={validationErrors.length > 0}
+      >
+        {/* Dimension Presets */}
+        <DimensionPresets
+          profileType={profileType}
+          onApplyPreset={handleCopyFromPreset}
+          className="mb-4"
+        />
+        
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {selectedProfile.dimensions.map((dimensionKey) => {
             const value = dimensions[dimensionKey] || ""
-            const isValid = value && !isNaN(Number.parseFloat(value)) && Number.parseFloat(value) > 0
             
             return (
-              <div key={dimensionKey} className="space-y-2">
-                <Label htmlFor={dimensionKey} className="flex items-center gap-2">
-                  <span className="font-medium">{dimensionLabels[dimensionKey] || dimensionKey}</span>
-                  {!isValid && value && (
-                    <span className="text-xs text-destructive">Invalid</span>
-                  )}
-                </Label>
-                <Input
-                  id={dimensionKey}
-                  type="number"
-                  value={value}
-                  onChange={(e) => updateDimension(dimensionKey, e.target.value)}
-                  className={cn(
-                    "transition-colors",
-                    !isValid && value && "border-destructive focus:ring-destructive",
-                    isValid && "border-green-500/50"
-                  )}
-                  step="0.1"
-                  min="0"
-                  placeholder="Enter value"
-                />
-                {getInputDescription(dimensionKey) && (
-                  <p className="text-xs text-muted-foreground">
-                    {getInputDescription(dimensionKey)}
-                  </p>
-                )}
-              </div>
+              <InputComponent
+                key={dimensionKey}
+                label={dimensionLabels[dimensionKey] || dimensionKey}
+                value={value}
+                onChange={(value) => updateDimension(dimensionKey, value)}
+                placeholder="Enter value"
+                unit={lengthUnit}
+                required={true}
+                dimension={dimensionKey}
+                profileType={profileType}
+                helperText={getInputDescription(dimensionKey)}
+                validateOnChange={true}
+                debounceMs={300}
+                disabled={isCalculating}
+                min={0.001}
+                max={100000}
+                step={0.1}
+                supportsFractions={true}
+                showPresets={false} // Already shown above
+                showSuggestions={true}
+                allDimensions={dimensions}
+                onCopyFromProfile={handleCopyFromPreset}
+              />
             )
           })}
         </div>
         
-        {/* Dimension validation summary */}
-        <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-          <div className="text-xs text-muted-foreground">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-medium">Required dimensions:</span>
-              <span>{selectedProfile.dimensions.join(", ")}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Unit:</span>
-              <span>{LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].name}</span>
-            </div>
+        {/* Length input */}
+        <InputComponent
+          label="Length"
+          value={length}
+          onChange={setLength}
+          placeholder="Enter length"
+          unit={lengthUnit}
+          required={true}
+          dimension="length"
+          profileType={profileType}
+          helperText="Total length of the profile for weight calculation"
+          validateOnChange={true}
+          disabled={isCalculating}
+          min={0.1}
+          max={1000000}
+          step={1}
+          supportsFractions={true}
+          showPresets={false}
+          showSuggestions={true}
+          allDimensions={dimensions}
+        />
+
+        {/* Temperature input (if enabled) */}
+        {useTemperatureEffects && (
+          <div className="space-y-2">
+            <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
+            <FractionInput
+              label=""
+              value={operatingTemperature}
+              onChange={setOperatingTemperature}
+              placeholder="20"
+              unit="°C"
+              dimension="temperature"
+              helperText="Reference temperature: 20°C. Temperature affects material density."
+              disabled={isCalculating}
+              min={-273.15}
+              max={5000}
+              step={1}
+              supportsFractions={false}
+              showPresets={false}
+              showSuggestions={false}
+            />
           </div>
-        </div>
-      </div>
+        )}
+
+        {/* Validation Summary */}
+        <ValidationSummary
+          errors={validationErrors}
+          warnings={validationWarnings}
+          isVisible={validationErrors.length > 0 || validationWarnings.length > 0}
+        />
+      </EnhancedInputGroup>
     )
   }
 
@@ -484,14 +813,16 @@ export default function MetalWeightCalculator() {
 
     if (!sizes || sizes.length === 0) {
       return (
-        <div className="text-sm text-muted-foreground italic">No standard sizes available for this profile type.</div>
+        <div className="text-sm text-muted-foreground italic">
+          No standard sizes available for this profile type.
+        </div>
       )
     }
 
     return (
       <div className="grid grid-cols-1 gap-2">
         <Label htmlFor="standard-size">Standard Size</Label>
-        <Select value={standardSize} onValueChange={setStandardSize}>
+        <Select value={standardSize} onValueChange={setStandardSize} disabled={isCalculating}>
           <SelectTrigger>
             <SelectValue placeholder="Select a standard size" />
           </SelectTrigger>
@@ -504,6 +835,280 @@ export default function MetalWeightCalculator() {
             ))}
           </SelectContent>
         </Select>
+      </div>
+    )
+  }
+
+  const renderResults = () => {
+    // Show loading state with animation
+    if (isCalculating) {
+      return (
+        <div className={safeAnimation(animations.fadeIn)}>
+          <CalculationLoading 
+            stage="Computing structural properties..." 
+            progress={undefined}
+            details="Analyzing profile geometry and material properties"
+          />
+        </div>
+      )
+    }
+
+    // Show error state with shake animation
+    if (calculationError) {
+      return (
+        <div className={safeAnimation(animations.slideInFromBottom)}>
+          <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Calculation Error</AlertTitle>
+            <AlertDescription>
+              <div className="space-y-2">
+                <p>{calculationError}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setCalculationError(null)
+                    performCalculation()
+                  }}
+                  className={safeAnimation(animations.buttonPress)}
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Retry Calculation
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )
+    }
+
+    // Show validation errors with smooth entrance
+    if (!lastValidation.isValid) {
+      return (
+        <div className={safeAnimation(animations.slideInFromBottom)}>
+          <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Invalid Inputs</AlertTitle>
+            <AlertDescription>
+              Please correct the following errors:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                {validationErrors.map((error, index) => {
+                  const staggered = createStaggeredAnimation(validationErrors.length, 100)
+                  return (
+                    <li 
+                      key={index} 
+                      className={`text-sm ${safeAnimation(staggered[index]?.className || '')}`}
+                      style={staggered[index]?.style}
+                    >
+                      {error}
+                    </li>
+                  )
+                })}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )
+    }
+
+    // Show successful results with enhanced animations
+    if (weight > 0 && structuralProperties) {
+      return (
+        <div className={safeAnimation(animationPresets.result)}>
+          <Card className={cn(
+            "backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg",
+            safeAnimation(animations.cardHover)
+          )}>
+            <CardHeader className="pb-3">
+              <CardTitle className={cn(
+                "text-lg flex items-center gap-2",
+                safeAnimation(animations.fadeIn)
+              )}>
+                <CheckCircle className="h-5 w-5 text-green-500 animate-pulse" />
+                Calculation Results
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Main Result with pulse animation */}
+              <div className={cn(
+                "text-center bg-gradient-to-r from-primary/5 to-primary/10 p-6 rounded-xl",
+                safeAnimation(animations.scaleIn)
+              )}>
+                <div className="text-4xl font-bold text-primary bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                  {weight.toFixed(4)}
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
+                </div>
+              </div>
+
+              {/* Basic Properties with staggered animation */}
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: "Cross-sectional Area", value: `${structuralProperties.area.toFixed(4)} cm²` },
+                  { label: "Volume", value: `${volume.toFixed(4)} cm³` }
+                ].map((item, index) => (
+                  <div 
+                    key={item.label}
+                    className={cn(
+                      "text-center p-3 bg-muted/50 rounded-lg border border-border/50",
+                      safeAnimation(`${animations.slideInFromBottom} delay-${(index + 1) * 100}`)
+                    )}
+                  >
+                    <div className="text-xs text-muted-foreground font-medium">{item.label}</div>
+                    <div className="font-semibold text-foreground mt-1">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Structural Properties with enhanced layout */}
+              <div className={safeAnimation(`${animations.slideInFromBottom} delay-300`)}>
+                <Separator className="my-4" />
+                <div>
+                  <h4 className="font-semibold mb-4 text-sm flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Structural Properties
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    {[
+                      {
+                        title: "Moment of Inertia",
+                        values: [
+                          `Ix: ${structuralProperties.momentOfInertiaX.toFixed(2)} cm⁴`,
+                          `Iy: ${structuralProperties.momentOfInertiaY.toFixed(2)} cm⁴`
+                        ]
+                      },
+                      {
+                        title: "Section Modulus", 
+                        values: [
+                          `Sx: ${structuralProperties.sectionModulusX.toFixed(2)} cm³`,
+                          `Sy: ${structuralProperties.sectionModulusY.toFixed(2)} cm³`
+                        ]
+                      },
+                      {
+                        title: "Radius of Gyration",
+                        values: [
+                          `rx: ${structuralProperties.radiusOfGyrationX.toFixed(2)} cm`,
+                          `ry: ${structuralProperties.radiusOfGyrationY.toFixed(2)} cm`
+                        ]
+                      },
+                      {
+                        title: "Physical Properties",
+                        values: [
+                          `Perimeter: ${structuralProperties.perimeter.toFixed(2)} cm`,
+                          `Weight/m: ${structuralProperties.weight.toFixed(2)} kg/m`
+                        ]
+                      }
+                    ].map((section, index) => (
+                      <div 
+                        key={section.title}
+                        className={cn(
+                          "p-3 bg-background/60 rounded-lg border border-border/30",
+                          safeAnimation(`${animations.slideInFromLeft} delay-${(index + 4) * 100}`)
+                        )}
+                      >
+                        <div className="text-muted-foreground font-medium mb-2">{section.title}</div>
+                        {section.values.map((value, valueIndex) => (
+                          <div key={valueIndex} className="text-foreground">{value}</div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Temperature Effects with enhanced styling */}
+              {useTemperatureEffects && structuralProperties.adjustedDensity && (
+                <div className={safeAnimation(`${animations.slideInFromBottom} delay-400`)}>
+                  <Separator className="my-4" />
+                  <div className="p-4 bg-gradient-to-br from-blue-50/70 to-cyan-50/70 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-xl border border-blue-200/50 dark:border-blue-800/50">
+                    <h4 className="font-semibold text-sm mb-3 flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                      <Layers className="h-4 w-4" />
+                      Temperature Effects
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      {[
+                        { label: "Original Density", value: `${selectedMaterial?.density.toFixed(3)} g/cm³` },
+                        { label: "Adjusted Density", value: `${structuralProperties.adjustedDensity.toFixed(3)} g/cm³` },
+                        { label: "Temperature", value: `${operatingTemperature}°C` },
+                        { label: "Density Change", value: `${((structuralProperties.adjustedDensity - (selectedMaterial?.density || 0)) / (selectedMaterial?.density || 1) * 100).toFixed(2)}%` }
+                      ].map((item, index) => (
+                        <div 
+                          key={item.label}
+                          className={cn(
+                            "p-2 bg-white/60 dark:bg-blue-950/20 rounded-md",
+                            safeAnimation(`${animations.fadeIn} delay-${(index + 8) * 50}`)
+                          )}
+                        >
+                          <span className="text-muted-foreground block">{item.label}:</span>
+                          <div className="font-medium text-blue-700 dark:text-blue-300">{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Validation Warnings */}
+              {validationWarnings.length > 0 && (
+                <div className={safeAnimation(`${animations.slideInFromBottom} delay-500`)}>
+                  <Separator className="my-4" />
+                  <ValidationSummary
+                    errors={[]}
+                    warnings={validationWarnings}
+                  />
+                </div>
+              )}
+
+              {/* Action Buttons with enhanced styling */}
+              <div className={cn(
+                "flex flex-col sm:flex-row gap-2 pt-2",
+                safeAnimation(`${animations.slideInFromBottom} delay-600`)
+              )}>
+                <Button 
+                  onClick={saveCalculation} 
+                  className="flex-1" 
+                  disabled={isSaving}
+                  loading={isSaving}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Save
+                </Button>
+                <Button 
+                  onClick={exportCalculation} 
+                  variant="outline" 
+                  className="flex-1"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+                <Button 
+                  onClick={shareCalculation} 
+                  variant="outline" 
+                  className="flex-1"
+                >
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+    // Default state - waiting for valid inputs with gentle animation
+    return (
+      <div className={cn(
+        "text-center py-12 text-muted-foreground",
+        safeAnimation(animations.fadeIn)
+      )}>
+        <Calculator className={cn(
+          "h-16 w-16 mx-auto mb-4 opacity-40",
+          safeAnimation(animations.pulse)
+        )} />
+        <p className="text-lg">Select a profile and material to begin calculation</p>
+        <p className="text-sm mt-2 opacity-60">Choose from our extensive library of standard profiles</p>
       </div>
     )
   }
@@ -528,22 +1133,238 @@ export default function MetalWeightCalculator() {
           <p className="text-sm text-muted-foreground">Calculate weights for structural profiles and materials</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="calculator">Calculator</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="calculator" className="space-y-6">
+        <SwipeTabs 
+          value={activeTab} 
+          onValueChange={setActiveTab} 
+          className="w-full"
+          tabs={[
+            {
+              value: "calculator",
+              label: "Calculator",
+              icon: <Calculator className="h-3 w-3" />,
+              shortLabel: "Calc"
+            },
+            {
+              value: "breakdown",
+              label: "Breakdown", 
+              icon: <Layers className="h-3 w-3" />,
+              shortLabel: "Break"
+            },
+            {
+              value: "comparison",
+              label: "Compare",
+              icon: <BarChart3 className="h-3 w-3" />,
+              shortLabel: "Comp"
+            },
+            {
+              value: "history", 
+              label: "History",
+              icon: <History className="h-3 w-3" />,
+              shortLabel: "Hist"
+            }
+          ]}
+        >
+          <SwipeTabs.Content value="calculator" className={safeAnimation(animationPresets.tab)}>
             {isDesktop ? (
               // Desktop Layout - Side by side
               <div className="grid grid-cols-12 gap-6">
                 {/* Left Column - Selection */}
                 <div className="col-span-5 space-y-6">
                   {/* Profile Selection */}
-                  <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
+                  <div className={safeAnimation(`${animations.slideInFromLeft} delay-100`)}>
+                    <Card className={cn(
+                      "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                      safeAnimation(animations.cardHover)
+                    )}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Calculator className="h-5 w-5 text-primary" />
+                          Profile Selection
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <ProfileSelector
+                          profileCategory={profileCategory}
+                          setProfileCategory={setProfileCategory}
+                          profileType={profileType}
+                          setProfileType={setProfileType}
+                        />
+
+                        {/* Standard Sizes */}
+                        {renderStandardSizes()}
+
+                        {/* Toggle for custom dimensions */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Custom Dimensions</span>
+                          <Button
+                            variant={customInput ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setCustomInput(true)
+                              setStandardSize("")
+                            }}
+                            className={safeAnimation(animations.buttonPress)}
+                          >
+                            {customInput ? "Editing Custom" : "Use Custom"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Material Selection */}
+                  <div className={safeAnimation(`${animations.slideInFromLeft} delay-200`)}>
+                    <Card className={cn(
+                      "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                      safeAnimation(animations.cardHover)
+                    )}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Layers className="h-5 w-5 text-primary" />
+                          Material Selection
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <MaterialSelector
+                          material={material}
+                          setMaterial={setMaterial}
+                          grade={grade}
+                          setGrade={setGrade}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Right Column - Dimensions & Results */}
+                <div className="col-span-7 space-y-6">
+                  {/* Dimensions */}
+                  <div className={safeAnimation(`${animations.slideInFromRight} delay-100`)}>
+                    <Card className={cn(
+                      "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                      safeAnimation(animations.cardHover)
+                    )}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5 text-primary" />
+                          Dimensions
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Unit Selection */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="length-unit">Length Unit</Label>
+                            <Select value={lengthUnit} onValueChange={setLengthUnit}>
+                              <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(LENGTH_UNITS).map(([key, unit]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {unit.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="weight-unit">Weight Unit</Label>
+                            <Select value={weightUnit} onValueChange={setWeightUnit}>
+                              <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(WEIGHT_UNITS).map(([key, unit]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {unit.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Profile Dimensions */}
+                        <Separator className="my-4" />
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-medium">Profile Dimensions</h3>
+                            {selectedProfile && (
+                              <Badge variant="outline" className="font-normal">
+                                {selectedProfile.name} {standardSize && `(${standardSize})`}
+                              </Badge>
+                            )}
+                          </div>
+                          {renderDimensionInputs()}
+                        </div>
+
+                        {/* Temperature Controls */}
+                        <Separator className="my-4" />
+                        <div className={cn(
+                          "space-y-3 p-4 bg-gradient-to-br from-muted/40 to-muted/20 rounded-xl border border-border/50",
+                          safeAnimation(animations.slideInFromBottom)
+                        )}>
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id="temperature-effects"
+                              checked={useTemperatureEffects}
+                              onCheckedChange={setUseTemperatureEffects}
+                            />
+                            <Label htmlFor="temperature-effects" className="text-sm font-medium">
+                              Enable Temperature Effects
+                            </Label>
+                          </div>
+                          
+                          {useTemperatureEffects && (
+                            <div className={cn(
+                              "space-y-2",
+                              safeAnimation(animations.slideInFromBottom)
+                            )}>
+                              <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
+                              <FractionInput
+                                label=""
+                                value={operatingTemperature}
+                                onChange={setOperatingTemperature}
+                                placeholder="20"
+                                unit="°C"
+                                dimension="temperature"
+                                helperText="Reference temperature: 20°C. Temperature affects material density."
+                                disabled={isCalculating}
+                                min={-273.15}
+                                max={5000}
+                                step={1}
+                                supportsFractions={false}
+                                showPresets={false}
+                                showSuggestions={false}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Results */}
+                  <div className={safeAnimation(`${animations.slideInFromRight} delay-200`)}>
+                    {renderResults()}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Mobile Layout - Stacked with animations
+              <div className="space-y-6">
+                {/* Profile Selection */}
+                <div className={safeAnimation(`${animations.slideInFromBottom} delay-100`)}>
+                  <Card className={cn(
+                    "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                    safeAnimation(animations.cardHover)
+                  )}>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">Profile Selection</CardTitle>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Calculator className="h-5 w-5 text-primary" />
+                        Profile Selection
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <ProfileSelector
@@ -555,6 +1376,79 @@ export default function MetalWeightCalculator() {
 
                       {/* Standard Sizes */}
                       {renderStandardSizes()}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Material Selection */}
+                <div className={safeAnimation(`${animations.slideInFromBottom} delay-200`)}>
+                  <Card className={cn(
+                    "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                    safeAnimation(animations.cardHover)
+                  )}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Layers className="h-5 w-5 text-primary" />
+                        Material Selection
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <MaterialSelector
+                        material={material}
+                        setMaterial={setMaterial}
+                        grade={grade}
+                        setGrade={setGrade}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Dimensions */}
+                <div className={safeAnimation(`${animations.slideInFromBottom} delay-300`)}>
+                  <Card className={cn(
+                    "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                    safeAnimation(animations.cardHover)
+                  )}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-primary" />
+                        Dimensions
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Unit Selection */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="length-unit">Length Unit</Label>
+                          <Select value={lengthUnit} onValueChange={setLengthUnit}>
+                            <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(LENGTH_UNITS).map(([key, unit]) => (
+                                <SelectItem key={key} value={key}>
+                                  {unit.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="weight-unit">Weight Unit</Label>
+                          <Select value={weightUnit} onValueChange={setWeightUnit}>
+                            <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(WEIGHT_UNITS).map(([key, unit]) => (
+                                <SelectItem key={key} value={key}>
+                                  {unit.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
 
                       {/* Toggle for custom dimensions */}
                       <div className="flex items-center justify-between">
@@ -570,113 +1464,6 @@ export default function MetalWeightCalculator() {
                           {customInput ? "Editing Custom" : "Use Custom"}
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Material Selection */}
-                  <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">Material Selection</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <MaterialSelector
-                        material={material}
-                        setMaterial={setMaterial}
-                        grade={grade}
-                        setGrade={setGrade}
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Right Column - Dimensions & Results */}
-                <div className="col-span-7 space-y-6">
-                  {/* Dimensions */}
-                  <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">Dimensions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Unit Selection */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="length-unit">Length Unit</Label>
-                          <Select value={lengthUnit} onValueChange={setLengthUnit}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(LENGTH_UNITS).map(([key, unit]) => (
-                                <SelectItem key={key} value={key}>
-                                  {unit.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="weight-unit">Weight Unit</Label>
-                          <Select value={weightUnit} onValueChange={setWeightUnit}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(WEIGHT_UNITS).map(([key, unit]) => (
-                                <SelectItem key={key} value={key}>
-                                  {unit.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      {/* Length Input */}
-                      <div>
-                        <Label htmlFor="length">Length</Label>
-                        <Input
-                          id="length"
-                          type="number"
-                          value={length}
-                          onChange={(e) => setLength(e.target.value)}
-                          className="mt-1"
-                          step="0.1"
-                        />
-                      </div>
-
-                      {/* Temperature Controls */}
-                      <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id="temperature-effects"
-                            checked={useTemperatureEffects}
-                            onChange={(e) => setUseTemperatureEffects(e.target.checked)}
-                            className="rounded"
-                          />
-                          <Label htmlFor="temperature-effects" className="text-sm font-medium">
-                            Enable Temperature Effects
-                          </Label>
-                        </div>
-                        
-                        {useTemperatureEffects && (
-                          <div className="space-y-2">
-                            <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
-                            <Input
-                              id="operating-temperature"
-                              type="number"
-                              value={operatingTemperature}
-                              onChange={(e) => setOperatingTemperature(e.target.value)}
-                              className="mt-1"
-                              step="1"
-                              placeholder="20"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              Reference temperature: 20°C. Temperature affects material density.
-                            </p>
-                          </div>
-                        )}
-                      </div>
 
                       {/* Profile Dimensions */}
                       <Separator className="my-4" />
@@ -691,445 +1478,104 @@ export default function MetalWeightCalculator() {
                         </div>
                         {renderDimensionInputs()}
                       </div>
-                    </CardContent>
-                  </Card>
 
-                  {/* Results */}
-                  <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">Results</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Enhanced Results Display */}
-                      <div className="text-center space-y-2 py-4">
-                        <div className="text-4xl font-bold text-primary animate-in fade-in-50 duration-500">
-                          {weight > 0 ? weight.toFixed(4) : "0.0000"}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
+                      {/* Temperature Controls */}
+                      <Separator className="my-4" />
+                      <div className={cn(
+                        "space-y-3 p-4 bg-gradient-to-br from-muted/40 to-muted/20 rounded-xl border border-border/50",
+                        safeAnimation(animations.slideInFromBottom)
+                      )}>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="temperature-effects"
+                            checked={useTemperatureEffects}
+                            onCheckedChange={setUseTemperatureEffects}
+                          />
+                          <Label htmlFor="temperature-effects" className="text-sm font-medium">
+                            Enable Temperature Effects
+                          </Label>
                         </div>
                         
-                        {/* Primary Properties Grid */}
-                        <div className="grid grid-cols-2 gap-4 mt-4">
-                          <div className="text-center">
-                            <div className="text-xs text-muted-foreground">Cross-sectional Area</div>
-                            <div className="text-lg font-semibold">{crossSectionalArea.toFixed(4)} cm²</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xs text-muted-foreground">Volume</div>
-                            <div className="text-lg font-semibold">{volume.toFixed(4)} cm³</div>
-                          </div>
-                        </div>
-
-                        {/* Enhanced Structural Properties */}
-                        {structuralProperties && (
-                          <div className="mt-6 space-y-4">
-                            <Separator />
-                            <div className="text-left">
-                              <h4 className="text-sm font-medium mb-3 text-center">Structural Properties</h4>
-                              
-                              {/* Moment of Inertia */}
-                              <div className="grid grid-cols-2 gap-4 mb-3">
-                                <div className="text-center p-2 bg-muted/50 rounded">
-                                  <div className="text-xs text-muted-foreground">Ix (Strong Axis)</div>
-                                  <div className="text-sm font-semibold">{structuralProperties.momentOfInertiaX.toFixed(1)} cm⁴</div>
-                                </div>
-                                <div className="text-center p-2 bg-muted/50 rounded">
-                                  <div className="text-xs text-muted-foreground">Iy (Weak Axis)</div>
-                                  <div className="text-sm font-semibold">{structuralProperties.momentOfInertiaY.toFixed(1)} cm⁴</div>
-                                </div>
-                              </div>
-
-                              {/* Section Modulus */}
-                              <div className="grid grid-cols-2 gap-4 mb-3">
-                                <div className="text-center p-2 bg-muted/50 rounded">
-                                  <div className="text-xs text-muted-foreground">Sx (Strong Axis)</div>
-                                  <div className="text-sm font-semibold">{structuralProperties.sectionModulusX.toFixed(1)} cm³</div>
-                                </div>
-                                <div className="text-center p-2 bg-muted/50 rounded">
-                                  <div className="text-xs text-muted-foreground">Sy (Weak Axis)</div>
-                                  <div className="text-sm font-semibold">{structuralProperties.sectionModulusY.toFixed(1)} cm³</div>
-                                </div>
-                              </div>
-
-                              {/* Radius of Gyration */}
-                              <div className="grid grid-cols-2 gap-4 mb-3">
-                                <div className="text-center p-2 bg-muted/50 rounded">
-                                  <div className="text-xs text-muted-foreground">rx (Strong Axis)</div>
-                                  <div className="text-sm font-semibold">{structuralProperties.radiusOfGyrationX.toFixed(2)} cm</div>
-                                </div>
-                                <div className="text-center p-2 bg-muted/50 rounded">
-                                  <div className="text-xs text-muted-foreground">ry (Weak Axis)</div>
-                                  <div className="text-sm font-semibold">{structuralProperties.radiusOfGyrationY.toFixed(2)} cm</div>
-                                </div>
-                              </div>
-
-                              {/* Additional Properties */}
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="text-center p-2 bg-muted/50 rounded">
-                                  <div className="text-xs text-muted-foreground">Perimeter</div>
-                                  <div className="text-sm font-semibold">{structuralProperties.perimeter.toFixed(2)} cm</div>
-                                </div>
-                                <div className="text-center p-2 bg-muted/50 rounded">
-                                  <div className="text-xs text-muted-foreground">Weight/Length</div>
-                                  <div className="text-sm font-semibold">{structuralProperties.weight.toFixed(3)} kg/m</div>
-                                </div>
-                              </div>
-                            </div>
+                        {useTemperatureEffects && (
+                          <div className={cn(
+                            "space-y-2",
+                            safeAnimation(animations.slideInFromBottom)
+                          )}>
+                            <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
+                            <FractionInput
+                              label=""
+                              value={operatingTemperature}
+                              onChange={setOperatingTemperature}
+                              placeholder="20"
+                              unit="°C"
+                              dimension="temperature"
+                              helperText="Reference temperature: 20°C. Temperature affects material density."
+                              disabled={isCalculating}
+                              min={-273.15}
+                              max={5000}
+                              step={1}
+                              supportsFractions={false}
+                              showPresets={false}
+                              showSuggestions={false}
+                            />
                           </div>
                         )}
-                      </div>
-
-                      {/* Material Info */}
-                      {selectedMaterial && (
-                        <div className="bg-muted/50 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-4 h-4 rounded-full ${selectedMaterial.color}`}></div>
-                              <span className="text-sm font-medium">{selectedMaterial.name}</span>
-                            </div>
-                            <Badge variant="secondary">{selectedMaterial.density} g/cm³</Badge>
-                          </div>
-                          
-                          {/* Temperature Effects Display */}
-                          {useTemperatureEffects && structuralProperties?.adjustedDensity && (
-                            <div className="text-xs text-muted-foreground space-y-1">
-                              <div className="flex justify-between">
-                                <span>Operating Temperature:</span>
-                                <span className="font-medium">{operatingTemperature}°C</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Adjusted Density:</span>
-                                <span className="font-medium">{structuralProperties.adjustedDensity.toFixed(4)} g/cm³</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Density Change:</span>
-                                <span className={`font-medium ${
-                                  structuralProperties.adjustedDensity > selectedMaterial.density 
-                                    ? 'text-red-500' 
-                                    : 'text-blue-500'
-                                }`}>
-                                  {((structuralProperties.adjustedDensity - selectedMaterial.density) / selectedMaterial.density * 100).toFixed(2)}%
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Action Buttons */}
-                      <div className="grid grid-cols-3 gap-3 pt-4">
-                        <Button onClick={saveCalculation} variant="outline" className="flex items-center gap-2">
-                          <Save className="h-4 w-4" />
-                          Save
-                        </Button>
-                        <Button onClick={shareCalculation} variant="outline" className="flex items-center gap-2">
-                          <Share2 className="h-4 w-4" />
-                          Share
-                        </Button>
-                        <Button onClick={exportCalculation} variant="outline" className="flex items-center gap-2">
-                          <Download className="h-4 w-4" />
-                          Export
-                        </Button>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
-              </div>
-            ) : (
-              // Mobile Layout - Stacked
-              <div className="space-y-6">
-                {/* Profile Selection */}
-                <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Profile Selection</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <ProfileSelector
-                      profileCategory={profileCategory}
-                      setProfileCategory={setProfileCategory}
-                      profileType={profileType}
-                      setProfileType={setProfileType}
-                    />
-
-                    {/* Standard Sizes */}
-                    {renderStandardSizes()}
-                  </CardContent>
-                </Card>
-
-                {/* Material Selection */}
-                <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Material Selection</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <MaterialSelector material={material} setMaterial={setMaterial} grade={grade} setGrade={setGrade} />
-                  </CardContent>
-                </Card>
-
-                {/* Dimensions */}
-                <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Dimensions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Unit Selection */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="length-unit">Length Unit</Label>
-                        <Select value={lengthUnit} onValueChange={setLengthUnit}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(LENGTH_UNITS).map(([key, unit]) => (
-                              <SelectItem key={key} value={key}>
-                                {unit.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="weight-unit">Weight Unit</Label>
-                        <Select value={weightUnit} onValueChange={setWeightUnit}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(WEIGHT_UNITS).map(([key, unit]) => (
-                              <SelectItem key={key} value={key}>
-                                {unit.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Length Input */}
-                    <div>
-                      <Label htmlFor="length">Length</Label>
-                      <Input
-                        id="length"
-                        type="number"
-                        value={length}
-                        onChange={(e) => setLength(e.target.value)}
-                        className="mt-1"
-                        step="0.1"
-                      />
-                    </div>
-
-                    {/* Temperature Controls */}
-                    <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="temperature-effects"
-                          checked={useTemperatureEffects}
-                          onChange={(e) => setUseTemperatureEffects(e.target.checked)}
-                          className="rounded"
-                        />
-                        <Label htmlFor="temperature-effects" className="text-sm font-medium">
-                          Enable Temperature Effects
-                        </Label>
-                      </div>
-                      
-                      {useTemperatureEffects && (
-                        <div className="space-y-2">
-                          <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
-                          <Input
-                            id="operating-temperature"
-                            type="number"
-                            value={operatingTemperature}
-                            onChange={(e) => setOperatingTemperature(e.target.value)}
-                            className="mt-1"
-                            step="1"
-                            placeholder="20"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Reference temperature: 20°C. Temperature affects material density.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Toggle for custom dimensions */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Custom Dimensions</span>
-                      <Button
-                        variant={customInput ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setCustomInput(true)
-                          setStandardSize("")
-                        }}
-                      >
-                        {customInput ? "Editing Custom" : "Use Custom"}
-                      </Button>
-                    </div>
-
-                    {/* Profile Dimensions */}
-                    <Separator className="my-4" />
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium">Profile Dimensions</h3>
-                        {selectedProfile && (
-                          <Badge variant="outline" className="font-normal">
-                            {selectedProfile.name} {standardSize && `(${standardSize})`}
-                          </Badge>
-                        )}
-                      </div>
-                      {renderDimensionInputs()}
-                    </div>
-                  </CardContent>
-                </Card>
 
                 {/* Results */}
-                <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Results</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Enhanced Results Display */}
-                    <div className="text-center space-y-2 py-4">
-                      <div className="text-4xl font-bold text-primary animate-in fade-in-50 duration-500">
-                        {weight > 0 ? weight.toFixed(4) : "0.0000"}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
-                      </div>
-                      
-                      {/* Primary Properties Grid */}
-                      <div className="grid grid-cols-2 gap-4 mt-4">
-                        <div className="text-center">
-                          <div className="text-xs text-muted-foreground">Cross-sectional Area</div>
-                          <div className="text-lg font-semibold">{crossSectionalArea.toFixed(4)} cm²</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs text-muted-foreground">Volume</div>
-                          <div className="text-lg font-semibold">{volume.toFixed(4)} cm³</div>
-                        </div>
-                      </div>
-
-                      {/* Enhanced Structural Properties */}
-                      {structuralProperties && (
-                        <div className="mt-6 space-y-4">
-                          <Separator />
-                          <div className="text-left">
-                            <h4 className="text-sm font-medium mb-3 text-center">Structural Properties</h4>
-                            
-                            {/* Moment of Inertia */}
-                            <div className="grid grid-cols-2 gap-4 mb-3">
-                              <div className="text-center p-2 bg-muted/50 rounded">
-                                <div className="text-xs text-muted-foreground">Ix (Strong Axis)</div>
-                                <div className="text-sm font-semibold">{structuralProperties.momentOfInertiaX.toFixed(1)} cm⁴</div>
-                              </div>
-                              <div className="text-center p-2 bg-muted/50 rounded">
-                                <div className="text-xs text-muted-foreground">Iy (Weak Axis)</div>
-                                <div className="text-sm font-semibold">{structuralProperties.momentOfInertiaY.toFixed(1)} cm⁴</div>
-                              </div>
-                            </div>
-
-                            {/* Section Modulus */}
-                            <div className="grid grid-cols-2 gap-4 mb-3">
-                              <div className="text-center p-2 bg-muted/50 rounded">
-                                <div className="text-xs text-muted-foreground">Sx (Strong Axis)</div>
-                                <div className="text-sm font-semibold">{structuralProperties.sectionModulusX.toFixed(1)} cm³</div>
-                              </div>
-                              <div className="text-center p-2 bg-muted/50 rounded">
-                                <div className="text-xs text-muted-foreground">Sy (Weak Axis)</div>
-                                <div className="text-sm font-semibold">{structuralProperties.sectionModulusY.toFixed(1)} cm³</div>
-                              </div>
-                            </div>
-
-                            {/* Radius of Gyration */}
-                            <div className="grid grid-cols-2 gap-4 mb-3">
-                              <div className="text-center p-2 bg-muted/50 rounded">
-                                <div className="text-xs text-muted-foreground">rx (Strong Axis)</div>
-                                <div className="text-sm font-semibold">{structuralProperties.radiusOfGyrationX.toFixed(2)} cm</div>
-                              </div>
-                              <div className="text-center p-2 bg-muted/50 rounded">
-                                <div className="text-xs text-muted-foreground">ry (Weak Axis)</div>
-                                <div className="text-sm font-semibold">{structuralProperties.radiusOfGyrationY.toFixed(2)} cm</div>
-                              </div>
-                            </div>
-
-                            {/* Additional Properties */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="text-center p-2 bg-muted/50 rounded">
-                                <div className="text-xs text-muted-foreground">Perimeter</div>
-                                <div className="text-sm font-semibold">{structuralProperties.perimeter.toFixed(2)} cm</div>
-                              </div>
-                              <div className="text-center p-2 bg-muted/50 rounded">
-                                <div className="text-xs text-muted-foreground">Weight/Length</div>
-                                <div className="text-sm font-semibold">{structuralProperties.weight.toFixed(3)} kg/m</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Material Info */}
-                    {selectedMaterial && (
-                      <div className="bg-muted/50 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-4 h-4 rounded-full ${selectedMaterial.color}`}></div>
-                            <span className="text-sm font-medium">{selectedMaterial.name}</span>
-                          </div>
-                          <Badge variant="secondary">{selectedMaterial.density} g/cm³</Badge>
-                        </div>
-                        
-                        {/* Temperature Effects Display */}
-                        {useTemperatureEffects && structuralProperties?.adjustedDensity && (
-                          <div className="text-xs text-muted-foreground space-y-1">
-                            <div className="flex justify-between">
-                              <span>Operating Temperature:</span>
-                              <span className="font-medium">{operatingTemperature}°C</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Adjusted Density:</span>
-                              <span className="font-medium">{structuralProperties.adjustedDensity.toFixed(4)} g/cm³</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Density Change:</span>
-                              <span className={`font-medium ${
-                                structuralProperties.adjustedDensity > selectedMaterial.density 
-                                  ? 'text-red-500' 
-                                  : 'text-blue-500'
-                              }`}>
-                                {((structuralProperties.adjustedDensity - selectedMaterial.density) / selectedMaterial.density * 100).toFixed(2)}%
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-3 gap-3 pt-4">
-                      <Button onClick={saveCalculation} variant="outline" className="flex items-center gap-2">
-                        <Save className="h-4 w-4" />
-                        Save
-                      </Button>
-                      <Button onClick={shareCalculation} variant="outline" className="flex items-center gap-2">
-                        <Share2 className="h-4 w-4" />
-                        Share
-                      </Button>
-                      <Button onClick={exportCalculation} variant="outline" className="flex items-center gap-2">
-                        <Download className="h-4 w-4" />
-                        Export
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                {renderResults()}
               </div>
             )}
-          </TabsContent>
+          </SwipeTabs.Content>
 
-          <TabsContent value="history" className="space-y-4">
+          {/* New: Calculation Breakdown Tab */}
+          <SwipeTabs.Content value="breakdown" className="space-y-4">
+            {weight > 0 && structuralProperties && selectedProfile && selectedMaterial ? (
+              <CalculationBreakdown
+                profileData={selectedProfile}
+                materialData={selectedMaterial}
+                dimensions={dimensions}
+                length={length}
+                structuralProperties={structuralProperties}
+                weight={weight}
+                weightUnit={weightUnit}
+                temperatureEffects={useTemperatureEffects && structuralProperties.adjustedDensity ? {
+                  originalDensity: selectedMaterial.density,
+                  adjustedDensity: structuralProperties.adjustedDensity,
+                  temperature: parseFloat(operatingTemperature)
+                } : undefined}
+              />
+            ) : (
+              <Card className="backdrop-blur-sm bg-card/90 border-primary/10">
+                <CardContent className="text-center py-8">
+                  <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-muted-foreground">Complete a calculation to see the breakdown</p>
+                </CardContent>
+              </Card>
+            )}
+          </SwipeTabs.Content>
+
+          {/* New: Calculation Comparison Tab */}
+          <SwipeTabs.Content value="comparison" className="space-y-4">
+            <CalculationComparison
+              calculations={calculations}
+              onAddToComparison={(id) => {
+                setComparisonCalculations(prev => new Set([...prev, id]))
+              }}
+              onRemoveFromComparison={(id) => {
+                setComparisonCalculations(prev => {
+                  const newSet = new Set(prev)
+                  newSet.delete(id)
+                  return newSet
+                })
+              }}
+            />
+          </SwipeTabs.Content>
+
+          <SwipeTabs.Content value="history" className="space-y-4">
             <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -1175,8 +1621,37 @@ export default function MetalWeightCalculator() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+          </SwipeTabs.Content>
+        </SwipeTabs>
+
+        {/* Undo/Redo Controls */}
+        <div className={cn(
+          "fixed flex gap-2 z-50",
+          isDesktop 
+            ? "bottom-4 right-4" 
+            : "bottom-20 right-4" // Account for mobile browser UI
+        )}>
+          <Button
+            variant="outline"
+            size={isDesktop ? "sm" : "default"}
+            onClick={undo}
+            disabled={!canUndo}
+            className="backdrop-blur-sm bg-background/90 border-primary/10 shadow-lg"
+          >
+            <Undo className={cn("", isDesktop ? "h-3 w-3" : "h-4 w-4")} />
+            {!isDesktop && <span className="ml-1 hidden">Undo</span>}
+          </Button>
+          <Button
+            variant="outline"
+            size={isDesktop ? "sm" : "default"}
+            onClick={redo}
+            disabled={!canRedo}
+            className="backdrop-blur-sm bg-background/90 border-primary/10 shadow-lg"
+          >
+            <Redo className={cn("", isDesktop ? "h-3 w-3" : "h-4 w-4")} />
+            {!isDesktop && <span className="ml-1 hidden">Redo</span>}
+          </Button>
+        </div>
       </div>
     </div>
   )
