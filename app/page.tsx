@@ -128,12 +128,12 @@ export default function MetalWeightCalculator() {
   }, [calculatorState, setCalculatorState])
 
   const setMaterial = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, material: value })
-  }, [calculatorState, setCalculatorState])
+    setCalculatorStateImmediate({ ...calculatorState, material: value })
+  }, [calculatorState, setCalculatorStateImmediate])
 
   const setGrade = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, grade: value })
-  }, [calculatorState, setCalculatorState])
+    setCalculatorStateImmediate({ ...calculatorState, grade: value })
+  }, [calculatorState, setCalculatorStateImmediate])
 
   const setDimensions = useCallback((value: Record<string, string>) => {
     setCalculatorState({ ...calculatorState, dimensions: value })
