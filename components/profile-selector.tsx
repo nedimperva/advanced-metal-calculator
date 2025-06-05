@@ -568,6 +568,166 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
         <text x="60" y="55" textAnchor="middle" className="text-xs fill-current font-bold">½ ROUND</text>
       </svg>
     ),
+
+    // Steel Plates - All plate types share similar base design with different surface patterns
+    plate: (
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-plate" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+        </defs>
+        {/* Steel plate - flat rectangular plate */}
+        <rect x="20" y="30" width="80" height="25" stroke="currentColor" strokeWidth="2" 
+              fill="currentColor" fillOpacity="0.15" rx="1" />
+        {/* 3D effect - top edge */}
+        <rect x="20" y="27" width="80" height="3" stroke="currentColor" strokeWidth="1" 
+              fill="currentColor" fillOpacity="0.3" rx="1" />
+        {/* 3D effect - right edge */}
+        <rect x="100" y="30" width="3" height="25" stroke="currentColor" strokeWidth="1" 
+              fill="currentColor" fillOpacity="0.2" rx="1" />
+        {/* Dimensions */}
+        <line x1="15" y1="30" x2="15" y2="55" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-plate)" markerStart="url(#arrow-plate)" />
+        <text x="8" y="45" textAnchor="middle" className="text-[8px] fill-current font-medium" transform="rotate(-90, 8, 45)">width</text>
+        <line x1="20" y1="65" x2="100" y2="65" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-plate)" markerStart="url(#arrow-plate)" />
+        <text x="60" y="73" textAnchor="middle" className="text-[8px] fill-current font-medium">length</text>
+        <line x1="110" y1="30" x2="110" y2="55" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-plate)" markerStart="url(#arrow-plate)" />
+        <text x="115" y="45" textAnchor="start" className="text-[8px] fill-current font-medium" transform="rotate(90, 115, 45)">thickness</text>
+        <text x="60" y="22" textAnchor="middle" className="text-xs fill-current font-bold">PLATE</text>
+      </svg>
+    ),
+    sheetMetal: (
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-sheet" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+        </defs>
+        {/* Sheet metal - thinner plate with slight bend to show flexibility */}
+        <path d="M20 35 L95 33 L100 35 L100 50 L95 52 L20 50 Z" 
+              stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.15" />
+        {/* 3D effect - top edge with slight curve */}
+        <path d="M20 32 L95 30 L100 32 L95 33 L20 35 Z" 
+              stroke="currentColor" strokeWidth="1" fill="currentColor" fillOpacity="0.3" />
+        {/* Surface texture lines to show thin gauge */}
+        <line x1="30" y1="36" x2="90" y2="34.5" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+        <line x1="30" y1="42" x2="90" y2="40.5" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+        <line x1="30" y1="48" x2="90" y2="46.5" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+        {/* Dimensions */}
+        <line x1="15" y1="35" x2="15" y2="50" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-sheet)" markerStart="url(#arrow-sheet)" />
+        <text x="8" y="45" textAnchor="middle" className="text-[8px] fill-current font-medium" transform="rotate(-90, 8, 45)">width</text>
+        <line x1="20" y1="65" x2="100" y2="65" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-sheet)" markerStart="url(#arrow-sheet)" />
+        <text x="60" y="73" textAnchor="middle" className="text-[8px] fill-current font-medium">length</text>
+        <text x="60" y="22" textAnchor="middle" className="text-xs fill-current font-bold">SHEET</text>
+        <text x="60" y="78" textAnchor="middle" className="text-[7px] fill-current opacity-70">thin gauge</text>
+      </svg>
+    ),
+    checkeredPlate: (
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-checkered" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+          <pattern id="diamond-pattern" patternUnits="userSpaceOnUse" width="8" height="8">
+            <polygon points="4,1 7,4 4,7 1,4" stroke="currentColor" strokeWidth="0.5" 
+                     fill="currentColor" fillOpacity="0.3" />
+          </pattern>
+        </defs>
+        {/* Checkered plate with diamond pattern */}
+        <rect x="20" y="30" width="80" height="25" stroke="currentColor" strokeWidth="2" 
+              fill="url(#diamond-pattern)" rx="1" />
+        {/* 3D effect - top edge */}
+        <rect x="20" y="27" width="80" height="3" stroke="currentColor" strokeWidth="1" 
+              fill="currentColor" fillOpacity="0.4" rx="1" />
+        {/* 3D effect - right edge */}
+        <rect x="100" y="30" width="3" height="25" stroke="currentColor" strokeWidth="1" 
+              fill="currentColor" fillOpacity="0.3" rx="1" />
+        {/* Diamond pattern overlay for better visibility */}
+        <g opacity="0.6">
+          <polygon points="30,35 33,38 30,41 27,38" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="38,35 41,38 38,41 35,38" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="46,35 49,38 46,41 43,38" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="54,35 57,38 54,41 51,38" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="62,35 65,38 62,41 59,38" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="70,35 73,38 70,41 67,38" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="78,35 81,38 78,41 75,38" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="86,35 89,38 86,41 83,38" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="94,35 97,38 94,41 91,38" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          
+          <polygon points="34,43 37,46 34,49 31,46" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="42,43 45,46 42,49 39,46" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="50,43 53,46 50,49 47,46" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="58,43 61,46 58,49 55,46" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="66,43 69,46 66,49 63,46" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="74,43 77,46 74,49 71,46" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="82,43 85,46 82,49 79,46" stroke="currentColor" strokeWidth="0.8" fill="none" />
+          <polygon points="90,43 93,46 90,49 87,46" stroke="currentColor" strokeWidth="0.8" fill="none" />
+        </g>
+        {/* Dimensions */}
+        <line x1="15" y1="30" x2="15" y2="55" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-checkered)" markerStart="url(#arrow-checkered)" />
+        <text x="8" y="45" textAnchor="middle" className="text-[8px] fill-current font-medium" transform="rotate(-90, 8, 45)">width</text>
+        <line x1="20" y1="65" x2="100" y2="65" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-checkered)" markerStart="url(#arrow-checkered)" />
+        <text x="60" y="73" textAnchor="middle" className="text-[8px] fill-current font-medium">length</text>
+        <text x="60" y="22" textAnchor="middle" className="text-xs fill-current font-bold">CHECKERED</text>
+        <text x="60" y="78" textAnchor="middle" className="text-[7px] fill-current opacity-70">anti-slip</text>
+      </svg>
+    ),
+    perforatedPlate: (
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-perforated" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+        </defs>
+        {/* Perforated plate base */}
+        <rect x="20" y="30" width="80" height="25" stroke="currentColor" strokeWidth="2" 
+              fill="currentColor" fillOpacity="0.15" rx="1" />
+        {/* 3D effect - top edge */}
+        <rect x="20" y="27" width="80" height="3" stroke="currentColor" strokeWidth="1" 
+              fill="currentColor" fillOpacity="0.3" rx="1" />
+        {/* 3D effect - right edge */}
+        <rect x="100" y="30" width="3" height="25" stroke="currentColor" strokeWidth="1" 
+              fill="currentColor" fillOpacity="0.2" rx="1" />
+        {/* Perforation holes - circular pattern */}
+        <g fill="white" stroke="currentColor" strokeWidth="0.5">
+          <circle cx="28" cy="36" r="1.5" />
+          <circle cx="36" cy="36" r="1.5" />
+          <circle cx="44" cy="36" r="1.5" />
+          <circle cx="52" cy="36" r="1.5" />
+          <circle cx="60" cy="36" r="1.5" />
+          <circle cx="68" cy="36" r="1.5" />
+          <circle cx="76" cy="36" r="1.5" />
+          <circle cx="84" cy="36" r="1.5" />
+          <circle cx="92" cy="36" r="1.5" />
+          
+          <circle cx="32" cy="42" r="1.5" />
+          <circle cx="40" cy="42" r="1.5" />
+          <circle cx="48" cy="42" r="1.5" />
+          <circle cx="56" cy="42" r="1.5" />
+          <circle cx="64" cy="42" r="1.5" />
+          <circle cx="72" cy="42" r="1.5" />
+          <circle cx="80" cy="42" r="1.5" />
+          <circle cx="88" cy="42" r="1.5" />
+          
+          <circle cx="28" cy="48" r="1.5" />
+          <circle cx="36" cy="48" r="1.5" />
+          <circle cx="44" cy="48" r="1.5" />
+          <circle cx="52" cy="48" r="1.5" />
+          <circle cx="60" cy="48" r="1.5" />
+          <circle cx="68" cy="48" r="1.5" />
+          <circle cx="76" cy="48" r="1.5" />
+          <circle cx="84" cy="48" r="1.5" />
+          <circle cx="92" cy="48" r="1.5" />
+        </g>
+        {/* Dimensions */}
+        <line x1="15" y1="30" x2="15" y2="55" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-perforated)" markerStart="url(#arrow-perforated)" />
+        <text x="8" y="45" textAnchor="middle" className="text-[8px] fill-current font-medium" transform="rotate(-90, 8, 45)">width</text>
+        <line x1="20" y1="65" x2="100" y2="65" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-perforated)" markerStart="url(#arrow-perforated)" />
+        <text x="60" y="73" textAnchor="middle" className="text-[8px] fill-current font-medium">length</text>
+        <text x="60" y="22" textAnchor="middle" className="text-xs fill-current font-bold">PERFORATED</text>
+        <text x="60" y="78" textAnchor="middle" className="text-[7px] fill-current opacity-70">ventilation</text>
+      </svg>
+    ),
   }
 
   return (
