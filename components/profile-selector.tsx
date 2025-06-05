@@ -94,16 +94,39 @@ export default function ProfileSelector({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]) => (
-                <SelectItem key={key} value={key}>
-                  <div className="flex items-center gap-2">
-                    <span>{profile.name}</span>
-                    {suggestions.getProfileTypes(profileCategory).includes(key) && (
-                      <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
-                    )}
+              {/* Recent types for this category first */}
+              {suggestions.getProfileTypes(profileCategory).length > 0 && (
+                <>
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Recent in {PROFILES[profileCategory as keyof typeof PROFILES]?.name}
                   </div>
-                </SelectItem>
-              ))}
+                  {suggestions.getProfileTypes(profileCategory).map((key) => {
+                    const profile = PROFILES[profileCategory as keyof typeof PROFILES]?.types[key as keyof (typeof PROFILES)[keyof typeof PROFILES]["types"]]
+                    if (!profile) return null
+                    return (
+                      <SelectItem key={`recent-${key}`} value={key}>
+                        <div className="flex items-center gap-2">
+                          <span>{profile.name}</span>
+                          <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
+                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">All Types</div>
+                </>
+              )}
+              {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]) => {
+                // Skip if already shown in recent
+                if (suggestions.getProfileTypes(profileCategory).includes(key)) return null
+                return (
+                  <SelectItem key={key} value={key}>
+                    <div className="flex items-center gap-2">
+                      <span>{profile.name}</span>
+                    </div>
+                  </SelectItem>
+                )
+              })}
             </SelectContent>
           </Select>
         </div>
@@ -113,22 +136,65 @@ export default function ProfileSelector({
 
   return (
     <div className="space-y-4">
-      {/* Visual Category Selection */}
-      <div className="grid grid-cols-3 gap-2">
-        {Object.entries(PROFILES).map(([key, category]) => (
-          <div
-            key={key}
-            className={cn(
-              "border rounded-lg p-3 text-center cursor-pointer transition-all duration-200",
-              profileCategory === key
-                ? "bg-primary/10 border-primary/30 text-primary-foreground shadow-sm"
-                : "hover:bg-muted border-border hover:border-primary/20",
-            )}
-            onClick={() => handleCategorySelect(key)}
-          >
-            <div className="text-xs font-medium">{category.name}</div>
+      {/* Recent Profile Types - Mixed from all categories */}
+      {suggestions.getAllRecentProfileTypes().length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Recent Profile Types
           </div>
-        ))}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            {suggestions.getAllRecentProfileTypes().map(({type, category}) => {
+              const categoryData = PROFILES[category as keyof typeof PROFILES]
+              if (!categoryData) return null
+              const profile = (categoryData.types as any)[type]
+              if (!profile) return null
+              return (
+                <div
+                  key={`recent-${category}-${type}`}
+                  className={`border rounded-lg p-2 cursor-pointer transition-all duration-200 hover-lift ${
+                    profileCategory === category && profileType === type
+                      ? "selected-item-strong"
+                      : "hover:bg-muted border-border hover:border-primary/20 hover:shadow-sm recent-item"
+                  }`}
+                  onClick={() => {
+                    handleCategorySelect(category)
+                    setTimeout(() => handleTypeSelect(type), 100) // Small delay to ensure category updates first
+                  }}
+                >
+                  <div className="text-sm font-medium text-center">{profile.name}</div>
+                  <div className="text-xs text-center mt-1 flex items-center justify-center gap-1">
+                    <Clock className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">{PROFILES[category as keyof typeof PROFILES]?.name}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Visual Category Selection */}
+      <div className="space-y-2">
+        {suggestions.getAllRecentProfileTypes().length > 0 && (
+          <div className="text-xs font-medium text-muted-foreground">All Categories</div>
+        )}
+        <div className="grid grid-cols-3 gap-2">
+          {Object.entries(PROFILES).map(([key, category]) => (
+            <div
+              key={key}
+              className={cn(
+                "border rounded-lg p-3 text-center cursor-pointer transition-all duration-200 hover-lift",
+                profileCategory === key
+                  ? "selected-item-strong"
+                  : "hover:bg-muted border-border hover:border-primary/20",
+              )}
+              onClick={() => handleCategorySelect(key)}
+            >
+              <div className="text-xs font-medium">{category.name}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Profile Type Selection */}
@@ -138,16 +204,41 @@ export default function ProfileSelector({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]) => (
-              <SelectItem key={key} value={key}>
-                <div className="flex items-center gap-2">
-                  <span>{profile.name}</span>
-                  {suggestions.getProfileTypes(profileCategory).includes(key) && (
-                    <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
-                  )}
+            {/* Recent types for this category first */}
+            {suggestions.getProfileTypes(profileCategory).length > 0 && (
+              <>
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Recent in {PROFILES[profileCategory as keyof typeof PROFILES]?.name}
                 </div>
-              </SelectItem>
-            ))}
+                {suggestions.getProfileTypes(profileCategory).map((key) => {
+                  const categoryData = PROFILES[profileCategory as keyof typeof PROFILES]
+                  if (!categoryData) return null
+                  const profile = (categoryData.types as any)[key]
+                  if (!profile) return null
+                  return (
+                    <SelectItem key={`recent-${key}`} value={key}>
+                      <div className="flex items-center gap-2">
+                        <span>{profile.name}</span>
+                        <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
+                      </div>
+                    </SelectItem>
+                  )
+                })}
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground">All Types</div>
+              </>
+            )}
+            {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]: [string, any]) => {
+              // Skip if already shown in recent
+              if (suggestions.getProfileTypes(profileCategory).includes(key)) return null
+              return (
+                <SelectItem key={key} value={key}>
+                  <div className="flex items-center gap-2">
+                    <span>{profile.name}</span>
+                  </div>
+                </SelectItem>
+              )
+            })}
           </SelectContent>
         </Select>
       </div>

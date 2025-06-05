@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { CheckCircle, Info, BarChart3, Layers } from "lucide-react"
+import { CheckCircle, Info, BarChart3, Layers, Save, Share2, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { animations, safeAnimation } from "@/lib/animations"
 import { WEIGHT_UNITS } from "@/lib/unit-conversions"
@@ -18,6 +18,9 @@ interface MobileResultsProps {
   structuralProperties: StructuralProperties
   volume: number
   className?: string
+  onSave?: () => void
+  onShare?: () => void
+  onAdvancedAnalysis?: () => void
 }
 
 export function MobileResults({ 
@@ -25,7 +28,10 @@ export function MobileResults({
   weightUnit, 
   structuralProperties, 
   volume, 
-  className 
+  className,
+  onSave,
+  onShare,
+  onAdvancedAnalysis
 }: MobileResultsProps) {
   const DetailedResultsModal = () => (
     <DialogContent className="max-w-sm mx-4 max-h-[80vh] overflow-y-auto">
@@ -199,8 +205,45 @@ export function MobileResults({
           <div className="text-center pt-2 border-t border-border/50">
             <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
               <Info className="h-3 w-3" />
-              Tap info for detailed properties
+              Tap info button for detailed properties
             </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-3 border-t border-border/50">
+            {onSave && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onSave}
+                className="flex-1 h-8"
+              >
+                <Save className="h-3 w-3 mr-1" />
+                Save
+              </Button>
+            )}
+            {onShare && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onShare}
+                className="flex-1 h-8"
+              >
+                <Share2 className="h-3 w-3 mr-1" />
+                Share
+              </Button>
+            )}
+            {onAdvancedAnalysis && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onAdvancedAnalysis}
+                className="flex-1 h-8"
+              >
+                <TrendingUp className="h-3 w-3 mr-1" />
+                Analysis
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

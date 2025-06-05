@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog } from "lucide-react"
+import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
@@ -893,6 +893,9 @@ export default function MetalWeightCalculator() {
             structuralProperties={structuralProperties}
             volume={volume}
             className={safeAnimation(animationPresets.result)}
+            onSave={saveCalculation}
+            onShare={shareCalculation}
+            onAdvancedAnalysis={() => setActiveTab("advanced")}
           />
         )
       }

@@ -302,10 +302,10 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
               return (
                 <div
                   key={`recent-${key}`}
-                  className={`border rounded-lg p-2 cursor-pointer transition-all duration-200 ${
+                  className={`border rounded-lg p-2 cursor-pointer transition-all duration-200 hover-lift ${
                     material === key
-                      ? "bg-primary/10 border-primary/30 text-primary-foreground shadow-sm ring-2 ring-primary/20"
-                      : "hover:bg-muted border-border hover:border-primary/20 hover:shadow-sm"
+                      ? "selected-item-strong"
+                      : "hover:bg-muted border-border hover:border-primary/20 hover:shadow-sm recent-item"
                   }`}
                   onClick={() => handleMaterialChange(key)}
                 >
@@ -333,9 +333,9 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
             return (
               <div
                 key={key}
-                className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
+                className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 hover-lift ${
                   material === key
-                    ? "bg-primary/10 border-primary/30 text-primary-foreground shadow-sm ring-2 ring-primary/20"
+                    ? "selected-item-strong"
                     : "hover:bg-muted border-border hover:border-primary/20 hover:shadow-sm"
                 }`}
                 onClick={() => handleMaterialChange(key)}
@@ -410,124 +410,33 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
         </Select>
       </div>
 
-      {/* Enhanced Material Properties Display */}
+      {/* Simple Material Summary for Desktop (same as mobile) */}
       {selectedMaterialData && (
         <Card className="bg-muted/30 border-primary/10">
-          <CardContent className="p-4 space-y-4">
-            {/* Material Header */}
+          <CardContent className="p-3">
             <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${selectedMaterialData.color}`} />
+                  <span className="text-sm font-medium">{selectedMaterialData.name}</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {selectedMaterialData.density} g/cm³ • {selectedMaterialData.yieldStrength} MPa
+                </div>
+              </div>
               <div className="flex items-center gap-2">
-                <div className={`w-4 h-4 rounded-full ${selectedMaterialData.color}`} />
-                <h3 className="font-semibold">{selectedMaterialData.name}</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {getCostIndicator(selectedMaterialData.relativeCost)}
-                </Badge>
-                <div className={`w-2 h-2 rounded-full ${getAvailabilityColor(selectedMaterialData.availability)}`} />
-              </div>
-            </div>
-
-            {/* Key Properties Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="text-center p-2 bg-background/50 rounded">
-                <div className="text-xs text-muted-foreground">Density</div>
-                <div className="text-sm font-semibold">{selectedMaterialData.density} g/cm³</div>
-              </div>
-              <div className="text-center p-2 bg-background/50 rounded">
-                <div className="text-xs text-muted-foreground">Yield Strength</div>
-                <div className="text-sm font-semibold">{selectedMaterialData.yieldStrength} MPa</div>
-              </div>
-              <div className="text-center p-2 bg-background/50 rounded">
-                <div className="text-xs text-muted-foreground">Elastic Modulus</div>
-                <div className="text-sm font-semibold">{selectedMaterialData.elasticModulus} GPa</div>
-              </div>
-              <div className="text-center p-2 bg-background/50 rounded">
-                <div className="text-xs text-muted-foreground">Melting Point</div>
-                <div className="text-sm font-semibold">{selectedMaterialData.meltingPoint}°C</div>
-              </div>
-            </div>
-
-            {/* Detailed Properties - Collapsible */}
-            <Separator />
-            
-            {/* Mechanical Properties */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground">MECHANICAL PROPERTIES</h4>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div>
-                  <span className="text-muted-foreground">Tensile:</span>
-                  <div className="font-medium">{selectedMaterialData.tensileStrength} MPa</div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <MaterialPropertiesModal />
+                </Dialog>
+                <div className="text-right">
+                  <div className="text-xs font-medium">{getCostIndicator(selectedMaterialData.relativeCost)}</div>
+                  <div className={`w-2 h-2 rounded-full ml-auto mt-1 ${getAvailabilityColor(selectedMaterialData.availability)}`} />
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Poisson:</span>
-                  <div className="font-medium">{selectedMaterialData.poissonRatio}</div>
-                </div>
-                {selectedMaterialData.hardness && (
-                  <div>
-                    <span className="text-muted-foreground">Hardness:</span>
-                    <div className="font-medium">{selectedMaterialData.hardness}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Thermal Properties */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground">THERMAL PROPERTIES</h4>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-muted-foreground">Expansion:</span>
-                  <div className="font-medium">{selectedMaterialData.thermalExpansion} × 10⁻⁶/°C</div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Conductivity:</span>
-                  <div className="font-medium">{selectedMaterialData.thermalConductivity} W/m·K</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Applications */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground">TYPICAL APPLICATIONS</h4>
-              <div className="flex flex-wrap gap-1">
-                {selectedMaterialData.applications.slice(0, 3).map((app, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {app}
-                  </Badge>
-                ))}
-                {selectedMaterialData.applications.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{selectedMaterialData.applications.length - 3} more
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            {/* Standards */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground">STANDARDS</h4>
-              <div className="flex flex-wrap gap-1">
-                {selectedMaterialData.standards.slice(0, 2).map((standard, index) => (
-                  <Badge key={index} variant="outline" className="text-xs font-mono">
-                    {standard}
-                  </Badge>
-                ))}
-                {selectedMaterialData.standards.length > 2 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{selectedMaterialData.standards.length - 2} more
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            {/* Availability Info */}
-            <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <div className="text-xs text-muted-foreground">
-                Availability: <span className="capitalize">{selectedMaterialData.availability}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Cost: <span className="font-medium">{getCostIndicator(selectedMaterialData.relativeCost)}</span>
               </div>
             </div>
           </CardContent>

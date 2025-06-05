@@ -240,6 +240,19 @@ export function useUserPreferences() {
       // Profile type suggestions for a category
       getProfileTypes: (category: string) => preferences.recentProfileTypes[category] || [],
       
+      // Get all recent profile types (mixed from all categories) - for category selection
+      getAllRecentProfileTypes: () => {
+        const allRecent: Array<{type: string, category: string}> = []
+        Object.entries(preferences.recentProfileTypes).forEach(([cat, types]) => {
+          types.forEach(type => {
+            if (!allRecent.some(item => item.type === type && item.category === cat)) {
+              allRecent.push({type, category: cat})
+            }
+          })
+        })
+        return allRecent.slice(0, 8) // Limit to 8 most recent across all categories
+      },
+      
       // Standard size suggestions for a profile type
       getStandardSizes: (profileType: string) => preferences.recentStandardSizes[profileType] || [],
       
