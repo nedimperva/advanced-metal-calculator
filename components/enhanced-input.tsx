@@ -806,13 +806,9 @@ interface DimensionPresetsProps {
 }
 
 export function DimensionPresets({ profileType, onApplyPreset, className }: DimensionPresetsProps) {
-  console.log('DimensionPresets received profileType:', profileType)
   const presets = DIMENSION_PRESETS[profileType as keyof typeof DIMENSION_PRESETS]
-  console.log('Found presets:', presets)
   
   if (!presets) {
-    console.log('No presets found for profileType:', profileType)
-    console.log('Available profile types:', Object.keys(DIMENSION_PRESETS))
     return null
   }
 
@@ -833,7 +829,6 @@ export function DimensionPresets({ profileType, onApplyPreset, className }: Dime
                 size="sm"
                 className="text-xs h-8"
                 onClick={() => {
-                  console.log('Preset clicked:', preset.name, preset)
                   // Convert preset to numeric values
                   const numericPreset: Record<string, number> = {}
                   Object.entries(preset).forEach(([key, value]) => {
@@ -841,7 +836,6 @@ export function DimensionPresets({ profileType, onApplyPreset, className }: Dime
                       numericPreset[key] = value
                     }
                   })
-                  console.log('Calling onApplyPreset with:', numericPreset)
                   onApplyPreset(numericPreset)
                 }}
               >

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,10 +11,10 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, Undo, Redo, BarChart3, Layers } from "lucide-react"
+import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { useDebouncedUndoRedo } from "@/hooks/use-undo-redo"
+
 import { cn } from "@/lib/utils"
 import { animations, animationPresets, safeAnimation, createStaggeredAnimation } from "@/lib/animations"
 import ProfileSelector from "@/components/profile-selector"
@@ -30,12 +30,9 @@ import {
   DimensionInputsSkeleton 
 } from "@/components/loading-states"
 import { 
-  EnhancedInput, 
   EnhancedInputGroup, 
   ValidationSummary,
-  FractionInput,
-  DimensionPresets,
-  SmartSuggestions
+  DimensionPresets
 } from "@/components/enhanced-input"
 import { 
   validateCalculationInputs, 
@@ -63,101 +60,22 @@ export default function MetalWeightCalculator() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
 
   // State for undo/redo
-  interface CalculatorState {
-    profileCategory: string
-    profileType: string
-    standardSize: string
-    material: string
-    grade: string
-    dimensions: Record<string, string>
-    length: string
-    lengthUnit: string
-    weightUnit: string
-    operatingTemperature: string
-    useTemperatureEffects: boolean
-  }
 
-  const initialState: CalculatorState = {
-    profileCategory: "beams",
-    profileType: "hea",
-    standardSize: "",
-    material: "steel",
-    grade: "a36",
-    dimensions: {},
-    length: "1000",
-    lengthUnit: "mm",
-    weightUnit: "kg",
-    operatingTemperature: "20",
-    useTemperatureEffects: false
-  }
 
-  const {
-    state: calculatorState,
-    canUndo,
-    canRedo,
-    undo,
-    redo,
-    set: setCalculatorState,
-    setImmediate: setCalculatorStateImmediate
-  } = useDebouncedUndoRedo(initialState, 1000)
+  // State management with simple useState
+  const [profileCategory, setProfileCategory] = useState("beams")
+  const [profileType, setProfileType] = useState("hea")
+  const [standardSize, setStandardSize] = useState("")
+  const [material, setMaterial] = useState("steel")
+  const [grade, setGrade] = useState("a36")
+  const [dimensions, setDimensions] = useState<Record<string, string>>({})
+  const [length, setLength] = useState("1000")
+  const [lengthUnit, setLengthUnit] = useState("mm")
+  const [weightUnit, setWeightUnit] = useState("kg")
+  const [operatingTemperature, setOperatingTemperature] = useState("20")
+  const [useTemperatureEffects, setUseTemperatureEffects] = useState(false)
 
-  // Profile selection state (derived from undo/redo state)
-  const profileCategory = calculatorState.profileCategory
-  const profileType = calculatorState.profileType
-  const standardSize = calculatorState.standardSize
-  const material = calculatorState.material
-  const grade = calculatorState.grade
-  const dimensions = calculatorState.dimensions
-  const length = calculatorState.length
-  const lengthUnit = calculatorState.lengthUnit
-  const weightUnit = calculatorState.weightUnit
-  const operatingTemperature = calculatorState.operatingTemperature
-  const useTemperatureEffects = calculatorState.useTemperatureEffects
 
-  // Helper functions to update state
-  const setProfileCategory = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, profileCategory: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setProfileType = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, profileType: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setStandardSize = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, standardSize: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setMaterial = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, material: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setGrade = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, grade: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setDimensions = useCallback((value: Record<string, string>) => {
-    setCalculatorState({ ...calculatorState, dimensions: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setLength = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, length: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setLengthUnit = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, lengthUnit: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setWeightUnit = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, weightUnit: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setOperatingTemperature = useCallback((value: string) => {
-    setCalculatorState({ ...calculatorState, operatingTemperature: value })
-  }, [calculatorState, setCalculatorState])
-
-  const setUseTemperatureEffects = useCallback((value: boolean) => {
-    setCalculatorState({ ...calculatorState, useTemperatureEffects: value })
-  }, [calculatorState, setCalculatorState])
 
   // Profile selection state
   const [selectedProfile, setSelectedProfile] = useState<ProfileData | null>(null)
@@ -227,8 +145,8 @@ export default function MetalWeightCalculator() {
       // Reset standard size when profile changes
       setStandardSize("")
 
-      // Reset custom dimensions when profile changes
-      if (!customInput) {
+      // Reset custom dimensions when profile changes (but not if we have a standard size selected)
+      if (!customInput && !standardSize) {
         setDimensions({})
       }
 
@@ -416,39 +334,28 @@ export default function MetalWeightCalculator() {
     const newDimensions = { ...dimensions, [key]: value }
     
     // Update state immediately for better UX
-    setCalculatorStateImmediate({ ...calculatorState, dimensions: newDimensions })
+    setDimensions(newDimensions)
     
     // If user is editing dimensions, switch to custom input mode
     if (!customInput) {
       setCustomInput(true)
-      setCalculatorStateImmediate({ ...calculatorState, standardSize: "", dimensions: newDimensions })
+      setStandardSize("")
     }
     setCalculationError(null)
-  }, [dimensions, calculatorState, setCalculatorStateImmediate, customInput])
+  }, [dimensions, customInput])
 
   // Handle copying dimensions from preset
   const handleCopyFromPreset = useCallback((presetDimensions: Record<string, number>) => {
-    console.log('handleCopyFromPreset called with:', presetDimensions)
-    console.log('Current profileType:', profileType)
-    console.log('Current dimensions before:', dimensions)
-    
     const stringDimensions: Record<string, string> = {}
     Object.entries(presetDimensions).forEach(([key, value]) => {
       stringDimensions[key] = value.toString()
     })
     
-    console.log('Converted stringDimensions:', stringDimensions)
-    
-    setCalculatorStateImmediate({ 
-      ...calculatorState, 
-      dimensions: stringDimensions,
-      standardSize: "",
-    })
+    setDimensions(stringDimensions)
+    setStandardSize("")
     setCustomInput(true)
     setCalculationError(null)
-    
-    console.log('Updated calculator state with new dimensions')
-  }, [calculatorState, setCalculatorStateImmediate])
+  }, [])
 
   const saveCalculation = async () => {
     if (weight <= 0 || !selectedProfile || !selectedMaterial || !structuralProperties) {
@@ -711,7 +618,7 @@ export default function MetalWeightCalculator() {
     }
 
     // Use mobile-enhanced inputs on mobile devices
-    const InputComponent = isDesktop ? FractionInput : FractionInput
+    const InputComponent = isDesktop ? Input : Input
 
     return (
       <EnhancedInputGroup
@@ -732,75 +639,66 @@ export default function MetalWeightCalculator() {
             const value = dimensions[dimensionKey] || ""
             
             return (
-              <InputComponent
-                key={dimensionKey}
-                label={dimensionLabels[dimensionKey] || dimensionKey}
-                value={value}
-                onChange={(value) => updateDimension(dimensionKey, value)}
-                placeholder="Enter value"
-                unit={lengthUnit}
-                required={true}
-                dimension={dimensionKey}
-                profileType={profileType}
-                helperText={getInputDescription(dimensionKey)}
-                validateOnChange={true}
-                debounceMs={300}
-                disabled={isCalculating}
-                min={0.001}
-                max={100000}
-                step={0.1}
-                supportsFractions={true}
-                showPresets={false} // Already shown above
-                showSuggestions={true}
-                allDimensions={dimensions}
-                onCopyFromProfile={handleCopyFromPreset}
-              />
+              <div key={dimensionKey} className="space-y-2">
+                <Label htmlFor={dimensionKey}>
+                  {dimensionLabels[dimensionKey] || dimensionKey}
+                </Label>
+                <Input
+                  id={dimensionKey}
+                  type="number"
+                  value={value}
+                  onChange={(e) => updateDimension(dimensionKey, e.target.value)}
+                  placeholder="Enter value"
+                  disabled={isCalculating}
+                  min={0.001}
+                  max={100000}
+                  step={0.1}
+                />
+                <div className="text-xs text-muted-foreground">
+                  {getInputDescription(dimensionKey)}
+                </div>
+              </div>
             )
           })}
         </div>
         
         {/* Length input */}
-        <InputComponent
-          label="Length"
-          value={length}
-          onChange={setLength}
-          placeholder="Enter length"
-          unit={lengthUnit}
-          required={true}
-          dimension="length"
-          profileType={profileType}
-          helperText="Total length of the profile for weight calculation"
-          validateOnChange={true}
-          disabled={isCalculating}
-          min={0.1}
-          max={1000000}
-          step={1}
-          supportsFractions={true}
-          showPresets={false}
-          showSuggestions={true}
-          allDimensions={dimensions}
-        />
+        <div className="space-y-2">
+          <Label htmlFor="length">Length</Label>
+          <Input
+            id="length"
+            type="number"
+            value={length}
+            onChange={(e) => setLength(e.target.value)}
+            placeholder="Enter length"
+            disabled={isCalculating}
+            min={0.1}
+            max={1000000}
+            step={1}
+          />
+          <div className="text-xs text-muted-foreground">
+            Total length of the profile for weight calculation
+          </div>
+        </div>
 
         {/* Temperature input (if enabled) */}
         {useTemperatureEffects && (
           <div className="space-y-2">
             <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
-            <FractionInput
-              label=""
+            <Input
+              id="operating-temperature"
+              type="number"
               value={operatingTemperature}
-              onChange={setOperatingTemperature}
+              onChange={(e) => setOperatingTemperature(e.target.value)}
               placeholder="20"
-              unit="°C"
-              dimension="temperature"
-              helperText="Reference temperature: 20°C. Temperature affects material density."
               disabled={isCalculating}
               min={-273.15}
               max={5000}
               step={1}
-              supportsFractions={false}
-              showPresets={false}
-              showSuggestions={false}
             />
+            <div className="text-xs text-muted-foreground">
+              Reference temperature: 20°C. Temperature affects material density.
+            </div>
           </div>
         )}
 
@@ -1327,23 +1225,21 @@ export default function MetalWeightCalculator() {
                               "space-y-2",
                               safeAnimation(animations.slideInFromBottom)
                             )}>
-                              <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
-                              <FractionInput
-                                label=""
-                                value={operatingTemperature}
-                                onChange={setOperatingTemperature}
-                                placeholder="20"
-                                unit="°C"
-                                dimension="temperature"
-                                helperText="Reference temperature: 20°C. Temperature affects material density."
-                                disabled={isCalculating}
-                                min={-273.15}
-                                max={5000}
-                                step={1}
-                                supportsFractions={false}
-                                showPresets={false}
-                                showSuggestions={false}
-                              />
+                                                          <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
+                            <Input
+                              id="operating-temperature"
+                              type="number"
+                              value={operatingTemperature}
+                              onChange={(e) => setOperatingTemperature(e.target.value)}
+                              placeholder="20"
+                              disabled={isCalculating}
+                              min={-273.15}
+                              max={5000}
+                              step={1}
+                            />
+                            <div className="text-xs text-muted-foreground">
+                              Reference temperature: 20°C. Temperature affects material density.
+                            </div>
                             </div>
                           )}
                         </div>
@@ -1508,22 +1404,20 @@ export default function MetalWeightCalculator() {
                             safeAnimation(animations.slideInFromBottom)
                           )}>
                             <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
-                            <FractionInput
-                              label=""
+                            <Input
+                              id="operating-temperature"
+                              type="number"
                               value={operatingTemperature}
-                              onChange={setOperatingTemperature}
+                              onChange={(e) => setOperatingTemperature(e.target.value)}
                               placeholder="20"
-                              unit="°C"
-                              dimension="temperature"
-                              helperText="Reference temperature: 20°C. Temperature affects material density."
                               disabled={isCalculating}
                               min={-273.15}
                               max={5000}
                               step={1}
-                              supportsFractions={false}
-                              showPresets={false}
-                              showSuggestions={false}
                             />
+                            <div className="text-xs text-muted-foreground">
+                              Reference temperature: 20°C. Temperature affects material density.
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1630,34 +1524,7 @@ export default function MetalWeightCalculator() {
           </SwipeTabs.Content>
         </SwipeTabs>
 
-        {/* Undo/Redo Controls */}
-        <div className={cn(
-          "fixed flex gap-2 z-50",
-          isDesktop 
-            ? "bottom-4 right-4" 
-            : "bottom-20 right-4" // Account for mobile browser UI
-        )}>
-          <Button
-            variant="outline"
-            size={isDesktop ? "sm" : "default"}
-            onClick={undo}
-            disabled={!canUndo}
-            className="backdrop-blur-sm bg-background/90 border-primary/10 shadow-lg"
-          >
-            <Undo className={cn("", isDesktop ? "h-3 w-3" : "h-4 w-4")} />
-            {!isDesktop && <span className="ml-1 hidden">Undo</span>}
-          </Button>
-          <Button
-            variant="outline"
-            size={isDesktop ? "sm" : "default"}
-            onClick={redo}
-            disabled={!canRedo}
-            className="backdrop-blur-sm bg-background/90 border-primary/10 shadow-lg"
-          >
-            <Redo className={cn("", isDesktop ? "h-3 w-3" : "h-4 w-4")} />
-            {!isDesktop && <span className="ml-1 hidden">Redo</span>}
-          </Button>
-        </div>
+
       </div>
     </div>
   )

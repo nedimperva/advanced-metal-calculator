@@ -18,8 +18,11 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
   const handleMaterialChange = (newMaterial: string) => {
     setMaterial(newMaterial)
     // Select first grade in the new material
-    const firstGrade = Object.keys(MATERIALS[newMaterial as keyof typeof MATERIALS].grades)[0]
-    setGrade(firstGrade)
+    const materialData = MATERIALS[newMaterial as keyof typeof MATERIALS]
+    if (materialData && materialData.grades) {
+      const firstGrade = Object.keys(materialData.grades)[0]
+      setGrade(firstGrade)
+    }
   }
 
   // Get current selected material data
@@ -49,20 +52,20 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
       {/* Material Type Selection - Enhanced Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
         {Object.entries(MATERIALS).map(([key, materialType]) => (
-          <div
-            key={key}
-            className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
-              material === key
-                ? "bg-primary/10 border-primary/30 text-primary-foreground shadow-sm ring-2 ring-primary/20"
-                : "hover:bg-muted border-border hover:border-primary/20 hover:shadow-sm"
-            }`}
-            onClick={() => handleMaterialChange(key)}
-          >
-            <div className="text-sm font-medium text-center">{materialType.name}</div>
-            <div className="text-xs text-muted-foreground text-center mt-1">
-              {Object.keys(materialType.grades).length} grades
+            <div
+              key={key}
+              className={`border rounded-lg p-3 cursor-pointer transition-all duration-200 ${
+                material === key
+                  ? "bg-primary/10 border-primary/30 text-primary-foreground shadow-sm ring-2 ring-primary/20"
+                  : "hover:bg-muted border-border hover:border-primary/20 hover:shadow-sm"
+              }`}
+              onClick={() => handleMaterialChange(key)}
+            >
+              <div className="text-sm font-medium text-center">{materialType.name}</div>
+              <div className="text-xs text-muted-foreground text-center mt-1">
+                {Object.keys(materialType.grades).length} grades
+              </div>
             </div>
-          </div>
         ))}
       </div>
 
