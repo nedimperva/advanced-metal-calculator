@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers } from "lucide-react"
+import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
@@ -22,6 +22,7 @@ import MaterialSelector from "@/components/material-selector"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { CalculationBreakdown } from "@/components/calculation-breakdown"
 import { CalculationComparison } from "@/components/calculation-comparison"
+import { AdvancedStructuralAnalysis } from "@/components/advanced-structural-analysis"
 import { 
   LoadingSpinner, 
   CalculationLoading, 
@@ -979,12 +980,12 @@ export default function MetalWeightCalculator() {
                   Save
                 </Button>
                 <Button 
-                  onClick={exportCalculation} 
+                  onClick={() => setActiveTab("advanced")} 
                   variant="outline" 
                   className="flex-1"
                 >
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
+                  <Cog className="mr-2 h-4 w-4" />
+                  Advanced Analysis
                 </Button>
                 <Button 
                   onClick={shareCalculation} 
@@ -1453,6 +1454,28 @@ export default function MetalWeightCalculator() {
                 <CardContent className="text-center py-8">
                   <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p className="text-muted-foreground">Complete a calculation to see the breakdown</p>
+                </CardContent>
+              </Card>
+            )}
+          </SwipeTabs.Content>
+
+          {/* New: Advanced Structural Analysis Tab */}
+          <SwipeTabs.Content value="advanced" className="space-y-4">
+            {weight > 0 && structuralProperties && selectedMaterial ? (
+              <AdvancedStructuralAnalysis
+                structuralProperties={structuralProperties}
+                memberLength={parseFloat(length) * LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].factor} // Convert to cm
+                selectedMaterial={selectedMaterial}
+                profileName={selectedProfile?.name || `${profileType.toUpperCase()}${standardSize ? ` ${standardSize}` : ''}`}
+              />
+            ) : (
+              <Card className="backdrop-blur-sm bg-card/90 border-primary/10">
+                <CardContent className="text-center py-8">
+                  <Cog className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-muted-foreground">Complete a calculation to access advanced structural analysis</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Buckling analysis, load capacity, stress analysis, and deflection calculations
+                  </p>
                 </CardContent>
               </Card>
             )}

@@ -615,4 +615,321 @@ export function calculateWeight(
   } catch (error) {
     return 0
   }
+}
+
+// ===== ADVANCED STRUCTURAL ANALYSIS FUNCTIONS =====
+
+export interface BucklingAnalysis {
+  eulerCriticalLoad: number      // Euler buckling load (N)
+  slendernessRatio: number       // L/r ratio
+  effectiveLength: number        // Effective length (cm)
+  bucklingMode: 'elastic' | 'inelastic' | 'short'
+  safetyFactor: number          // Recommended safety factor
+  allowableLoad: number         // Safe design load (N)
+  comments: string[]
+}
+
+export interface LoadCapacity {
+  tensileCapacity: number        // Ultimate tensile capacity (N)
+  compressiveCapacity: number    // Ultimate compressive capacity (N) 
+  flexuralCapacity: number      // Bending moment capacity (N⋅m)
+  shearCapacity: number         // Shear force capacity (N)
+  yieldStrength: number         // Material yield strength (MPa)
+  ultimateStrength: number      // Material ultimate strength (MPa)
+  designCapacity: number        // Safe design capacity with factors (N)
+}
+
+export interface StressAnalysis {
+  axialStress: number           // Axial stress (MPa)
+  bendingStressX: number        // Bending stress about X-axis (MPa)
+  bendingStressY: number        // Bending stress about Y-axis (MPa)
+  shearStress: number          // Shear stress (MPa)
+  vonMisesStress: number       // Equivalent von Mises stress (MPa)
+  safetyFactor: number         // Factor of safety
+  isWithinLimits: boolean      // Whether stress is within allowable limits
+}
+
+export interface DeflectionAnalysis {
+  maxDeflection: number        // Maximum deflection (mm)
+  deflectionRatio: number      // L/deflection ratio
+  isAcceptable: boolean        // Whether deflection is within limits
+  allowableDeflection: number  // Code-based allowable deflection (mm)
+}
+
+/**
+ * Perform Euler buckling analysis for compression members
+ */
+export function calculateBucklingAnalysis(
+  structuralProperties: StructuralProperties,
+  length: number, // Member length in cm
+  endConditions: 'pinned' | 'fixed' | 'fixed-pinned' | 'cantilever' = 'pinned',
+  elasticModulus: number = 200000, // MPa (typical for steel)
+  yieldStrength: number = 250 // MPa
+): BucklingAnalysis {
+  // End condition factors (K values)
+  const endConditionFactors = {
+    'pinned': 1.0,           // Pin-pin
+    'fixed': 0.5,            // Fixed-fixed
+    'fixed-pinned': 0.7,     // Fixed-pin
+    'cantilever': 2.0        // Fixed-free
+  }
+
+  const K = endConditionFactors[endConditions]
+  const effectiveLength = K * length
+
+  // Use minimum radius of gyration for most critical buckling
+  const minRadiusOfGyration = Math.min(
+    structuralProperties.radiusOfGyrationX,
+    structuralProperties.radiusOfGyrationY
+  )
+
+  const slendernessRatio = effectiveLength / minRadiusOfGyration
+
+  // Euler critical load (N)
+  // Pe = π²EI/Le² = π²EA/λ² where λ = Le/r
+  const eulerCriticalLoad = (Math.PI ** 2 * elasticModulus * structuralProperties.area * 100) / (slendernessRatio ** 2)
+
+  // Determine buckling mode and safety factor
+  let bucklingMode: 'elastic' | 'inelastic' | 'short'
+  let safetyFactor: number
+  let comments: string[] = []
+
+  if (slendernessRatio > 120) {
+    bucklingMode = 'elastic'
+    safetyFactor = 2.5
+    comments.push('Long column - elastic buckling governs')
+    comments.push('Euler formula applies')
+  } else if (slendernessRatio > 40) {
+    bucklingMode = 'inelastic'
+    safetyFactor = 2.0
+    comments.push('Intermediate column - inelastic buckling')
+    comments.push('Johnson formula recommended for accurate analysis')
+  } else {
+    bucklingMode = 'short'
+    safetyFactor = 1.8
+    comments.push('Short column - material yielding governs')
+    comments.push('Buckling unlikely, check material strength')
+  }
+
+  const allowableLoad = eulerCriticalLoad / safetyFactor
+
+  return {
+    eulerCriticalLoad,
+    slendernessRatio,
+    effectiveLength,
+    bucklingMode,
+    safetyFactor,
+    allowableLoad,
+    comments
+  }
+}
+
+/**
+ * Calculate load capacities for different loading conditions
+ */
+export function calculateLoadCapacity(
+  structuralProperties: StructuralProperties,
+  yieldStrength: number = 250, // MPa
+  ultimateStrength: number = 400, // MPa
+  safetyFactorTension: number = 1.67,
+  safetyFactorCompression: number = 1.92,
+  safetyFactorBending: number = 1.67
+): LoadCapacity {
+  // Convert area from cm² to mm²
+  const areaInMm2 = structuralProperties.area * 100
+
+  // Tensile capacity (based on yield strength)
+  const tensileCapacity = yieldStrength * areaInMm2
+
+  // Compressive capacity (simplified - actual depends on buckling)
+  const compressiveCapacity = yieldStrength * areaInMm2
+
+  // Flexural capacity (plastic moment capacity)
+  // Mp = fy * Z, where Z is plastic section modulus
+  // Approximating plastic modulus as 1.1 * elastic modulus for common shapes
+  const plasticModulusX = structuralProperties.sectionModulusX * 1.1
+  const flexuralCapacity = yieldStrength * plasticModulusX * 1000 // Convert to N⋅mm
+
+  // Shear capacity (simplified)
+  // V = 0.6 * fy * Aweb (for I-beams, use area/2 as approximation)
+  const shearCapacity = 0.6 * yieldStrength * (areaInMm2 / 2)
+
+  // Design capacity (most conservative)
+  const designCapacity = Math.min(
+    tensileCapacity / safetyFactorTension,
+    compressiveCapacity / safetyFactorCompression
+  )
+
+  return {
+    tensileCapacity,
+    compressiveCapacity,
+    flexuralCapacity,
+    shearCapacity,
+    yieldStrength,
+    ultimateStrength,
+    designCapacity
+  }
+}
+
+/**
+ * Perform stress analysis for combined loading
+ */
+export function calculateStressAnalysis(
+  structuralProperties: StructuralProperties,
+  axialForce: number = 0,    // N (tension positive)
+  momentX: number = 0,       // N⋅m about X-axis
+  momentY: number = 0,       // N⋅m about Y-axis
+  shearForce: number = 0,    // N
+  yieldStrength: number = 250 // MPa
+): StressAnalysis {
+  // Convert area from cm² to mm²
+  const areaInMm2 = structuralProperties.area * 100
+  
+  // Convert section moduli from cm³ to mm³
+  const sectionModulusXInMm3 = structuralProperties.sectionModulusX * 1000
+  const sectionModulusYInMm3 = structuralProperties.sectionModulusY * 1000
+
+  // Axial stress (MPa)
+  const axialStress = axialForce / areaInMm2
+
+  // Bending stresses (MPa)
+  const bendingStressX = (momentX * 1000) / sectionModulusXInMm3 // Convert N⋅m to N⋅mm
+  const bendingStressY = (momentY * 1000) / sectionModulusYInMm3
+
+  // Shear stress (simplified, MPa)
+  const shearStress = shearForce / areaInMm2
+
+  // Combined normal stress
+  const combinedNormalStress = Math.abs(axialStress) + Math.abs(bendingStressX) + Math.abs(bendingStressY)
+
+  // Von Mises stress (simplified for combined normal and shear)
+  const vonMisesStress = Math.sqrt(combinedNormalStress ** 2 + 3 * (shearStress ** 2))
+
+  // Safety factor
+  const safetyFactor = yieldStrength / vonMisesStress
+
+  // Check if within limits (safety factor > 1.5 typically required)
+  const isWithinLimits = safetyFactor >= 1.5
+
+  return {
+    axialStress,
+    bendingStressX,
+    bendingStressY,
+    shearStress,
+    vonMisesStress,
+    safetyFactor,
+    isWithinLimits
+  }
+}
+
+/**
+ * Calculate deflection for simply supported beam under uniform load
+ */
+export function calculateDeflectionAnalysis(
+  structuralProperties: StructuralProperties,
+  length: number,              // Beam length in cm
+  uniformLoad: number = 0,     // Uniform load in N/cm
+  pointLoad: number = 0,       // Point load at center in N
+  elasticModulus: number = 200000, // MPa
+  deflectionLimit: number = 250    // L/deflectionLimit (typical L/250)
+): DeflectionAnalysis {
+  // Convert moment of inertia from cm⁴ to mm⁴
+  const momentOfInertiaInMm4 = structuralProperties.momentOfInertiaX * 10000
+
+  // Convert length to mm
+  const lengthInMm = length * 10
+
+  // Maximum deflection calculations (mm)
+  let maxDeflection = 0
+
+  // Uniform load deflection: δ = 5wL⁴/(384EI)
+  if (uniformLoad > 0) {
+    const uniformLoadInNPerMm = uniformLoad / 10 // Convert N/cm to N/mm
+    const uniformLoadDeflection = (5 * uniformLoadInNPerMm * (lengthInMm ** 4)) / 
+                                 (384 * elasticModulus * momentOfInertiaInMm4)
+    maxDeflection += uniformLoadDeflection
+  }
+
+  // Point load deflection: δ = PL³/(48EI)
+  if (pointLoad > 0) {
+    const pointLoadDeflection = (pointLoad * (lengthInMm ** 3)) / 
+                               (48 * elasticModulus * momentOfInertiaInMm4)
+    maxDeflection += pointLoadDeflection
+  }
+
+  // Allowable deflection
+  const allowableDeflection = lengthInMm / deflectionLimit
+
+  // Deflection ratio
+  const deflectionRatio = lengthInMm / maxDeflection
+
+  // Check if acceptable
+  const isAcceptable = maxDeflection <= allowableDeflection
+
+  return {
+    maxDeflection,
+    deflectionRatio,
+    isAcceptable,
+    allowableDeflection
+  }
+}
+
+/**
+ * Comprehensive structural analysis combining all methods
+ */
+export function performComprehensiveAnalysis(
+  structuralProperties: StructuralProperties,
+  analysisParameters: {
+    length: number               // Member length (cm)
+    yieldStrength?: number       // Material yield strength (MPa)
+    ultimateStrength?: number    // Material ultimate strength (MPa)
+    elasticModulus?: number      // Elastic modulus (MPa)
+    endConditions?: 'pinned' | 'fixed' | 'fixed-pinned' | 'cantilever'
+    
+    // Loading conditions
+    axialForce?: number          // Axial force (N)
+    momentX?: number             // Moment about X-axis (N⋅m)
+    momentY?: number             // Moment about Y-axis (N⋅m)
+    shearForce?: number          // Shear force (N)
+    uniformLoad?: number         // Uniform load (N/cm)
+    pointLoad?: number           // Point load (N)
+  }
+) {
+  const {
+    length,
+    yieldStrength = 250,
+    ultimateStrength = 400,
+    elasticModulus = 200000,
+    endConditions = 'pinned',
+    axialForce = 0,
+    momentX = 0,
+    momentY = 0,
+    shearForce = 0,
+    uniformLoad = 0,
+    pointLoad = 0
+  } = analysisParameters
+
+  const bucklingAnalysis = calculateBucklingAnalysis(
+    structuralProperties, length, endConditions, elasticModulus, yieldStrength
+  )
+
+  const loadCapacity = calculateLoadCapacity(
+    structuralProperties, yieldStrength, ultimateStrength
+  )
+
+  const stressAnalysis = calculateStressAnalysis(
+    structuralProperties, axialForce, momentX, momentY, shearForce, yieldStrength
+  )
+
+  const deflectionAnalysis = calculateDeflectionAnalysis(
+    structuralProperties, length, uniformLoad, pointLoad, elasticModulus
+  )
+
+  return {
+    structuralProperties,
+    bucklingAnalysis,
+    loadCapacity,
+    stressAnalysis,
+    deflectionAnalysis
+  }
 } 
