@@ -111,6 +111,11 @@ export default function MetalWeightCalculator() {
   const [crossSectionalArea, setCrossSectionalArea] = useState(0)
   const [volume, setVolume] = useState(0)
 
+  // Quantity and pricing
+  const [quantity, setQuantity] = useState("1")
+  const [pricePerUnit, setPricePerUnit] = useState("")
+  const [currency, setCurrency] = useState("USD")
+
   // History
   const [calculations, setCalculations] = useState<Calculation[]>([])
   const [activeTab, setActiveTab] = useState("calculator")
@@ -916,21 +921,98 @@ export default function MetalWeightCalculator() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Main Result with pulse animation */}
-              <div className={cn(
-                "text-center bg-gradient-to-r from-primary/5 to-primary/10 p-6 rounded-xl",
-                safeAnimation(animations.scaleIn)
-              )}>
-                <div className="text-4xl font-bold text-primary bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                  {weight.toFixed(4)}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
+              {/* Quantity and Price Inputs */}
+              <div className={safeAnimation(animations.slideInFromRight)}>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <Label htmlFor="quantity" className="text-xs">Quantity</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      placeholder="1"
+                      min="0.001"
+                      step="1"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="price" className="text-xs">Price per Unit ({currency})</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      value={pricePerUnit}
+                      onChange={(e) => setPricePerUnit(e.target.value)}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className="h-8 text-xs"
+                    />
+                  </div>
                 </div>
               </div>
 
+              {/* Single Unit Results */}
+              <div className={cn(
+                "bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-lg",
+                safeAnimation(animations.scaleIn)
+              )}>
+                <h4 className="text-xs font-medium text-muted-foreground mb-2">Single Unit</h4>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-primary">
+                      {weight.toFixed(4)}
+                    </div>
+                    <div className="text-muted-foreground">
+                      {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
+                    </div>
+                  </div>
+                  {pricePerUnit && (
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                        {currency} {parseFloat(pricePerUnit).toFixed(2)}
+                      </div>
+                      <div className="text-muted-foreground">Price</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Total Results (if quantity > 1) */}
+              {parseFloat(quantity) !== 1 && parseFloat(quantity) > 0 && (
+                <div className={cn(
+                  "bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 p-4 rounded-lg border border-green-200/50 dark:border-green-800/50",
+                  safeAnimation(animations.slideInFromBottom)
+                )}>
+                  <h4 className="text-xs font-medium text-green-700 dark:text-green-300 mb-2 flex items-center gap-1">
+                    <Calculator className="h-3 w-3" />
+                    Total ({quantity} units)
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-green-700 dark:text-green-300">
+                        {(weight * parseFloat(quantity)).toFixed(4)}
+                      </div>
+                      <div className="text-green-600 dark:text-green-400">
+                        {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
+                      </div>
+                    </div>
+                    {pricePerUnit && (
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-green-700 dark:text-green-300">
+                          {currency} {(parseFloat(pricePerUnit) * parseFloat(quantity)).toFixed(2)}
+                        </div>
+                        <div className="text-green-600 dark:text-green-400">Total Cost</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Basic Properties with staggered animation */}
-              <div className="grid grid-cols-2 gap-4">
+              <Separator className="my-3" />
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Cross-sectional Area", value: `${structuralProperties.area.toFixed(4)} cm²` },
                   { label: "Volume", value: `${volume.toFixed(4)} cm³` }
@@ -938,12 +1020,12 @@ export default function MetalWeightCalculator() {
                   <div 
                     key={item.label}
                     className={cn(
-                      "text-center p-3 bg-muted/50 rounded-lg border border-border/50",
+                      "text-center p-2 bg-muted/50 rounded-md border border-border/50",
                       safeAnimation(`${animations.slideInFromBottom} delay-${(index + 1) * 100}`)
                     )}
                   >
                     <div className="text-xs text-muted-foreground font-medium">{item.label}</div>
-                    <div className="font-semibold text-foreground mt-1">{item.value}</div>
+                    <div className="text-xs font-semibold text-foreground mt-1">{item.value}</div>
                   </div>
                 ))}
               </div>
@@ -1004,33 +1086,28 @@ export default function MetalWeightCalculator() {
                 </div>
               </div>
 
-              {/* Temperature Effects with enhanced styling */}
+              {/* Temperature Effects - Compact */}
               {useTemperatureEffects && structuralProperties.adjustedDensity && (
                 <div className={safeAnimation(`${animations.slideInFromBottom} delay-400`)}>
                   <Separator className="my-4" />
-                  <div className="p-4 bg-gradient-to-br from-blue-50/70 to-cyan-50/70 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-xl border border-blue-200/50 dark:border-blue-800/50">
-                    <h4 className="font-semibold text-sm mb-3 flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                      <Layers className="h-4 w-4" />
+                  <div className="p-3 bg-gradient-to-br from-blue-50/70 to-cyan-50/70 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                    <h4 className="font-semibold text-xs mb-2 flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                      <Layers className="h-3 w-3" />
                       Temperature Effects
                     </h4>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      {[
-                        { label: "Original Density", value: `${selectedMaterial?.density.toFixed(3)} g/cm³` },
-                        { label: "Adjusted Density", value: `${structuralProperties.adjustedDensity.toFixed(3)} g/cm³` },
-                        { label: "Temperature", value: `${operatingTemperature}°C` },
-                        { label: "Density Change", value: `${((structuralProperties.adjustedDensity - (selectedMaterial?.density || 0)) / (selectedMaterial?.density || 1) * 100).toFixed(2)}%` }
-                      ].map((item, index) => (
-                        <div 
-                          key={item.label}
-                          className={cn(
-                            "p-2 bg-white/60 dark:bg-blue-950/20 rounded-md",
-                            safeAnimation(`${animations.fadeIn} delay-${(index + 8) * 50}`)
-                          )}
-                        >
-                          <span className="text-muted-foreground block">{item.label}:</span>
-                          <div className="font-medium text-blue-700 dark:text-blue-300">{item.value}</div>
-                        </div>
-                      ))}
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
+                        <span className="text-muted-foreground block">Adjusted Density</span>
+                        <div className="font-medium text-blue-700 dark:text-blue-300">{structuralProperties.adjustedDensity.toFixed(3)} g/cm³</div>
+                      </div>
+                      <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
+                        <span className="text-muted-foreground block">Density Change</span>
+                        <div className="font-medium text-blue-700 dark:text-blue-300">{((structuralProperties.adjustedDensity - (selectedMaterial?.density || 0)) / (selectedMaterial?.density || 1) * 100).toFixed(2)}%</div>
+                      </div>
+                      <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
+                        <span className="text-muted-foreground block">Original</span>
+                        <div className="font-medium text-blue-700 dark:text-blue-300">{selectedMaterial?.density.toFixed(3)} g/cm³</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1110,14 +1187,14 @@ export default function MetalWeightCalculator() {
         <ThemeToggle />
       </div>
 
-      <div className={cn("relative z-10 mx-auto p-4", isDesktop ? "max-w-6xl" : "max-w-md")}>
+      <div className={cn("relative z-10", isDesktop ? "px-4" : "max-w-md mx-auto p-4")}>
         {/* Header */}
-        <div className="text-center space-y-2 mb-6">
+        <div className="text-center space-y-1 mb-4">
           <div className="flex items-center justify-center gap-2">
-            <Calculator className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Professional Metal Calculator</h1>
+            <Calculator className="h-6 w-6 text-primary" />
+            <h1 className="text-xl font-bold text-foreground">Professional Metal Calculator</h1>
           </div>
-          <p className="text-sm text-muted-foreground">Calculate weights for structural profiles and materials</p>
+          <p className="text-xs text-muted-foreground">Calculate weights for structural profiles and materials</p>
         </div>
 
         <SwipeTabs 
@@ -1153,186 +1230,194 @@ export default function MetalWeightCalculator() {
         >
           <SwipeTabs.Content value="calculator" className={safeAnimation(animationPresets.tab)}>
             {isDesktop ? (
-              // Desktop Layout - Side by side
-              <div className="grid grid-cols-12 gap-6">
-                {/* Left Column - Selection */}
-                <div className="col-span-5 space-y-6">
-                  {/* Material Selection - Now First */}
-                  <div className={safeAnimation(`${animations.slideInFromLeft} delay-100`)}>
-                    <Card className={cn(
-                      "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                      safeAnimation(animations.cardHover)
-                    )}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Layers className="h-5 w-5 text-primary" />
-                          Material Selection
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <MaterialSelector
-                          material={material}
-                          setMaterial={setMaterial}
-                          grade={grade}
-                          setGrade={setGrade}
-                        />
-                      </CardContent>
-                    </Card>
-                  </div>
+              // Desktop Layout - Three columns with independent scrolling
+              <div className="grid grid-cols-12 gap-2 h-[calc(100vh-120px)]">
+                {/* Left Column - Material & Profile Selection */}
+                <div className="col-span-4 overflow-y-auto pr-2 scrollbar-column">
+                  <div className="space-y-3">
+                    {/* Material Selection */}
+                    <div className={safeAnimation(`${animations.slideInFromLeft} delay-100`)}>
+                      <Card className={cn(
+                        "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                        safeAnimation(animations.cardHover)
+                      )}>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Layers className="h-5 w-5 text-primary" />
+                            Material Selection
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <MaterialSelector
+                            material={material}
+                            setMaterial={setMaterial}
+                            grade={grade}
+                            setGrade={setGrade}
+                          />
+                        </CardContent>
+                      </Card>
+                    </div>
 
-                  {/* Profile Selection - Now Second */}
-                  <div className={safeAnimation(`${animations.slideInFromLeft} delay-200`)}>
-                    <Card className={cn(
-                      "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                      safeAnimation(animations.cardHover)
-                    )}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Calculator className="h-5 w-5 text-primary" />
-                          Profile Selection
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <ProfileSelector
-                          profileCategory={profileCategory}
-                          setProfileCategory={setProfileCategory}
-                          profileType={profileType}
-                          setProfileType={setProfileType}
-                        />
+                    {/* Profile Selection */}
+                    <div className={safeAnimation(`${animations.slideInFromLeft} delay-200`)}>
+                      <Card className={cn(
+                        "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                        safeAnimation(animations.cardHover)
+                      )}>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Calculator className="h-5 w-5 text-primary" />
+                            Profile Selection
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <ProfileSelector
+                            profileCategory={profileCategory}
+                            setProfileCategory={setProfileCategory}
+                            profileType={profileType}
+                            setProfileType={setProfileType}
+                          />
 
-                        {/* Standard Sizes */}
-                        {renderStandardSizes()}
+                          {/* Standard Sizes */}
+                          {renderStandardSizes()}
 
-                        {/* Toggle for custom dimensions */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm">Custom Dimensions</span>
-                          <Button
-                            variant={customInput ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setCustomInput(true)
-                              setStandardSize("")
-                            }}
-                            className={safeAnimation(animations.buttonPress)}
-                          >
-                            {customInput ? "Editing Custom" : "Use Custom"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                          {/* Toggle for custom dimensions */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Custom Dimensions</span>
+                            <Button
+                              variant={customInput ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                setCustomInput(true)
+                                setStandardSize("")
+                              }}
+                              className={safeAnimation(animations.buttonPress)}
+                            >
+                              {customInput ? "Editing Custom" : "Use Custom"}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </div>
                 </div>
 
-                {/* Right Column - Dimensions & Results */}
-                <div className="col-span-7 space-y-6">
-                  {/* Dimensions */}
-                  <div className={safeAnimation(`${animations.slideInFromRight} delay-100`)}>
-                    <Card className={cn(
-                      "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                      safeAnimation(animations.cardHover)
-                    )}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <BarChart3 className="h-5 w-5 text-primary" />
-                          Dimensions
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {/* Unit Selection */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="length-unit">Length Unit</Label>
-                            <Select value={lengthUnit} onValueChange={handleLengthUnitChange}>
-                              <SelectTrigger className={safeAnimation(animations.inputFocus)}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(LENGTH_UNITS).map(([key, unit]) => (
-                                  <SelectItem key={key} value={key}>
-                                    {unit.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                {/* Middle Column - Dimensions */}
+                <div className="col-span-4 overflow-y-auto pr-2 scrollbar-column">
+                  <div className="space-y-3">
+                    <div className={safeAnimation(`${animations.slideInFromBottom} delay-100`)}>
+                      <Card className={cn(
+                        "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                        safeAnimation(animations.cardHover)
+                      )}>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            Dimensions
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {/* Unit Selection */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor="length-unit">Length Unit</Label>
+                              <Select value={lengthUnit} onValueChange={handleLengthUnitChange}>
+                                <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(LENGTH_UNITS).map(([key, unit]) => (
+                                    <SelectItem key={key} value={key}>
+                                      {unit.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="weight-unit">Weight Unit</Label>
+                              <Select value={weightUnit} onValueChange={handleWeightUnitChange}>
+                                <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(WEIGHT_UNITS).map(([key, unit]) => (
+                                    <SelectItem key={key} value={key}>
+                                      {unit.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                          <div>
-                            <Label htmlFor="weight-unit">Weight Unit</Label>
-                            <Select value={weightUnit} onValueChange={handleWeightUnitChange}>
-                              <SelectTrigger className={safeAnimation(animations.inputFocus)}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(WEIGHT_UNITS).map(([key, unit]) => (
-                                  <SelectItem key={key} value={key}>
-                                    {unit.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
 
-                        {/* Profile Dimensions */}
-                        <Separator className="my-4" />
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-medium">Profile Dimensions</h3>
-                            {selectedProfile && (
-                              <Badge variant="outline" className="font-normal">
-                                {selectedProfile.name} {standardSize && `(${standardSize})`}
-                              </Badge>
+                          {/* Profile Dimensions */}
+                          <Separator className="my-4" />
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-sm font-medium">Profile Dimensions</h3>
+                              {selectedProfile && (
+                                <Badge variant="outline" className="font-normal">
+                                  {selectedProfile.name} {standardSize && `(${standardSize})`}
+                                </Badge>
+                              )}
+                            </div>
+                            {renderDimensionInputs()}
+                          </div>
+
+                          {/* Temperature Controls */}
+                          <Separator className="my-4" />
+                          <div className={cn(
+                            "p-3 bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg border border-border/50",
+                            safeAnimation(animations.slideInFromBottom)
+                          )}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  id="temperature-effects"
+                                  checked={useTemperatureEffects}
+                                  onCheckedChange={setUseTemperatureEffects}
+                                />
+                                <Label htmlFor="temperature-effects" className="text-sm font-medium">
+                                  Temperature Effects
+                                </Label>
+                              </div>
+                              {useTemperatureEffects && (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    id="operating-temperature"
+                                    type="number"
+                                    value={operatingTemperature}
+                                    onChange={(e) => setOperatingTemperature(e.target.value)}
+                                    placeholder="20"
+                                    disabled={isCalculating}
+                                    min={-273.15}
+                                    max={5000}
+                                    step={1}
+                                    className="w-20 h-8 text-xs"
+                                  />
+                                  <span className="text-xs text-muted-foreground">°C</span>
+                                </div>
+                              )}
+                            </div>
+                            {useTemperatureEffects && (
+                              <div className="text-xs text-muted-foreground">
+                                Reference: 20°C. Affects material density in calculations.
+                              </div>
                             )}
                           </div>
-                          {renderDimensionInputs()}
-                        </div>
-
-                        {/* Temperature Controls */}
-                        <Separator className="my-4" />
-                        <div className={cn(
-                          "space-y-3 p-4 bg-gradient-to-br from-muted/40 to-muted/20 rounded-xl border border-border/50",
-                          safeAnimation(animations.slideInFromBottom)
-                        )}>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="temperature-effects"
-                              checked={useTemperatureEffects}
-                              onCheckedChange={setUseTemperatureEffects}
-                            />
-                            <Label htmlFor="temperature-effects" className="text-sm font-medium">
-                              Enable Temperature Effects
-                            </Label>
-                          </div>
-                          
-                          {useTemperatureEffects && (
-                            <div className={cn(
-                              "space-y-2",
-                              safeAnimation(animations.slideInFromBottom)
-                            )}>
-                                                          <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
-                            <Input
-                              id="operating-temperature"
-                              type="number"
-                              value={operatingTemperature}
-                              onChange={(e) => setOperatingTemperature(e.target.value)}
-                              placeholder="20"
-                              disabled={isCalculating}
-                              min={-273.15}
-                              max={5000}
-                              step={1}
-                            />
-                            <div className="text-xs text-muted-foreground">
-                              Reference temperature: 20°C. Temperature affects material density.
-                            </div>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </div>
+                </div>
 
-                  {/* Results */}
-                  <div className={safeAnimation(`${animations.slideInFromRight} delay-200`)}>
-                    {renderResults()}
+                {/* Right Column - Results */}
+                <div className="col-span-4 overflow-y-auto pr-2 scrollbar-column">
+                  <div className="space-y-3">
+                    <div className={safeAnimation(`${animations.slideInFromRight} delay-200`)}>
+                      {renderResults()}
+                    </div>
                   </div>
                 </div>
               </div>

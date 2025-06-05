@@ -406,3 +406,57 @@
     opacity: 0.5;
   }
 }
+
+/* Custom Scrollbar Styles - Theme Aware */
+@layer components {
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  .scrollbar-theme::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-theme::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+  }
+  
+  .scrollbar-theme::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+  
+  .scrollbar-theme::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+  
+  .scrollbar-theme::-webkit-scrollbar-thumb:active {
+    background: hsl(var(--muted-foreground) / 0.7);
+  }
+  
+  /* Firefox */
+  .scrollbar-theme {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+  
+  /* Column-specific scrollbars - even more subtle */
+  .scrollbar-column::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .scrollbar-column::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 2px;
+    transition: background 0.2s ease;
+  }
+  
+  .scrollbar-column::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+  
+  .scrollbar-column {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+}
