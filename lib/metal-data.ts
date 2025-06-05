@@ -676,6 +676,15 @@ export const PROFILES = {
       halfRound: { name: "Half Round", dimensions: ["d", "t"] },
     },
   },
+  plates: {
+    name: "Steel Plates",
+    types: {
+      plate: { name: "Steel Plate", dimensions: ["length", "width", "thickness"] },
+      sheetMetal: { name: "Sheet Metal", dimensions: ["length", "width", "thickness"] },
+      checkeredPlate: { name: "Checkered Plate", dimensions: ["length", "width", "thickness"] },
+      perforatedPlate: { name: "Perforated Plate", dimensions: ["length", "width", "thickness"] },
+    },
+  },
 }
 
 // Standard sizes for common profiles
@@ -908,5 +917,99 @@ export const STANDARD_SIZES = {
     { designation: '8" Sch 40', dimensions: { od: "219.1", wt: "8.18" } },
     { designation: '10" Sch 40', dimensions: { od: "273.0", wt: "9.27" } },
     { designation: '12" Sch 40', dimensions: { od: "323.8", wt: "10.31" } },
+  ],
+  
+  // Steel Plates - Standard sizes (Length x Width x Thickness in mm)
+  plate: [
+    // Common small plates
+    { designation: "100×100×3mm", dimensions: { length: "100", width: "100", thickness: "3" } },
+    { designation: "100×100×5mm", dimensions: { length: "100", width: "100", thickness: "5" } },
+    { designation: "200×100×3mm", dimensions: { length: "200", width: "100", thickness: "3" } },
+    { designation: "200×100×5mm", dimensions: { length: "200", width: "100", thickness: "5" } },
+    { designation: "200×200×3mm", dimensions: { length: "200", width: "200", thickness: "3" } },
+    { designation: "200×200×5mm", dimensions: { length: "200", width: "200", thickness: "5" } },
+    { designation: "300×200×5mm", dimensions: { length: "300", width: "200", thickness: "5" } },
+    { designation: "300×300×5mm", dimensions: { length: "300", width: "300", thickness: "5" } },
+    
+    // Standard sheet sizes
+    { designation: "500×300×3mm", dimensions: { length: "500", width: "300", thickness: "3" } },
+    { designation: "500×300×5mm", dimensions: { length: "500", width: "300", thickness: "5" } },
+    { designation: "600×400×5mm", dimensions: { length: "600", width: "400", thickness: "5" } },
+    { designation: "600×400×8mm", dimensions: { length: "600", width: "400", thickness: "8" } },
+    { designation: "800×600×5mm", dimensions: { length: "800", width: "600", thickness: "5" } },
+    { designation: "800×600×8mm", dimensions: { length: "800", width: "600", thickness: "8" } },
+    
+    // Large industrial plates
+    { designation: "1000×500×5mm", dimensions: { length: "1000", width: "500", thickness: "5" } },
+    { designation: "1000×500×8mm", dimensions: { length: "1000", width: "500", thickness: "8" } },
+    { designation: "1000×500×10mm", dimensions: { length: "1000", width: "500", thickness: "10" } },
+    { designation: "1200×600×8mm", dimensions: { length: "1200", width: "600", thickness: "8" } },
+    { designation: "1200×600×10mm", dimensions: { length: "1200", width: "600", thickness: "10" } },
+    { designation: "1500×1000×8mm", dimensions: { length: "1500", width: "1000", thickness: "8" } },
+    { designation: "1500×1000×10mm", dimensions: { length: "1500", width: "1000", thickness: "10" } },
+    { designation: "1500×1000×12mm", dimensions: { length: "1500", width: "1000", thickness: "12" } },
+    
+    // Heavy structural plates
+    { designation: "2000×1000×10mm", dimensions: { length: "2000", width: "1000", thickness: "10" } },
+    { designation: "2000×1000×12mm", dimensions: { length: "2000", width: "1000", thickness: "12" } },
+    { designation: "2000×1000×15mm", dimensions: { length: "2000", width: "1000", thickness: "15" } },
+    { designation: "2000×1000×20mm", dimensions: { length: "2000", width: "1000", thickness: "20" } },
+    { designation: "2500×1250×12mm", dimensions: { length: "2500", width: "1250", thickness: "12" } },
+    { designation: "2500×1250×15mm", dimensions: { length: "2500", width: "1250", thickness: "15" } },
+    { designation: "2500×1250×20mm", dimensions: { length: "2500", width: "1250", thickness: "20" } },
+    { designation: "3000×1500×15mm", dimensions: { length: "3000", width: "1500", thickness: "15" } },
+    { designation: "3000×1500×20mm", dimensions: { length: "3000", width: "1500", thickness: "20" } },
+    { designation: "3000×1500×25mm", dimensions: { length: "3000", width: "1500", thickness: "25" } },
+  ],
+  
+  // Sheet Metal - Thin gauge materials
+  sheetMetal: [
+    { designation: "1000×500×0.5mm", dimensions: { length: "1000", width: "500", thickness: "0.5" } },
+    { designation: "1000×500×0.8mm", dimensions: { length: "1000", width: "500", thickness: "0.8" } },
+    { designation: "1000×500×1.0mm", dimensions: { length: "1000", width: "500", thickness: "1.0" } },
+    { designation: "1000×500×1.5mm", dimensions: { length: "1000", width: "500", thickness: "1.5" } },
+    { designation: "1000×500×2.0mm", dimensions: { length: "1000", width: "500", thickness: "2.0" } },
+    { designation: "1200×600×0.5mm", dimensions: { length: "1200", width: "600", thickness: "0.5" } },
+    { designation: "1200×600×0.8mm", dimensions: { length: "1200", width: "600", thickness: "0.8" } },
+    { designation: "1200×600×1.0mm", dimensions: { length: "1200", width: "600", thickness: "1.0" } },
+    { designation: "1200×600×1.5mm", dimensions: { length: "1200", width: "600", thickness: "1.5" } },
+    { designation: "1200×600×2.0mm", dimensions: { length: "1200", width: "600", thickness: "2.0" } },
+    { designation: "1500×1000×0.8mm", dimensions: { length: "1500", width: "1000", thickness: "0.8" } },
+    { designation: "1500×1000×1.0mm", dimensions: { length: "1500", width: "1000", thickness: "1.0" } },
+    { designation: "1500×1000×1.5mm", dimensions: { length: "1500", width: "1000", thickness: "1.5" } },
+    { designation: "1500×1000×2.0mm", dimensions: { length: "1500", width: "1000", thickness: "2.0" } },
+    { designation: "2000×1000×1.0mm", dimensions: { length: "2000", width: "1000", thickness: "1.0" } },
+    { designation: "2000×1000×1.5mm", dimensions: { length: "2000", width: "1000", thickness: "1.5" } },
+    { designation: "2000×1000×2.0mm", dimensions: { length: "2000", width: "1000", thickness: "2.0" } },
+  ],
+  
+  // Checkered Plates - Anti-slip flooring
+  checkeredPlate: [
+    { designation: "1000×500×3mm Diamond", dimensions: { length: "1000", width: "500", thickness: "3" } },
+    { designation: "1000×500×4mm Diamond", dimensions: { length: "1000", width: "500", thickness: "4" } },
+    { designation: "1000×500×5mm Diamond", dimensions: { length: "1000", width: "500", thickness: "5" } },
+    { designation: "1200×600×4mm Diamond", dimensions: { length: "1200", width: "600", thickness: "4" } },
+    { designation: "1200×600×5mm Diamond", dimensions: { length: "1200", width: "600", thickness: "5" } },
+    { designation: "1200×600×6mm Diamond", dimensions: { length: "1200", width: "600", thickness: "6" } },
+    { designation: "1500×1000×4mm Diamond", dimensions: { length: "1500", width: "1000", thickness: "4" } },
+    { designation: "1500×1000×5mm Diamond", dimensions: { length: "1500", width: "1000", thickness: "5" } },
+    { designation: "1500×1000×6mm Diamond", dimensions: { length: "1500", width: "1000", thickness: "6" } },
+    { designation: "2000×1000×5mm Diamond", dimensions: { length: "2000", width: "1000", thickness: "5" } },
+    { designation: "2000×1000×6mm Diamond", dimensions: { length: "2000", width: "1000", thickness: "6" } },
+  ],
+  
+  // Perforated Plates - Ventilation and filtration
+  perforatedPlate: [
+    { designation: "1000×500×2mm R3", dimensions: { length: "1000", width: "500", thickness: "2" } },
+    { designation: "1000×500×3mm R3", dimensions: { length: "1000", width: "500", thickness: "3" } },
+    { designation: "1000×500×3mm R5", dimensions: { length: "1000", width: "500", thickness: "3" } },
+    { designation: "1200×600×2mm R3", dimensions: { length: "1200", width: "600", thickness: "2" } },
+    { designation: "1200×600×3mm R3", dimensions: { length: "1200", width: "600", thickness: "3" } },
+    { designation: "1200×600×3mm R5", dimensions: { length: "1200", width: "600", thickness: "3" } },
+    { designation: "1500×1000×3mm R5", dimensions: { length: "1500", width: "1000", thickness: "3" } },
+    { designation: "1500×1000×4mm R5", dimensions: { length: "1500", width: "1000", thickness: "4" } },
+    { designation: "1500×1000×5mm R8", dimensions: { length: "1500", width: "1000", thickness: "5" } },
+    { designation: "2000×1000×4mm R5", dimensions: { length: "2000", width: "1000", thickness: "4" } },
+    { designation: "2000×1000×5mm R8", dimensions: { length: "2000", width: "1000", thickness: "5" } },
   ],
 }

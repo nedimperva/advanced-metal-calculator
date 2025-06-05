@@ -327,19 +327,28 @@ export default function MetalWeightCalculator() {
       setStructuralProperties(properties)
       setCrossSectionalArea(properties.area)
 
-      const calculatedVolume = properties.area * (lengthValue * lengthFactor)
+      // For plates, calculate full volume differently
+      const calculatedVolume = profileCategory === "plates" 
+        ? (parseFloat(dimensions.length || "0") * lengthFactor) * 
+          (parseFloat(dimensions.width || "0") * lengthFactor) * 
+          (parseFloat(dimensions.thickness || "0") * lengthFactor)
+        : properties.area * (lengthValue * lengthFactor)
       setVolume(calculatedVolume)
 
       // Use adjusted density if temperature effects are enabled
       const effectiveDensity = properties.adjustedDensity || selectedMaterial.density
-      const calculatedWeight = calculateWeight(
-        profileType,
-        dimensions,
-        lengthValue,
-        effectiveDensity,
-        lengthFactor,
-        WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].factor,
-      )
+      
+      // For plates, calculate weight using the full volume
+      const calculatedWeight = profileCategory === "plates"
+        ? calculatedVolume * effectiveDensity * WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].factor
+        : calculateWeight(
+            profileType,
+            dimensions,
+            lengthValue,
+            effectiveDensity,
+            lengthFactor,
+            WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].factor,
+          )
 
       if (calculatedWeight <= 0) {
         throw new Error("Invalid weight calculation - check input values")
@@ -738,24 +747,26 @@ export default function MetalWeightCalculator() {
           })}
         </div>
         
-        {/* Length input */}
-        <div className="space-y-2">
-          <Label htmlFor="length">Length</Label>
-          <Input
-            id="length"
-            type="number"
-            value={lengthInput}
-            onChange={(e) => handleLengthChange(e.target.value)}
-            placeholder="Enter length"
-            disabled={isCalculating}
-            min={0.1}
-            max={1000000}
-            step={1}
-          />
-          <div className="text-xs text-muted-foreground">
-            Total length of the profile for weight calculation
+        {/* Length input - Only show for non-plate profiles */}
+        {profileCategory !== "plates" && (
+          <div className="space-y-2">
+            <Label htmlFor="length">Length</Label>
+            <Input
+              id="length"
+              type="number"
+              value={lengthInput}
+              onChange={(e) => handleLengthChange(e.target.value)}
+              placeholder="Enter length"
+              disabled={isCalculating}
+              min={0.1}
+              max={1000000}
+              step={1}
+            />
+            <div className="text-xs text-muted-foreground">
+              Total length of the profile for weight calculation
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Temperature input (if enabled) */}
         {useTemperatureEffects && (

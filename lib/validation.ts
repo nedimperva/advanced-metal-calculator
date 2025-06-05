@@ -278,15 +278,19 @@ export function validateCalculationInputs(
     warnings.push(...dimValidation.warnings)
   }
 
-  // Validate length
-  if (!length || length.trim() === '') {
-    errors.push('Length is required')
-  } else {
-    const lengthValidation = validateDimension('length', length, 'mm')
-    if (!lengthValidation.isValid) {
-      errors.push(...lengthValidation.errors)
+  // Validate length (skip for plates as they have length as a dimension)
+  const isPlateProfile = ['plate', 'sheetMetal', 'checkeredPlate', 'perforatedPlate'].includes(profileType)
+  
+  if (!isPlateProfile) {
+    if (!length || length.trim() === '') {
+      errors.push('Length is required')
+    } else {
+      const lengthValidation = validateDimension('length', length, 'mm')
+      if (!lengthValidation.isValid) {
+        errors.push(...lengthValidation.errors)
+      }
+      warnings.push(...lengthValidation.warnings)
     }
-    warnings.push(...lengthValidation.warnings)
   }
 
   // Validate material
@@ -345,6 +349,11 @@ function getRequiredDimensions(profileType: string): string[] {
     tBeam: ['h', 'b', 'tw', 'tf'],
     bulbFlat: ['h', 'b', 't'],
     halfRound: ['d', 't'],
+    // Plates
+    plate: ['length', 'width', 'thickness'],
+    sheetMetal: ['length', 'width', 'thickness'],
+    checkeredPlate: ['length', 'width', 'thickness'],
+    perforatedPlate: ['length', 'width', 'thickness'],
   }
 
   return dimensionMap[profileType] || []

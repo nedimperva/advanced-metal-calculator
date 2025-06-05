@@ -119,6 +119,13 @@ export function calculateStructuralProperties(
       case "halfRound":
         return calculateHalfRoundProperties(dims, density)
 
+      // Plates
+      case "plate":
+      case "sheetMetal":
+      case "checkeredPlate":
+      case "perforatedPlate":
+        return calculatePlateProperties(dims, density)
+
       default:
         return getEmptyProperties()
     }
@@ -585,6 +592,55 @@ function calculateHalfRoundProperties(dims: Record<string, number>, density: num
   return {
     area, momentOfInertiaX: i, momentOfInertiaY: i / 2, sectionModulusX: s, sectionModulusY: s / 2,
     radiusOfGyrationX: rg, radiusOfGyrationY: rg / Math.sqrt(2), centroidX: d / 2, centroidY: t / 2, perimeter, weight,
+  }
+}
+
+// Plate calculations - For steel plates, sheet metal, checkered plates, and perforated plates
+function calculatePlateProperties(dims: Record<string, number>, density: number): StructuralProperties {
+  if (!dims.length || !dims.width || !dims.thickness) return getEmptyProperties()
+
+  const L = dims.length    // length
+  const W = dims.width     // width  
+  const t = dims.thickness // thickness
+  
+  // Cross-sectional area
+  const area = L * W * t
+  
+  // For plates, we consider bending about both axes
+  // Moment of inertia about X-axis (bending perpendicular to length)
+  const ix = (W * Math.pow(t, 3)) / 12
+  
+  // Moment of inertia about Y-axis (bending perpendicular to width)
+  const iy = (t * Math.pow(W, 3)) / 12
+  
+  // Section modulus
+  const sx = ix / (t / 2)
+  const sy = iy / (W / 2)
+  
+  // Radius of gyration
+  const rx = Math.sqrt(ix / (W * t))
+  const ry = Math.sqrt(iy / (W * t))
+  
+  // Perimeter
+  const perimeter = 2 * (L + W)
+  
+  // Weight per unit area (kg/m²) - note: for plates, we typically use weight per area
+  // But to maintain consistency with other profiles, we'll calculate weight per linear meter
+  // assuming the "length" dimension is the linear extent
+  const weightPerMeter = (W * t * density) / 1000 // kg/m
+  
+  return {
+    area: W * t, // Cross-sectional area (perpendicular to length)
+    momentOfInertiaX: ix,
+    momentOfInertiaY: iy,
+    sectionModulusX: sx,
+    sectionModulusY: sy,
+    radiusOfGyrationX: rx,
+    radiusOfGyrationY: ry,
+    centroidX: W / 2,
+    centroidY: t / 2,
+    perimeter: 2 * (W + t), // Perimeter of cross-section
+    weight: weightPerMeter,
   }
 }
 
