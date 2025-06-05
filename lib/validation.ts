@@ -128,8 +128,8 @@ function validateProfileDimensions(
   switch (profileType) {
     case 'hea':
     case 'heb':
-    case 'inp':
     case 'ipn':
+    case 'ipe':
       // I-beam specific validations
       if (dimension === 'h' && value < 80) {
         warnings.push('Height below 80mm may not be practical for structural I-beams')
@@ -142,6 +142,7 @@ function validateProfileDimensions(
       }
       break
 
+    case 'upn':
     case 'unp':
       // U-channel specific validations
       if (dimension === 'h' && value < 50) {
@@ -326,12 +327,13 @@ function getRequiredDimensions(profileType: string): string[] {
     square: ['side'],
     flat: ['width', 'thickness'],
     hexagonal: ['distance'],
-    inp: ['h', 'b', 'tw', 'tf'],
     ipn: ['h', 'b', 'tw', 'tf'],
+    ipe: ['h', 'b', 'tw', 'tf'],
     hea: ['h', 'b', 'tw', 'tf'],
     heb: ['h', 'b', 'tw', 'tf'],
     hec: ['h', 'b', 'tw', 'tf'],
     wBeam: ['h', 'b', 'tw', 'tf'],
+    upn: ['h', 'b', 'tw', 'tf'],
     unp: ['h', 'b', 'tw', 'tf'],
     uChannel: ['h', 'b', 'tw', 'tf'],
     equalAngle: ['a', 't'],

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useMemo } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -75,8 +75,13 @@ export default function MetalWeightCalculator() {
   const [grade, setGrade] = useState("a36")
   const [dimensions, setDimensions] = useState<Record<string, string>>({})
   const [length, setLength] = useState(suggestions.defaults.length)
+  const [lengthInput, setLengthInput] = useState(suggestions.defaults.length) // Separate input state
   const [lengthUnit, setLengthUnit] = useState(suggestions.defaults.lengthUnit)
   const [weightUnit, setWeightUnit] = useState(suggestions.defaults.weightUnit)
+
+  // Use refs to store timeout IDs for debouncing
+  const lengthUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lengthCalculationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Track unit changes
   const handleLengthUnitChange = useCallback((newUnit: string) => {
@@ -89,11 +94,30 @@ export default function MetalWeightCalculator() {
     updateDefaults({ defaultWeightUnit: newUnit })
   }, [updateDefaults])
 
+  // Handle length input changes with aggressive debouncing
   const handleLengthChange = useCallback((newLength: string) => {
-    setLength(newLength)
-    if (newLength && newLength !== '0') {
-      updateDefaults({ defaultLength: newLength })
+    // Update input state immediately for smooth typing
+    setLengthInput(newLength)
+    
+    // Clear previous timeouts
+    if (lengthCalculationTimeoutRef.current) {
+      clearTimeout(lengthCalculationTimeoutRef.current)
     }
+    if (lengthUpdateTimeoutRef.current) {
+      clearTimeout(lengthUpdateTimeoutRef.current)
+    }
+    
+    // Update calculation state after user stops typing (longer delay)
+    lengthCalculationTimeoutRef.current = setTimeout(() => {
+      setLength(newLength)
+    }, 800) // 800ms delay for calculation
+    
+    // Update defaults after even longer delay
+    lengthUpdateTimeoutRef.current = setTimeout(() => {
+      if (newLength && newLength !== '0' && !isNaN(parseFloat(newLength))) {
+        updateDefaults({ defaultLength: newLength })
+      }
+    }, 1200) // 1200ms delay for defaults
   }, [updateDefaults])
   const [operatingTemperature, setOperatingTemperature] = useState("20")
   const [useTemperatureEffects, setUseTemperatureEffects] = useState(false)
@@ -159,6 +183,18 @@ export default function MetalWeightCalculator() {
     }
 
     loadSavedCalculations()
+  }, [])
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (lengthCalculationTimeoutRef.current) {
+        clearTimeout(lengthCalculationTimeoutRef.current)
+      }
+      if (lengthUpdateTimeoutRef.current) {
+        clearTimeout(lengthUpdateTimeoutRef.current)
+      }
+    }
   }, [])
 
   // Update selected profile and material when type/grade changes
@@ -354,24 +390,20 @@ export default function MetalWeightCalculator() {
     profileCategory
   ])
 
-  // Trigger calculation when key inputs change - fix circular dependency
-  useEffect(() => {
-    // Only trigger calculation if we have the necessary data
-    if (selectedProfile && selectedMaterial && Object.keys(dimensions).length > 0) {
-      performCalculation()
-    }
-  }, [selectedProfile, selectedMaterial, dimensions, length, lengthUnit, weightUnit, operatingTemperature, useTemperatureEffects, profileType])
-
-  // Additional calculation trigger when performCalculation dependencies change
+  // Debounced calculation trigger to prevent input focus loss
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (selectedProfile && selectedMaterial && length && Object.keys(dimensions).length > 0) {
+      // Only trigger calculation if we have the necessary data
+      if (selectedProfile && selectedMaterial && Object.keys(dimensions).length > 0 && length) {
         performCalculation()
       }
-    }, 100)
+    }, 200) // Short delay since length changes are already debounced
     
     return () => clearTimeout(timeoutId)
-  }, [performCalculation])
+  }, [selectedProfile, selectedMaterial, dimensions, length, lengthUnit, weightUnit, operatingTemperature, useTemperatureEffects, profileType])
+
+  // Use ref for dimension update debouncing
+  const dimensionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const updateDimension = useCallback((key: string, value: string) => {
     const newDimensions = { ...dimensions, [key]: value }
@@ -591,6 +623,7 @@ export default function MetalWeightCalculator() {
     // Extract length from dimensions
     const calcLength = calc.dimensions.length || "1000"
     setLength(calcLength)
+    setLengthInput(calcLength) // Sync input state
 
     // Set other dimensions
     const { length: _, ...otherDimensions } = calc.dimensions
@@ -711,8 +744,8 @@ export default function MetalWeightCalculator() {
           <Input
             id="length"
             type="number"
-            value={length}
-            onChange={(e) => setLength(e.target.value)}
+            value={lengthInput}
+            onChange={(e) => handleLengthChange(e.target.value)}
             placeholder="Enter length"
             disabled={isCalculating}
             min={0.1}

@@ -642,8 +642,8 @@ export const PROFILES = {
   beams: {
     name: "I-Beams & H-Beams",
     types: {
-      inp: { name: "INP - I-Beam Normal (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
       ipn: { name: "IPN - I-Beam Narrow (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
+      ipe: { name: "IPE - I-Beam European Standard", dimensions: ["h", "b", "tw", "tf", "r"] },
       hea: { name: "HEA - H-Beam Series A (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
       heb: { name: "HEB - H-Beam Series B (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
       hec: { name: "HEC - H-Beam Series C (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
@@ -653,7 +653,7 @@ export const PROFILES = {
   channels: {
     name: "Channels & Angles",
     types: {
-      unp: { name: "UNP - U-Channel Normal (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
+      upn: { name: "UPN - U-Channel Normal (European)", dimensions: ["h", "b", "tw", "tf", "r"] },
       uChannel: { name: "C-Channel (American)", dimensions: ["h", "b", "tw", "tf"] },
       equalAngle: { name: "Equal Angle (L)", dimensions: ["a", "t", "r"] },
       unequalAngle: { name: "Unequal Angle (L)", dimensions: ["a", "b", "t", "r"] },
@@ -680,21 +680,6 @@ export const PROFILES = {
 
 // Standard sizes for common profiles
 export const STANDARD_SIZES = {
-  // European I-Beams Normal Profile
-  inp: [
-    { designation: "INP 80", dimensions: { h: "80", b: "42", tw: "3.9", tf: "5.9", r: "3.9" } },
-    { designation: "INP 100", dimensions: { h: "100", b: "50", tw: "4.5", tf: "6.8", r: "4.5" } },
-    { designation: "INP 120", dimensions: { h: "120", b: "58", tw: "5.1", tf: "7.7", r: "5.1" } },
-    { designation: "INP 140", dimensions: { h: "140", b: "66", tw: "5.7", tf: "8.6", r: "5.7" } },
-    { designation: "INP 160", dimensions: { h: "160", b: "74", tw: "6.3", tf: "9.5", r: "6.3" } },
-    { designation: "INP 180", dimensions: { h: "180", b: "82", tw: "6.9", tf: "10.4", r: "6.9" } },
-    { designation: "INP 200", dimensions: { h: "200", b: "90", tw: "7.5", tf: "11.3", r: "7.5" } },
-    { designation: "INP 220", dimensions: { h: "220", b: "98", tw: "8.1", tf: "12.2", r: "8.1" } },
-    { designation: "INP 240", dimensions: { h: "240", b: "106", tw: "8.7", tf: "13.1", r: "8.7" } },
-    { designation: "INP 260", dimensions: { h: "260", b: "113", tw: "9.4", tf: "14.1", r: "9.4" } },
-    { designation: "INP 280", dimensions: { h: "280", b: "119", tw: "10.1", tf: "15.2", r: "10.1" } },
-    { designation: "INP 300", dimensions: { h: "300", b: "125", tw: "10.8", tf: "16.2", r: "10.8" } },
-  ],
   // European I-Beams Narrow Profile  
   ipn: [
     { designation: "IPN 80", dimensions: { h: "80", b: "42", tw: "3.9", tf: "5.9", r: "3.9" } },
@@ -709,6 +694,36 @@ export const STANDARD_SIZES = {
     { designation: "IPN 260", dimensions: { h: "260", b: "113", tw: "9.4", tf: "14.1", r: "9.4" } },
     { designation: "IPN 280", dimensions: { h: "280", b: "119", tw: "10.1", tf: "15.2", r: "10.1" } },
     { designation: "IPN 300", dimensions: { h: "300", b: "125", tw: "10.8", tf: "16.2", r: "10.8" } },
+    { designation: "IPN 320", dimensions: { h: "320", b: "131", tw: "11.5", tf: "17.3", r: "11.5" } },
+    { designation: "IPN 340", dimensions: { h: "340", b: "137", tw: "12.2", tf: "18.3", r: "12.2" } },
+    { designation: "IPN 360", dimensions: { h: "360", b: "143", tw: "13.0", tf: "19.5", r: "13.0" } },
+    { designation: "IPN 380", dimensions: { h: "380", b: "149", tw: "13.7", tf: "20.5", r: "13.7" } },
+    { designation: "IPN 400", dimensions: { h: "400", b: "155", tw: "14.4", tf: "21.6", r: "14.4" } },
+    { designation: "IPN 450", dimensions: { h: "450", b: "170", tw: "16.2", tf: "24.3", r: "16.2" } },
+    { designation: "IPN 500", dimensions: { h: "500", b: "185", tw: "18.0", tf: "27.0", r: "18.0" } },
+    { designation: "IPN 550", dimensions: { h: "550", b: "200", tw: "19.0", tf: "30.0", r: "19.0" } },
+    { designation: "IPN 600", dimensions: { h: "600", b: "215", tw: "21.6", tf: "32.4", r: "21.6" } },
+  ],
+  // European I-Beams IPE Series
+  ipe: [
+    { designation: "IPE 80", dimensions: { h: "80", b: "46", tw: "3.8", tf: "5.2", r: "5" } },
+    { designation: "IPE 100", dimensions: { h: "100", b: "55", tw: "4.1", tf: "5.7", r: "7" } },
+    { designation: "IPE 120", dimensions: { h: "120", b: "64", tw: "4.4", tf: "6.3", r: "7" } },
+    { designation: "IPE 140", dimensions: { h: "140", b: "73", tw: "4.7", tf: "6.9", r: "7" } },
+    { designation: "IPE 160", dimensions: { h: "160", b: "82", tw: "5.0", tf: "7.4", r: "9" } },
+    { designation: "IPE 180", dimensions: { h: "180", b: "91", tw: "5.3", tf: "8.0", r: "9" } },
+    { designation: "IPE 200", dimensions: { h: "200", b: "100", tw: "5.6", tf: "8.5", r: "12" } },
+    { designation: "IPE 220", dimensions: { h: "220", b: "110", tw: "5.9", tf: "9.2", r: "12" } },
+    { designation: "IPE 240", dimensions: { h: "240", b: "120", tw: "6.2", tf: "9.8", r: "15" } },
+    { designation: "IPE 270", dimensions: { h: "270", b: "135", tw: "6.6", tf: "10.2", r: "15" } },
+    { designation: "IPE 300", dimensions: { h: "300", b: "150", tw: "7.1", tf: "10.7", r: "15" } },
+    { designation: "IPE 330", dimensions: { h: "330", b: "160", tw: "7.5", tf: "11.5", r: "18" } },
+    { designation: "IPE 360", dimensions: { h: "360", b: "170", tw: "8.0", tf: "12.7", r: "18" } },
+    { designation: "IPE 400", dimensions: { h: "400", b: "180", tw: "8.6", tf: "13.5", r: "21" } },
+    { designation: "IPE 450", dimensions: { h: "450", b: "190", tw: "9.4", tf: "14.6", r: "21" } },
+    { designation: "IPE 500", dimensions: { h: "500", b: "200", tw: "10.2", tf: "16.0", r: "21" } },
+    { designation: "IPE 550", dimensions: { h: "550", b: "210", tw: "11.1", tf: "17.2", r: "24" } },
+    { designation: "IPE 600", dimensions: { h: "600", b: "220", tw: "12.0", tf: "19.0", r: "24" } },
   ],
   // European H-Beams Series A (Lighter)
   hea: [
@@ -731,6 +746,11 @@ export const STANDARD_SIZES = {
     { designation: "HEA 500", dimensions: { h: "490", b: "300", tw: "12", tf: "23", r: "27" } },
     { designation: "HEA 550", dimensions: { h: "540", b: "300", tw: "12.5", tf: "24", r: "27" } },
     { designation: "HEA 600", dimensions: { h: "590", b: "300", tw: "13", tf: "25", r: "27" } },
+    { designation: "HEA 650", dimensions: { h: "640", b: "300", tw: "13.5", tf: "26", r: "27" } },
+    { designation: "HEA 700", dimensions: { h: "690", b: "300", tw: "14.5", tf: "27", r: "27" } },
+    { designation: "HEA 800", dimensions: { h: "790", b: "300", tw: "15", tf: "28", r: "30" } },
+    { designation: "HEA 900", dimensions: { h: "890", b: "300", tw: "16", tf: "30", r: "30" } },
+    { designation: "HEA 1000", dimensions: { h: "990", b: "300", tw: "16.5", tf: "31", r: "30" } },
   ],
   // European H-Beams Series B (Heavier)
   heb: [
@@ -753,27 +773,33 @@ export const STANDARD_SIZES = {
     { designation: "HEB 500", dimensions: { h: "500", b: "300", tw: "14.5", tf: "28", r: "27" } },
     { designation: "HEB 550", dimensions: { h: "550", b: "300", tw: "15", tf: "29", r: "27" } },
     { designation: "HEB 600", dimensions: { h: "600", b: "300", tw: "15.5", tf: "30", r: "27" } },
+    { designation: "HEB 650", dimensions: { h: "650", b: "300", tw: "16", tf: "31", r: "27" } },
+    { designation: "HEB 700", dimensions: { h: "700", b: "300", tw: "17", tf: "32", r: "27" } },
+    { designation: "HEB 800", dimensions: { h: "800", b: "300", tw: "17.5", tf: "33", r: "30" } },
+    { designation: "HEB 900", dimensions: { h: "900", b: "300", tw: "18.5", tf: "35", r: "30" } },
+    { designation: "HEB 1000", dimensions: { h: "1000", b: "300", tw: "19", tf: "36", r: "30" } },
   ],
   // European U-Channels Normal Profile
-  unp: [
-    { designation: "UNP 50", dimensions: { h: "50", b: "38", tw: "5", tf: "7", r: "4.5" } },
-    { designation: "UNP 65", dimensions: { h: "65", b: "42", tw: "5.5", tf: "7.5", r: "5.5" } },
-    { designation: "UNP 80", dimensions: { h: "80", b: "45", tw: "6", tf: "8", r: "6" } },
-    { designation: "UNP 100", dimensions: { h: "100", b: "50", tw: "6", tf: "8.5", r: "7" } },
-    { designation: "UNP 120", dimensions: { h: "120", b: "55", tw: "7", tf: "9", r: "7" } },
-    { designation: "UNP 140", dimensions: { h: "140", b: "60", tw: "7", tf: "10", r: "7" } },
-    { designation: "UNP 160", dimensions: { h: "160", b: "65", tw: "7.5", tf: "10.5", r: "7.5" } },
-    { designation: "UNP 180", dimensions: { h: "180", b: "70", tw: "8", tf: "11", r: "8" } },
-    { designation: "UNP 200", dimensions: { h: "200", b: "75", tw: "8.5", tf: "11.5", r: "8.5" } },
-    { designation: "UNP 220", dimensions: { h: "220", b: "80", tw: "9", tf: "12.5", r: "9" } },
-    { designation: "UNP 240", dimensions: { h: "240", b: "85", tw: "9.5", tf: "13", r: "9.5" } },
-    { designation: "UNP 260", dimensions: { h: "260", b: "90", tw: "10", tf: "14", r: "10" } },
-    { designation: "UNP 280", dimensions: { h: "280", b: "95", tw: "10", tf: "15", r: "10" } },
-    { designation: "UNP 300", dimensions: { h: "300", b: "100", tw: "10", tf: "16", r: "10" } },
-    { designation: "UNP 320", dimensions: { h: "320", b: "100", tw: "14", tf: "17.5", r: "12" } },
-    { designation: "UNP 350", dimensions: { h: "350", b: "100", tw: "14", tf: "16", r: "12" } },
-    { designation: "UNP 380", dimensions: { h: "380", b: "102", tw: "13.5", tf: "16", r: "12" } },
-    { designation: "UNP 400", dimensions: { h: "400", b: "110", tw: "14", tf: "18", r: "12" } },
+  upn: [
+    { designation: "UPN 40", dimensions: { h: "40", b: "35", tw: "4.5", tf: "6", r: "4" } },
+    { designation: "UPN 50", dimensions: { h: "50", b: "38", tw: "5", tf: "7", r: "4.5" } },
+    { designation: "UPN 65", dimensions: { h: "65", b: "42", tw: "5.5", tf: "7.5", r: "5.5" } },
+    { designation: "UPN 80", dimensions: { h: "80", b: "45", tw: "6", tf: "8", r: "6" } },
+    { designation: "UPN 100", dimensions: { h: "100", b: "50", tw: "6", tf: "8.5", r: "7" } },
+    { designation: "UPN 120", dimensions: { h: "120", b: "55", tw: "7", tf: "9", r: "7" } },
+    { designation: "UPN 140", dimensions: { h: "140", b: "60", tw: "7", tf: "10", r: "7" } },
+    { designation: "UPN 160", dimensions: { h: "160", b: "65", tw: "7.5", tf: "10.5", r: "7.5" } },
+    { designation: "UPN 180", dimensions: { h: "180", b: "70", tw: "8", tf: "11", r: "8" } },
+    { designation: "UPN 200", dimensions: { h: "200", b: "75", tw: "8.5", tf: "11.5", r: "8.5" } },
+    { designation: "UPN 220", dimensions: { h: "220", b: "80", tw: "9", tf: "12.5", r: "9" } },
+    { designation: "UPN 240", dimensions: { h: "240", b: "85", tw: "9.5", tf: "13", r: "9.5" } },
+    { designation: "UPN 260", dimensions: { h: "260", b: "90", tw: "10", tf: "14", r: "10" } },
+    { designation: "UPN 280", dimensions: { h: "280", b: "95", tw: "10", tf: "15", r: "10" } },
+    { designation: "UPN 300", dimensions: { h: "300", b: "100", tw: "10", tf: "16", r: "10" } },
+    { designation: "UPN 320", dimensions: { h: "320", b: "100", tw: "14", tf: "17.5", r: "12" } },
+    { designation: "UPN 350", dimensions: { h: "350", b: "100", tw: "14", tf: "16", r: "12" } },
+    { designation: "UPN 380", dimensions: { h: "380", b: "102", tw: "13.5", tf: "16", r: "12" } },
+    { designation: "UPN 400", dimensions: { h: "400", b: "110", tw: "14", tf: "18", r: "12" } },
   ],
   // American W-Beams (for reference)
   wBeam: [

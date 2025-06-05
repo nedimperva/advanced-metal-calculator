@@ -81,8 +81,8 @@ export function calculateStructuralProperties(
         return calculateHexagonalProperties(dims, density)
 
       // European I-Beams and H-Beams
-      case "inp":
       case "ipn":
+      case "ipe":
       case "hea":
       case "heb":
       case "hec":
@@ -90,6 +90,7 @@ export function calculateStructuralProperties(
         return calculateIBeamProperties(dims, density)
 
       // European U-Channels and American C-Channels
+      case "upn":
       case "unp":
       case "uChannel":
         return calculateChannelProperties(dims, density)

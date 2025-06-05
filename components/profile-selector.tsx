@@ -102,7 +102,7 @@ export default function ProfileSelector({
                     Recent in {PROFILES[profileCategory as keyof typeof PROFILES]?.name}
                   </div>
                   {suggestions.getProfileTypes(profileCategory).map((key) => {
-                    const profile = PROFILES[profileCategory as keyof typeof PROFILES]?.types[key as keyof (typeof PROFILES)[keyof typeof PROFILES]["types"]]
+                    const profile = PROFILES[profileCategory as keyof typeof PROFILES]?.types[key as keyof (typeof PROFILES)[keyof typeof PROFILES]["types"]] as any
                     if (!profile) return null
                     return (
                       <SelectItem key={`recent-${key}`} value={key}>
@@ -116,7 +116,7 @@ export default function ProfileSelector({
                   <div className="px-2 py-1 text-xs font-medium text-muted-foreground">All Types</div>
                 </>
               )}
-              {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]) => {
+              {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]: [string, any]) => {
                 // Skip if already shown in recent
                 if (suggestions.getProfileTypes(profileCategory).includes(key)) return null
                 return (
@@ -284,22 +284,6 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
     ),
 
     // European I-Beams
-    inp: (
-      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* I-beam profile */}
-        <path d="M30 15 L90 15 L90 25 L65 25 L65 55 L90 55 L90 65 L30 65 L30 55 L55 55 L55 25 L30 25 Z" 
-              stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
-        <text x="60" y="10" textAnchor="middle" className="text-xs fill-current font-bold">INP</text>
-        {/* Dimension labels */}
-        <text x="110" y="20" className="text-xs fill-current">tf</text>
-        <text x="110" y="40" className="text-xs fill-current">h</text>
-        <text x="60" y="75" className="text-xs fill-current">b</text>
-        <text x="45" y="40" className="text-xs fill-current">tw</text>
-        {/* Dimension lines */}
-        <line x1="105" y1="15" x2="105" y2="25" stroke="currentColor" strokeWidth="1" />
-        <line x1="105" y1="15" x2="105" y2="65" stroke="currentColor" strokeWidth="1" strokeDasharray="2,2" />
-      </svg>
-    ),
     ipn: (
       <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* I-beam profile - narrower version */}
@@ -307,6 +291,16 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
               stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
         <text x="60" y="10" textAnchor="middle" className="text-xs fill-current font-bold">IPN</text>
         <text x="60" y="75" className="text-xs fill-current">b</text>
+      </svg>
+    ),
+    ipe: (
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* IPE I-beam profile */}
+        <path d="M30 15 L90 15 L90 25 L65 25 L65 55 L90 55 L90 65 L30 65 L30 55 L55 55 L55 25 L30 25 Z" 
+              stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
+        <text x="60" y="10" textAnchor="middle" className="text-xs fill-current font-bold">IPE</text>
+        <text x="60" y="75" className="text-xs fill-current">b</text>
+        <text x="110" y="40" className="text-xs fill-current">h</text>
       </svg>
     ),
     hea: (
