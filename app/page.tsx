@@ -55,10 +55,14 @@ import type { MaterialGrade } from "@/lib/metal-data"
 import BackgroundElements from "@/components/background-elements"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { MobileEnhancedInput, useDimensionSuggestions } from "@/components/mobile-enhanced-input"
+import { MobileResults } from "@/components/mobile-results"
 import { SwipeTabs } from "@/components/swipe-tabs"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 export default function MetalWeightCalculator() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
+  const { trackStandardSize, trackDimension, trackCalculation, getSuggestions, updateDefaults } = useUserPreferences()
+  const suggestions = getSuggestions()
 
   // State for undo/redo
 
@@ -70,9 +74,27 @@ export default function MetalWeightCalculator() {
   const [material, setMaterial] = useState("steel")
   const [grade, setGrade] = useState("a36")
   const [dimensions, setDimensions] = useState<Record<string, string>>({})
-  const [length, setLength] = useState("1000")
-  const [lengthUnit, setLengthUnit] = useState("mm")
-  const [weightUnit, setWeightUnit] = useState("kg")
+  const [length, setLength] = useState(suggestions.defaults.length)
+  const [lengthUnit, setLengthUnit] = useState(suggestions.defaults.lengthUnit)
+  const [weightUnit, setWeightUnit] = useState(suggestions.defaults.weightUnit)
+
+  // Track unit changes
+  const handleLengthUnitChange = useCallback((newUnit: string) => {
+    setLengthUnit(newUnit)
+    updateDefaults({ defaultLengthUnit: newUnit })
+  }, [updateDefaults])
+
+  const handleWeightUnitChange = useCallback((newUnit: string) => {
+    setWeightUnit(newUnit)
+    updateDefaults({ defaultWeightUnit: newUnit })
+  }, [updateDefaults])
+
+  const handleLengthChange = useCallback((newLength: string) => {
+    setLength(newLength)
+    if (newLength && newLength !== '0') {
+      updateDefaults({ defaultLength: newLength })
+    }
+  }, [updateDefaults])
   const [operatingTemperature, setOperatingTemperature] = useState("20")
   const [useTemperatureEffects, setUseTemperatureEffects] = useState(false)
 
@@ -187,13 +209,15 @@ export default function MetalWeightCalculator() {
           setDimensions(selectedSizeData.dimensions)
           setCustomInput(false)
           setCalculationError(null)
+          // Track the standard size selection
+          trackStandardSize(profileType, standardSize)
         }
       } catch (error) {
         console.error("Error updating standard size:", error)
         setCalculationError("Failed to load standard size data")
       }
     }
-  }, [standardSize, profileType, selectedProfile])
+  }, [standardSize, profileType, selectedProfile, trackStandardSize])
 
   // Validate inputs
   const validateInputs = useCallback(() => {
@@ -282,6 +306,14 @@ export default function MetalWeightCalculator() {
 
       setWeight(calculatedWeight)
 
+      // Track successful calculation and dimension usage
+      trackCalculation(material, grade, profileCategory, profileType)
+      Object.entries(dimensions).forEach(([key, value]) => {
+        if (value && value !== '0') {
+          trackDimension(profileType, key, value)
+        }
+      })
+
     } catch (error) {
       console.error("Calculation error:", error)
       const errorMessage = error instanceof Error ? error.message : "Unknown calculation error"
@@ -309,7 +341,12 @@ export default function MetalWeightCalculator() {
     profileType, 
     operatingTemperature, 
     useTemperatureEffects, 
-    validateInputs
+    validateInputs,
+    trackCalculation,
+    trackDimension,
+    material,
+    grade,
+    profileCategory
   ])
 
   // Trigger calculation when key inputs change - fix circular dependency
@@ -715,6 +752,7 @@ export default function MetalWeightCalculator() {
 
   const renderStandardSizes = () => {
     const sizes = STANDARD_SIZES[profileType as keyof typeof STANDARD_SIZES]
+    const recentSizes = suggestions.getStandardSizes(profileType)
 
     if (!sizes || sizes.length === 0) {
       return (
@@ -733,11 +771,39 @@ export default function MetalWeightCalculator() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="custom">Custom Dimensions</SelectItem>
-            {sizes.map((size) => (
-              <SelectItem key={size.designation} value={size.designation}>
-                {size.designation}
-              </SelectItem>
-            ))}
+            
+            {/* Recent sizes first if available */}
+            {recentSizes.length > 0 && (
+              <>
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Recent
+                </div>
+                {recentSizes.map((designation) => {
+                  const size = sizes.find(s => s.designation === designation)
+                  if (!size) return null
+                  return (
+                    <SelectItem key={`recent-${designation}`} value={designation}>
+                      <div className="flex items-center gap-2">
+                        <span>{designation}</span>
+                        <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
+                      </div>
+                    </SelectItem>
+                  )
+                })}
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground">All Sizes</div>
+              </>
+            )}
+            
+            {sizes.map((size) => {
+              // Skip if already shown in recent
+              if (recentSizes.includes(size.designation)) return null
+              return (
+                <SelectItem key={size.designation} value={size.designation}>
+                  {size.designation}
+                </SelectItem>
+              )
+            })}
           </SelectContent>
         </Select>
       </div>
@@ -818,6 +884,19 @@ export default function MetalWeightCalculator() {
 
     // Show successful results with enhanced animations
     if (weight > 0 && structuralProperties) {
+      // Use mobile-optimized results on small screens
+      if (!isDesktop) {
+        return (
+          <MobileResults
+            weight={weight}
+            weightUnit={weightUnit}
+            structuralProperties={structuralProperties}
+            volume={volume}
+            className={safeAnimation(animationPresets.result)}
+          />
+        )
+      }
+
       return (
         <div className={safeAnimation(animationPresets.result)}>
           <Card className={cn(
@@ -1075,8 +1154,31 @@ export default function MetalWeightCalculator() {
               <div className="grid grid-cols-12 gap-6">
                 {/* Left Column - Selection */}
                 <div className="col-span-5 space-y-6">
-                  {/* Profile Selection */}
+                  {/* Material Selection - Now First */}
                   <div className={safeAnimation(`${animations.slideInFromLeft} delay-100`)}>
+                    <Card className={cn(
+                      "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                      safeAnimation(animations.cardHover)
+                    )}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Layers className="h-5 w-5 text-primary" />
+                          Material Selection
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <MaterialSelector
+                          material={material}
+                          setMaterial={setMaterial}
+                          grade={grade}
+                          setGrade={setGrade}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Profile Selection - Now Second */}
+                  <div className={safeAnimation(`${animations.slideInFromLeft} delay-200`)}>
                     <Card className={cn(
                       "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
                       safeAnimation(animations.cardHover)
@@ -1116,29 +1218,6 @@ export default function MetalWeightCalculator() {
                       </CardContent>
                     </Card>
                   </div>
-
-                  {/* Material Selection */}
-                  <div className={safeAnimation(`${animations.slideInFromLeft} delay-200`)}>
-                    <Card className={cn(
-                      "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                      safeAnimation(animations.cardHover)
-                    )}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Layers className="h-5 w-5 text-primary" />
-                          Material Selection
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <MaterialSelector
-                          material={material}
-                          setMaterial={setMaterial}
-                          grade={grade}
-                          setGrade={setGrade}
-                        />
-                      </CardContent>
-                    </Card>
-                  </div>
                 </div>
 
                 {/* Right Column - Dimensions & Results */}
@@ -1160,7 +1239,7 @@ export default function MetalWeightCalculator() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="length-unit">Length Unit</Label>
-                            <Select value={lengthUnit} onValueChange={setLengthUnit}>
+                            <Select value={lengthUnit} onValueChange={handleLengthUnitChange}>
                               <SelectTrigger className={safeAnimation(animations.inputFocus)}>
                                 <SelectValue />
                               </SelectTrigger>
@@ -1175,7 +1254,7 @@ export default function MetalWeightCalculator() {
                           </div>
                           <div>
                             <Label htmlFor="weight-unit">Weight Unit</Label>
-                            <Select value={weightUnit} onValueChange={setWeightUnit}>
+                            <Select value={weightUnit} onValueChange={handleWeightUnitChange}>
                               <SelectTrigger className={safeAnimation(animations.inputFocus)}>
                                 <SelectValue />
                               </SelectTrigger>
@@ -1257,8 +1336,31 @@ export default function MetalWeightCalculator() {
             ) : (
               // Mobile Layout - Stacked with animations
               <div className="space-y-6">
-                {/* Profile Selection */}
+                {/* Material Selection - Now First */}
                 <div className={safeAnimation(`${animations.slideInFromBottom} delay-100`)}>
+                  <Card className={cn(
+                    "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                    safeAnimation(animations.cardHover)
+                  )}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Layers className="h-5 w-5 text-primary" />
+                        Material Selection
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <MaterialSelector
+                        material={material}
+                        setMaterial={setMaterial}
+                        grade={grade}
+                        setGrade={setGrade}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Profile Selection - Now Second */}
+                <div className={safeAnimation(`${animations.slideInFromBottom} delay-200`)}>
                   <Card className={cn(
                     "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
                     safeAnimation(animations.cardHover)
@@ -1283,29 +1385,6 @@ export default function MetalWeightCalculator() {
                   </Card>
                 </div>
 
-                {/* Material Selection */}
-                <div className={safeAnimation(`${animations.slideInFromBottom} delay-200`)}>
-                  <Card className={cn(
-                    "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                    safeAnimation(animations.cardHover)
-                  )}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Layers className="h-5 w-5 text-primary" />
-                        Material Selection
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <MaterialSelector
-                        material={material}
-                        setMaterial={setMaterial}
-                        grade={grade}
-                        setGrade={setGrade}
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-
                 {/* Dimensions */}
                 <div className={safeAnimation(`${animations.slideInFromBottom} delay-300`)}>
                   <Card className={cn(
@@ -1323,7 +1402,7 @@ export default function MetalWeightCalculator() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="length-unit">Length Unit</Label>
-                          <Select value={lengthUnit} onValueChange={setLengthUnit}>
+                          <Select value={lengthUnit} onValueChange={handleLengthUnitChange}>
                             <SelectTrigger className={safeAnimation(animations.inputFocus)}>
                               <SelectValue />
                             </SelectTrigger>
@@ -1338,7 +1417,7 @@ export default function MetalWeightCalculator() {
                         </div>
                         <div>
                           <Label htmlFor="weight-unit">Weight Unit</Label>
-                          <Select value={weightUnit} onValueChange={setWeightUnit}>
+                          <Select value={weightUnit} onValueChange={handleWeightUnitChange}>
                             <SelectTrigger className={safeAnimation(animations.inputFocus)}>
                               <SelectValue />
                             </SelectTrigger>

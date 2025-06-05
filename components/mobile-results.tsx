@@ -1,0 +1,209 @@
+"use client"
+
+import React from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { CheckCircle, Info, BarChart3, Layers } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { animations, safeAnimation } from "@/lib/animations"
+import { WEIGHT_UNITS } from "@/lib/unit-conversions"
+import type { StructuralProperties } from "@/lib/types"
+
+interface MobileResultsProps {
+  weight: number
+  weightUnit: string
+  structuralProperties: StructuralProperties
+  volume: number
+  className?: string
+}
+
+export function MobileResults({ 
+  weight, 
+  weightUnit, 
+  structuralProperties, 
+  volume, 
+  className 
+}: MobileResultsProps) {
+  const DetailedResultsModal = () => (
+    <DialogContent className="max-w-sm mx-4 max-h-[80vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5" />
+          Detailed Results
+        </DialogTitle>
+      </DialogHeader>
+      
+      <div className="space-y-4">
+        {/* Main Result */}
+        <div className="text-center bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-xl">
+          <div className="text-3xl font-bold text-primary">
+            {weight.toFixed(4)}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
+          </div>
+        </div>
+
+        {/* Basic Properties */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="text-center p-3 bg-muted/50 rounded">
+            <div className="text-xs text-muted-foreground">Cross-sectional Area</div>
+            <div className="font-semibold">{structuralProperties.area.toFixed(4)} cm²</div>
+          </div>
+          <div className="text-center p-3 bg-muted/50 rounded">
+            <div className="text-xs text-muted-foreground">Volume</div>
+            <div className="font-semibold">{volume.toFixed(4)} cm³</div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Structural Properties */}
+        <div>
+          <h4 className="font-semibold mb-3 text-sm flex items-center gap-2">
+            <Layers className="h-4 w-4" />
+            Structural Properties
+          </h4>
+          
+          {/* Moment of Inertia */}
+          <div className="space-y-2 mb-4">
+            <div className="text-xs font-medium text-muted-foreground">MOMENT OF INERTIA</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-muted-foreground">Ix:</span>
+                <div className="font-medium">{structuralProperties.momentOfInertiaX.toFixed(2)} cm⁴</div>
+              </div>
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-muted-foreground">Iy:</span>
+                <div className="font-medium">{structuralProperties.momentOfInertiaY.toFixed(2)} cm⁴</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section Modulus */}
+          <div className="space-y-2 mb-4">
+            <div className="text-xs font-medium text-muted-foreground">SECTION MODULUS</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-muted-foreground">Sx:</span>
+                <div className="font-medium">{structuralProperties.sectionModulusX.toFixed(2)} cm³</div>
+              </div>
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-muted-foreground">Sy:</span>
+                <div className="font-medium">{structuralProperties.sectionModulusY.toFixed(2)} cm³</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Radius of Gyration */}
+          <div className="space-y-2 mb-4">
+            <div className="text-xs font-medium text-muted-foreground">RADIUS OF GYRATION</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-muted-foreground">rx:</span>
+                <div className="font-medium">{structuralProperties.radiusOfGyrationX.toFixed(2)} cm</div>
+              </div>
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-muted-foreground">ry:</span>
+                <div className="font-medium">{structuralProperties.radiusOfGyrationY.toFixed(2)} cm</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Properties */}
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">ADDITIONAL PROPERTIES</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-muted-foreground">Perimeter:</span>
+                <div className="font-medium">{structuralProperties.perimeter.toFixed(2)} cm</div>
+              </div>
+              <div className="p-2 bg-muted/30 rounded">
+                <span className="text-muted-foreground">Weight/Length:</span>
+                <div className="font-medium">{structuralProperties.weight.toFixed(3)} kg/m</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </DialogContent>
+  )
+
+  return (
+    <div className={cn("space-y-3", className)}>
+      <Card className={cn(
+        "backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg",
+        safeAnimation(animations.cardHover)
+      )}>
+        <CardHeader className="pb-2">
+          <CardTitle className={cn(
+            "text-base flex items-center justify-between",
+            safeAnimation(animations.fadeIn)
+          )}>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              Results
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Info className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DetailedResultsModal />
+            </Dialog>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Main Result - Mobile Optimized */}
+          <div className={cn(
+            "text-center bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-xl",
+            safeAnimation(animations.scaleIn)
+          )}>
+            <div className="text-2xl font-bold text-primary">
+              {weight.toFixed(4)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
+            </div>
+          </div>
+
+          {/* Key Properties - Simplified for Mobile */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-center p-2 bg-muted/50 rounded border border-border/50">
+              <div className="text-xs text-muted-foreground font-medium">Area</div>
+              <div className="font-semibold text-sm">{structuralProperties.area.toFixed(2)} cm²</div>
+            </div>
+            <div className="text-center p-2 bg-muted/50 rounded border border-border/50">
+              <div className="text-xs text-muted-foreground font-medium">Volume</div>
+              <div className="font-semibold text-sm">{volume.toFixed(2)} cm³</div>
+            </div>
+          </div>
+
+          {/* Key Structural Properties - Most Important Only */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Moment of Inertia (Ix):</span>
+              <span className="font-medium">{structuralProperties.momentOfInertiaX.toFixed(1)} cm⁴</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Section Modulus (Sx):</span>
+              <span className="font-medium">{structuralProperties.sectionModulusX.toFixed(1)} cm³</span>
+            </div>
+          </div>
+
+          {/* Action hint */}
+          <div className="text-center pt-2 border-t border-border/50">
+            <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+              <Info className="h-3 w-3" />
+              Tap info for detailed properties
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+} 

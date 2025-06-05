@@ -1,7 +1,12 @@
 "use client"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Info, Clock } from "lucide-react"
 import { PROFILES } from "@/lib/metal-data"
 import { cn } from "@/lib/utils"
+import { useMediaQuery } from "@/hooks/use-media-query"
+import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 interface ProfileSelectorProps {
   profileCategory: string
@@ -16,12 +21,94 @@ export default function ProfileSelector({
   profileType,
   setProfileType,
 }: ProfileSelectorProps) {
+  const isMobile = useMediaQuery("(max-width: 768px)")
+  const { trackProfile, getSuggestions } = useUserPreferences()
+  const suggestions = getSuggestions()
+
   // Visual selection for profile categories
   const handleCategorySelect = (category: string) => {
     setProfileCategory(category)
-    // Select first profile type in the new category
-    const firstType = Object.keys(PROFILES[category as keyof typeof PROFILES].types)[0]
+    // Select first profile type in the new category, or most recent if available
+    const recentTypes = suggestions.getProfileTypes(category)
+    const firstType = recentTypes.length > 0 ? recentTypes[0] : Object.keys(PROFILES[category as keyof typeof PROFILES].types)[0]
     setProfileType(firstType)
+    // Track the selection
+    trackProfile(category, firstType)
+  }
+
+  const handleTypeSelect = (type: string) => {
+    setProfileType(type)
+    // Track the selection
+    trackProfile(profileCategory, type)
+  }
+
+  const ProfileVisualizationModal = () => (
+    <DialogContent className="max-w-sm mx-4">
+      <DialogHeader>
+        <DialogTitle>Profile Visualization</DialogTitle>
+      </DialogHeader>
+      <div className="flex justify-center items-center p-4">
+        <ProfileVisualization profileType={profileType} />
+      </div>
+      <div className="text-sm text-muted-foreground text-center">
+        Selected profile visualization
+      </div>
+    </DialogContent>
+  )
+
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {/* Simplified Category Selection for Mobile */}
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Profile Category</div>
+          <Select value={profileCategory} onValueChange={handleCategorySelect}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(PROFILES).map(([key, category]) => (
+                <SelectItem key={key} value={key}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Simplified Profile Type Selection for Mobile */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium">Profile Type</div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Info className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <ProfileVisualizationModal />
+            </Dialog>
+          </div>
+          <Select value={profileType} onValueChange={handleTypeSelect}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]) => (
+                <SelectItem key={key} value={key}>
+                  <div className="flex items-center gap-2">
+                    <span>{profile.name}</span>
+                    {suggestions.getProfileTypes(profileCategory).includes(key) && (
+                      <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -46,14 +133,19 @@ export default function ProfileSelector({
 
       {/* Profile Type Selection */}
       <div>
-        <Select value={profileType} onValueChange={setProfileType}>
+        <Select value={profileType} onValueChange={handleTypeSelect}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]) => (
               <SelectItem key={key} value={key}>
-                {profile.name}
+                <div className="flex items-center gap-2">
+                  <span>{profile.name}</span>
+                  {suggestions.getProfileTypes(profileCategory).includes(key) && (
+                    <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
+                  )}
+                </div>
               </SelectItem>
             ))}
           </SelectContent>
