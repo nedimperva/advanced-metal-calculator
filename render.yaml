@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: advanced-metal-calculator
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+    autoDeploy: false 

@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:win": "powershell -ExecutionPolicy Bypass -File build-script.ps1",
+    "build:safe": "cross-env NEXT_TELEMETRY_DISABLED=1 next build",
     "prestart": "node prestart.mjs",
     "start": "next start",
     "lint": "next lint"

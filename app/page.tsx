@@ -60,6 +60,9 @@ import { SwipeTabs } from "@/components/swipe-tabs"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 
 export default function MetalWeightCalculator() {
+  // Add hydration state
+  const [isHydrated, setIsHydrated] = useState(false)
+  
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const { trackStandardSize, trackDimension, trackCalculation, getSuggestions, updateDefaults } = useUserPreferences()
   const suggestions = getSuggestions()
@@ -160,8 +163,15 @@ export default function MetalWeightCalculator() {
     warnings: []
   })
 
-  // Load saved calculations on mount
+  // Add hydration effect
   useEffect(() => {
+    setIsHydrated(true)
+  }, [])
+
+  // Load saved calculations on mount (only after hydration)
+  useEffect(() => {
+    if (!isHydrated) return
+    
     const loadSavedCalculations = async () => {
       try {
         const saved = localStorage.getItem("metal-calculations")
@@ -183,7 +193,7 @@ export default function MetalWeightCalculator() {
     }
 
     loadSavedCalculations()
-  }, [])
+  }, [isHydrated])
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -479,7 +489,15 @@ export default function MetalWeightCalculator() {
 
       const updated = [newCalculation, ...calculations.slice(0, 19)] // Keep last 20
       setCalculations(updated)
-      localStorage.setItem("metal-calculations", JSON.stringify(updated))
+      
+      // Safe localStorage write
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          localStorage.setItem("metal-calculations", JSON.stringify(updated))
+        } catch (error) {
+          console.error("Failed to save to localStorage:", error)
+        }
+      }
 
       toast({
         title: "Calculation saved",
@@ -1217,6 +1235,18 @@ export default function MetalWeightCalculator() {
         )} />
         <p className="text-lg">Select a profile and material to begin calculation</p>
         <p className="text-sm mt-2 opacity-60">Choose from our extensive library of standard profiles</p>
+      </div>
+    )
+  }
+
+  // Show loading state during hydration to prevent hydration mismatches
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen relative bg-background overflow-hidden flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground">Loading Metal Calculator...</p>
+        </div>
       </div>
     )
   }
