@@ -1,6 +1,6 @@
 "use client"
 
-import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -82,14 +82,6 @@ function TabButton({ value, children }: { value: string, children: React.ReactNo
 }
 
 export default function MetalWeightCalculator() {
-  return (
-    <Suspense fallback={null}>
-      <MetalWeightCalculatorInner />
-    </Suspense>
-  )
-}
-
-function MetalWeightCalculatorInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   // Add hydration state
