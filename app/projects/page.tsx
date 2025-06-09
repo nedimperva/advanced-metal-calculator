@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { Suspense, useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useProjectManagement } from '@/hooks/use-project-management'
 import { Button } from '@/components/ui/button'
@@ -35,7 +35,7 @@ const PROJECT_STATUS_LABELS: Record<Project['status'], string> = {
   'on-hold': 'On Hold'
 }
 
-export default function ManageProjectsPage() {
+function ManageProjectsPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const {
@@ -335,4 +335,12 @@ export default function ManageProjectsPage() {
       </AlertDialog>
     </div>
   )
-} 
+}
+
+export default function ManageProjectsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ManageProjectsPageInner />
+    </Suspense>
+  )
+}
