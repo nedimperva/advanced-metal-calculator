@@ -294,7 +294,7 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
           return (
             <div
               key={key}
-              className={`border rounded-md p-2 cursor-pointer transition-all duration-200 hover-lift ${
+              className={`border rounded-md p-2 cursor-pointer ${
                 material === key
                   ? "selected-item-strong"
                   : "hover:bg-muted border-border hover:border-primary/20 hover:shadow-sm"

@@ -25,7 +25,7 @@ import {
 import { validateDimension, type ValidationResult } from "@/lib/validation"
 import { InlineLoading } from "@/components/loading-states"
 import { cn } from "@/lib/utils"
-import { animations, animationPresets, safeAnimation, createStaggeredAnimation } from "@/lib/animations"
+// Animation imports removed for performance
 import ProfileSelector from "@/components/profile-selector"
 import MaterialSelector from "@/components/material-selector"
 import { ErrorBoundary } from "@/components/error-boundary"

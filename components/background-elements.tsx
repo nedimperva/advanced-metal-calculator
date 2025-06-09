@@ -210,10 +210,7 @@ export default function BackgroundElements() {
       {/* Blueprint grid canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 z-0 opacity-70" style={{ pointerEvents: "none" }} />
 
-      {/* Decorative elements */}
-      <div className="absolute top-1/4 -left-20 w-60 h-60 bg-primary/20 rounded-full filter blur-3xl opacity-20 animate-blob" />
-      <div className="absolute bottom-1/4 -right-20 w-60 h-60 bg-secondary/20 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
-      <div className="absolute top-2/3 left-1/3 w-60 h-60 bg-accent/20 rounded-full filter blur-3xl opacity-20 animate-blob animation-delay-4000" />
+      {/* Decorative elements removed for performance */}
     </>
   )
 }

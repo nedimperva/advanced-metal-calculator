@@ -25,7 +25,7 @@ export function LoadingSpinner({
 
   return (
     <div className={`flex flex-col items-center justify-center gap-2 ${className}`}>
-      <Loader2 className={`animate-spin ${sizeClasses[size]}`} />
+      <Loader2 className={`${sizeClasses[size]}`} />
       {message && (
         <p className="text-sm text-muted-foreground">{message}</p>
       )}
@@ -45,7 +45,7 @@ export function CalculationLoading({ stage, progress, details }: CalculationLoad
     <Card className="w-full">
       <CardContent className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <Calculator className="h-5 w-5 text-primary animate-pulse" />
+          <Calculator className="h-5 w-5 text-primary" />
           <div>
             <h3 className="font-medium">Calculating...</h3>
             <p className="text-sm text-muted-foreground">{stage}</p>
@@ -166,7 +166,7 @@ export function MultiStageLoading({ stages, currentStage = 0 }: MultiStageLoadin
       <CardContent className="p-6">
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
-            <Cog className="h-5 w-5 text-primary animate-spin" />
+            <Cog className="h-5 w-5 text-primary" />
             <h3 className="font-medium">Processing...</h3>
           </div>
           
@@ -178,7 +178,7 @@ export function MultiStageLoading({ stages, currentStage = 0 }: MultiStageLoadin
                     <CheckCircle className="h-5 w-5 text-green-500" />
                   )}
                   {stage.status === 'active' && (
-                    <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                    <Loader2 className="h-5 w-5 text-primary" />
                   )}
                   {stage.status === 'error' && (
                     <AlertCircle className="h-5 w-5 text-destructive" />
@@ -230,7 +230,7 @@ export function InlineLoading({
   
   return (
     <div className="flex items-center gap-2">
-      <Loader2 className={`animate-spin ${spinnerSize}`} />
+      <Loader2 className={`${spinnerSize}`} />
       <span className="text-sm">{loadingText}</span>
     </div>
   )
@@ -276,7 +276,7 @@ export function PageLoading({ message = "Loading application...", isVisible }: P
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
       <Card className="p-8">
         <CardContent className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 className="h-8 w-8 text-primary" />
           <p className="text-lg font-medium">{message}</p>
           <p className="text-sm text-muted-foreground">Please wait...</p>
         </CardContent>

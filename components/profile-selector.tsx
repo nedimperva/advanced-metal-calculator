@@ -63,12 +63,12 @@ export default function ProfileSelector({
         <div className="space-y-2">
           <div className="text-sm font-medium">Profile Category</div>
           <Select value={profileCategory} onValueChange={handleCategorySelect}>
-            <SelectTrigger className="hover:border-primary/30 transition-colors">
+            <SelectTrigger className="hover:border-primary/30">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(PROFILES).map(([key, category]) => (
-                <SelectItem key={key} value={key} className="hover:bg-muted transition-colors">
+                <SelectItem key={key} value={key} className="hover:bg-muted">
                   {category.name}
                 </SelectItem>
               ))}
@@ -143,7 +143,7 @@ export default function ProfileSelector({
             <div
               key={key}
               className={cn(
-                "border rounded-md p-2 text-center cursor-pointer transition-all duration-200 hover-lift",
+                "border rounded-md p-2 text-center cursor-pointer",
                 profileCategory === key
                   ? "selected-item-strong"
                   : "hover:bg-muted border-border hover:border-primary/20",

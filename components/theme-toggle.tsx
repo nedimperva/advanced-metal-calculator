@@ -26,7 +26,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="icon" className="animate-pulse">
+      <Button variant="outline" size="icon">
         <Sun className="h-[1.2rem] w-[1.2rem]" />
         <span className="sr-only">Toggle theme</span>
       </Button>
@@ -57,15 +57,15 @@ export function ThemeToggle() {
 
   const getCurrentIcon = () => {
     if (theme === 'system') {
-      return <Monitor className="h-[1.2rem] w-[1.2rem] transition-transform duration-200" />
+      return <Monitor className="h-[1.2rem] w-[1.2rem]" />
     }
     if (theme === 'dark') {
-      return <Moon className="h-[1.2rem] w-[1.2rem] transition-transform duration-200" />
+              return <Moon className="h-[1.2rem] w-[1.2rem]" />
     }
     if (theme === 'light') {
-      return <Sun className="h-[1.2rem] w-[1.2rem] transition-transform duration-200" />
+              return <Sun className="h-[1.2rem] w-[1.2rem]" />
     }
-    return <Palette className="h-[1.2rem] w-[1.2rem] transition-transform duration-200" />
+          return <Palette className="h-[1.2rem] w-[1.2rem]" />
   }
 
   return (
@@ -74,7 +74,7 @@ export function ThemeToggle() {
         <Button 
           variant="outline" 
           size="icon"
-          className={safeAnimation("hover:scale-105 transition-all duration-200 hover:shadow-md")}
+          className=""
         >
           {getCurrentIcon()}
           <span className="sr-only">Toggle theme</span>
@@ -82,7 +82,7 @@ export function ThemeToggle() {
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
-        className={safeAnimation(animations.fadeIn)}
+        className=""
       >
         <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
           Choose Theme
@@ -92,34 +92,34 @@ export function ThemeToggle() {
         {/* System and basic themes */}
         <DropdownMenuItem 
           onClick={() => setTheme("system")}
-          className={`transition-all duration-200 ${theme === 'system' ? 'bg-accent' : ''}`}
+          className={`${theme === 'system' ? 'bg-accent' : ''}`}
         >
           <Monitor className="mr-2 h-4 w-4" />
           <span>System</span>
           {theme === 'system' && (
-            <div className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <div className="ml-auto h-2 w-2 rounded-full bg-primary" />
           )}
         </DropdownMenuItem>
         
         <DropdownMenuItem 
           onClick={() => setTheme("light")}
-          className={`transition-all duration-200 ${theme === 'light' ? 'bg-accent' : ''}`}
+          className={`${theme === 'light' ? 'bg-accent' : ''}`}
         >
           <Sun className="mr-2 h-4 w-4" />
           <span>Light</span>
           {theme === 'light' && (
-            <div className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <div className="ml-auto h-2 w-2 rounded-full bg-primary" />
           )}
         </DropdownMenuItem>
         
         <DropdownMenuItem 
           onClick={() => setTheme("dark")}
-          className={`transition-all duration-200 ${theme === 'dark' ? 'bg-accent' : ''}`}
+          className={`${theme === 'dark' ? 'bg-accent' : ''}`}
         >
           <Moon className="mr-2 h-4 w-4" />
           <span>Dark</span>
           {theme === 'dark' && (
-            <div className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <div className="ml-auto h-2 w-2 rounded-full bg-primary" />
           )}
         </DropdownMenuItem>
 
@@ -136,7 +136,7 @@ export function ThemeToggle() {
             <DropdownMenuItem
               key={themeName}
               onClick={() => setTheme(themeName)}
-              className={`transition-all duration-200 ${theme === themeName ? 'bg-accent' : ''}`}
+              className={`${theme === themeName ? 'bg-accent' : ''}`}
             >
               <div className="mr-2 h-4 w-4 flex items-center justify-center">
                 <div 
@@ -148,7 +148,7 @@ export function ThemeToggle() {
               </div>
               <span>{getThemeLabel(themeName)}</span>
               {theme === themeName && (
-                <div className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <div className="ml-auto h-2 w-2 rounded-full bg-primary" />
               )}
             </DropdownMenuItem>
           )

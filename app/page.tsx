@@ -1006,7 +1006,7 @@ export default function MetalWeightCalculator() {
             structuralProperties={structuralProperties}
             volume={volume}
             onSave={saveCalculation}
-            onShare={shareCalculation}
+            onBreakdown={() => setActiveTab("breakdown")}
             onAdvancedAnalysis={() => setActiveTab("advanced")}
           />
         )
@@ -1236,12 +1236,12 @@ export default function MetalWeightCalculator() {
                   Advanced Analysis
                 </Button>
                 <Button 
-                  onClick={shareCalculation} 
+                  onClick={() => setActiveTab("breakdown")} 
                   variant="outline" 
                   className="flex-1"
                 >
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Breakdown
                 </Button>
               </div>
             </CardContent>
@@ -1265,7 +1265,7 @@ export default function MetalWeightCalculator() {
     return (
       <div className="min-h-screen relative bg-background overflow-hidden flex items-center justify-center">
         <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                          <Loader2 className="h-8 w-8 mx-auto text-primary" />
           <p className="text-sm text-muted-foreground">Loading Metal Calculator...</p>
         </div>
       </div>
@@ -1323,12 +1323,6 @@ export default function MetalWeightCalculator() {
               label: "Projects",
               icon: <FolderOpen className="h-3 w-3" />,
               shortLabel: "Proj"
-            },
-            {
-              value: "breakdown",
-              label: "Breakdown", 
-              icon: <Layers className="h-3 w-3" />,
-              shortLabel: "Break"
             },
             {
               value: "comparison",
@@ -1800,7 +1794,7 @@ export default function MetalWeightCalculator() {
                     {calculations.map((calc) => (
                       <div
                         key={calc.id}
-                        className="border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                        className="border rounded-lg p-3 cursor-pointer hover:bg-muted/50"
                         onClick={() => loadCalculation(calc)}
                       >
                         <div className="space-y-2">

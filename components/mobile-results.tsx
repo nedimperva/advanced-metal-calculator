@@ -19,7 +19,7 @@ interface MobileResultsProps {
   volume: number
   className?: string
   onSave?: () => void
-  onShare?: () => void
+  onBreakdown?: () => void
   onAdvancedAnalysis?: () => void
 }
 
@@ -30,7 +30,7 @@ export function MobileResults({
   volume, 
   className,
   onSave,
-  onShare,
+  onBreakdown,
   onAdvancedAnalysis
 }: MobileResultsProps) {
   const DetailedResultsModal = () => (
@@ -219,15 +219,15 @@ export function MobileResults({
                 Save
               </Button>
             )}
-            {onShare && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onShare}
+            {onBreakdown && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onBreakdown}
                 className="flex-1 h-8"
               >
-                <Share2 className="h-3 w-3 mr-1" />
-                Share
+                <BarChart3 className="h-3 w-3 mr-1" />
+                Breakdown
               </Button>
             )}
             {onAdvancedAnalysis && (
