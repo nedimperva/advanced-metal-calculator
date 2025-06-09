@@ -113,6 +113,9 @@ export interface Calculation {
   tags?: string[]
   calculationNumber?: string // Project-specific numbering like "PROJ-001"
   isArchived?: boolean
+  quantity?: number
+  pricePerUnit?: number
+  currency?: string
 }
 
 // Type alias for enhanced calculation with guaranteed project fields

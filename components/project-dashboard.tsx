@@ -26,8 +26,13 @@ interface ProjectDashboardProps {
   calculations: Calculation[]
   onCreateProject: () => void
   onManageProjects: () => void
-  onSetActiveProject: (projectId: string) => void
+  onSetActiveProject: (projectId: string | null) => void
+  getProjectCalculations: (projectId: string) => Calculation[]
+  onLoadCalculation: (calculation: Calculation) => void
+  onUpdateCalculation: (calculationId: string, data: Calculation) => Promise<boolean>
+  onDeleteCalculation: (calculationId: string) => Promise<boolean>
   className?: string
+  isLoading?: boolean
 }
 
 interface ProjectStats {
@@ -54,12 +59,17 @@ export function ProjectDashboard({
   onCreateProject,
   onManageProjects,
   onSetActiveProject,
-  className
+  getProjectCalculations,
+  onLoadCalculation,
+  onUpdateCalculation,
+  onDeleteCalculation,
+  className,
+  isLoading
 }: ProjectDashboardProps) {
   const projectStats = useMemo(() => {
     return projects.map(project => {
       const projectCalculations = calculations.filter(calc => calc.projectId === project.id)
-      const totalWeight = projectCalculations.reduce((sum, calc) => sum + (calc.weight || 0), 0)
+      const totalWeight = projectCalculations.reduce((sum, calc) => sum + ((calc.weight || 0) * (calc.quantity || 1)), 0)
       
       // Find most used material and profile
       const materialCounts: Record<string, number> = {}
@@ -101,7 +111,7 @@ export function ProjectDashboard({
 
   const summary = useMemo(() => {
     const totalCalculations = calculations.length
-    const totalWeight = calculations.reduce((sum, calc) => sum + (calc.weight || 0), 0)
+    const totalWeight = calculations.reduce((sum, calc) => sum + ((calc.weight || 0) * (calc.quantity || 1)), 0)
     const activeProjects = projects.filter(p => p.status === 'active').length
     const completedProjects = projects.filter(p => p.status === 'completed').length
     

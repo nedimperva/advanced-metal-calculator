@@ -103,7 +103,17 @@ export function useProjectManagement() {
         // Update active project if it was the one being updated
         if (activeProject?.id === projectId) {
           const updatedProject = ProjectStorage.getProject(projectId)
-          setActiveProject(updatedProject)
+          if (updatedProject) {
+            const calculations = ProjectStorage.getProjectCalculations(updatedProject.id);
+            const totalWeight = calculations.reduce((sum, calc) => sum + (calc.weight || 0), 0);
+            setActiveProject({
+              ...updatedProject,
+              calculationCount: calculations.length,
+              totalWeight,
+            });
+          } else {
+            setActiveProject(null);
+          }
         }
         
         toast({
@@ -250,6 +260,66 @@ export function useProjectManagement() {
     }
   }, [])
 
+  const updateCalculationInProject = useCallback(async (calculationId: string, updatedCalculation: Calculation): Promise<boolean> => {
+    setError(null)
+    try {
+      const success = ProjectStorage.updateCalculation(calculationId, updatedCalculation)
+      if (success) {
+        await loadProjects()
+        
+        if (activeProject) {
+          const updatedActiveProject = ProjectStorage.getProject(activeProject.id)
+          setActiveProject(updatedActiveProject)
+        }
+        
+        toast({
+          title: "Calculation updated",
+          description: `The calculation has been successfully updated.`,
+        })
+      }
+      return success
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update calculation'
+      setError(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+      return false
+    }
+  }, [activeProject, loadProjects])
+
+  const deleteCalculation = useCallback(async (calculationId: string): Promise<boolean> => {
+    setError(null)
+    try {
+      const success = ProjectStorage.deleteCalculation(calculationId)
+      if (success) {
+        await loadProjects()
+        
+        if (activeProject) {
+          const updatedActiveProject = ProjectStorage.getProject(activeProject.id)
+          setActiveProject(updatedActiveProject)
+        }
+        
+        toast({
+          title: "Calculation deleted",
+          description: `The calculation has been successfully deleted.`,
+        })
+      }
+      return success
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete calculation'
+      setError(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+      return false
+    }
+  }, [activeProject, loadProjects])
+
   const getProjectSummary = useCallback((): ProjectSummary => {
     try {
       return ProjectStorage.calculateProjectSummary()
@@ -370,6 +440,8 @@ export function useProjectManagement() {
     addCalculationToProject,
     moveCalculationToProject,
     getProjectCalculations,
+    updateCalculationInProject,
+    deleteCalculation,
     getProjectSummary,
     exportProject,
     cleanupOrphanedData,

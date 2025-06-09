@@ -489,4 +489,35 @@ export class ProjectStorage {
     
     return this.saveCalculations(cleanedCalculations)
   }
+
+  static updateCalculation(calculationId: string, updatedCalculation: Calculation): boolean {
+    const calculations = this.loadCalculations()
+    const calcIndex = calculations.findIndex(c => c.id === calculationId)
+
+    if (calcIndex === -1) {
+      console.warn(`Calculation with ID ${calculationId} not found for update.`)
+      return false
+    }
+
+    // Ensure timestamp and other metadata are preserved or correctly updated
+    calculations[calcIndex] = {
+      ...calculations[calcIndex],
+      ...updatedCalculation,
+      timestamp: new Date() // Always update timestamp on modification
+    }
+
+    return this.saveCalculations(calculations)
+  }
+
+  static deleteCalculation(calculationId: string): boolean {
+    const calculations = this.loadCalculations()
+    const updatedCalculations = calculations.filter(c => c.id !== calculationId)
+
+    if (calculations.length === updatedCalculations.length) {
+      console.warn(`Calculation with ID ${calculationId} not found for deletion.`)
+      return false
+    }
+
+    return this.saveCalculations(updatedCalculations)
+  }
 } 
