@@ -63,12 +63,12 @@ export default function ProfileSelector({
         <div className="space-y-2">
           <div className="text-sm font-medium">Profile Category</div>
           <Select value={profileCategory} onValueChange={handleCategorySelect}>
-            <SelectTrigger>
+            <SelectTrigger className="hover:border-primary/30 transition-colors">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(PROFILES).map(([key, category]) => (
-                <SelectItem key={key} value={key}>
+                <SelectItem key={key} value={key} className="hover:bg-muted transition-colors">
                   {category.name}
                 </SelectItem>
               ))}

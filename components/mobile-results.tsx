@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { CheckCircle, Info, BarChart3, Layers, Save, Share2, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { animations, safeAnimation } from "@/lib/animations"
+import { animations, safeAnimation, hoverStates } from "@/lib/animations"
 import { WEIGHT_UNITS } from "@/lib/unit-conversions"
 import type { StructuralProperties } from "@/lib/types"
 
@@ -142,7 +142,7 @@ export function MobileResults({
     <div className={cn("space-y-3", className)}>
       <Card className={cn(
         "backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg",
-        safeAnimation(animations.cardHover)
+        hoverStates.card
       )}>
         <CardHeader className="pb-2">
           <CardTitle className={cn(
@@ -165,10 +165,7 @@ export function MobileResults({
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Main Result - Mobile Optimized */}
-          <div className={cn(
-            "text-center bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-xl",
-            safeAnimation(animations.scaleIn)
-          )}>
+          <div className="text-center bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-xl">
             <div className="text-2xl font-bold text-primary">
               {weight.toFixed(4)}
             </div>

@@ -39,6 +39,51 @@ export interface MaterialData {
 // Re-export StructuralProperties from calculations
 export type { StructuralProperties } from './calculations'
 
+// PROJECT TRACKING INTERFACES
+export interface Project {
+  id: string
+  name: string
+  description?: string
+  client?: string
+  location?: string
+  createdAt: Date
+  updatedAt: Date
+  calculationIds: string[]
+  status: 'active' | 'completed' | 'archived' | 'on-hold'
+  tags: string[]
+  // Summary data (calculated on-demand)
+  totalWeight?: number
+  totalCost?: number
+  calculationCount?: number
+  // Project settings
+  defaultLengthUnit?: string
+  defaultWeightUnit?: string
+  color?: string // For visual identification
+}
+
+export interface ProjectSummary {
+  totalProjects: number
+  activeProjects: number
+  completedProjects: number
+  archivedProjects: number
+  totalCalculations: number
+  totalWeight: number
+  recentActivity: Date
+  // Top materials/profiles used across projects
+  topMaterials: Array<{ material: string; count: number }>
+  topProfiles: Array<{ profile: string; count: number }>
+}
+
+export interface ProjectSettings {
+  activeProjectId: string | null
+  defaultProject: string | null
+  autoSaveToProject: boolean
+  showProjectInResults: boolean
+  projectViewMode: 'grid' | 'list'
+  defaultProjectStatus: Project['status']
+}
+
+// Enhanced Calculation interface with project support
 export interface Calculation {
   id: string
   profileCategory: string
@@ -61,4 +106,43 @@ export interface Calculation {
   radiusOfGyrationY?: number
   perimeter?: number
   timestamp: Date
+  // PROJECT TRACKING FIELDS
+  projectId?: string
+  projectName?: string
+  notes?: string
+  tags?: string[]
+  calculationNumber?: string // Project-specific numbering like "PROJ-001"
+  isArchived?: boolean
+}
+
+// Type alias for enhanced calculation with guaranteed project fields
+export interface ProjectCalculation extends Calculation {
+  projectId: string
+  projectName: string
+}
+
+// Project creation/update payload
+export interface ProjectFormData {
+  name: string
+  description?: string
+  client?: string
+  location?: string
+  status: Project['status']
+  tags: string[]
+  defaultLengthUnit?: string
+  defaultWeightUnit?: string
+  color?: string
+}
+
+// Project export data structure
+export interface ProjectExportData {
+  project: Project
+  calculations: Calculation[]
+  summary: {
+    totalWeight: number
+    totalCalculations: number
+    materialBreakdown: Record<string, number>
+    profileBreakdown: Record<string, number>
+    exportDate: Date
+  }
 }

@@ -11,12 +11,12 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock } from "lucide-react"
+import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock, FolderOpen } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
 import { cn } from "@/lib/utils"
-import { animations, animationPresets, safeAnimation, createStaggeredAnimation } from "@/lib/animations"
+import { hoverStates } from "@/lib/animations"
 import ProfileSelector from "@/components/profile-selector"
 import MaterialSelector from "@/components/material-selector"
 import { ErrorBoundary } from "@/components/error-boundary"
@@ -58,6 +58,11 @@ import { MobileEnhancedInput, useDimensionSuggestions } from "@/components/mobil
 import { MobileResults } from "@/components/mobile-results"
 import { SwipeTabs } from "@/components/swipe-tabs"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { ProjectSelector } from "@/components/project-selector"
+import { useProjectManagement } from "@/hooks/use-project-management"
+import { CreateProjectModal } from "@/components/create-project-modal"
+import { ProjectManagementModal } from "@/components/project-management-modal"
+import { ProjectDashboard } from "@/components/project-dashboard"
 
 export default function MetalWeightCalculator() {
   // Add hydration state
@@ -66,6 +71,22 @@ export default function MetalWeightCalculator() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const { trackStandardSize, trackDimension, trackCalculation, getSuggestions, updateDefaults } = useUserPreferences()
   const suggestions = getSuggestions()
+
+  // Project management
+  const { 
+    projects, 
+    activeProject, 
+    isLoading: isProjectLoading,
+    createProject,
+    updateProject,
+    deleteProject, 
+    setActiveProject,
+    addCalculationToProject,
+    getProjectCalculations,
+    exportProject,
+    refreshProjects,
+    refreshActiveProject
+  } = useProjectManagement()
 
   // State for undo/redo
 
@@ -149,6 +170,10 @@ export default function MetalWeightCalculator() {
 
   // Comparison state
   const [comparisonCalculations, setComparisonCalculations] = useState<Set<string>>(new Set())
+
+  // Project management state
+  const [showCreateProject, setShowCreateProject] = useState(false)
+  const [showManageProjects, setShowManageProjects] = useState(false)
 
   // Error handling and validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([])
@@ -487,21 +512,50 @@ export default function MetalWeightCalculator() {
         timestamp: new Date(),
       }
 
-      const updated = [newCalculation, ...calculations.slice(0, 19)] // Keep last 20
+      // Enhance calculation with project information if active project exists
+      const enhancedCalculation = addCalculationToProject(newCalculation)
+
+      const updated = [enhancedCalculation, ...calculations.slice(0, 19)] // Keep last 20
       setCalculations(updated)
       
-      // Safe localStorage write
-      if (typeof window !== 'undefined' && window.localStorage) {
-        try {
+      // Save calculations using the project storage system
+      try {
+        // Import the ProjectStorage dynamically to avoid circular dependencies
+        const { ProjectStorage } = await import('@/lib/project-storage')
+        ProjectStorage.saveCalculations(updated)
+        
+        // Update project summary if calculation was associated with a project
+        if (enhancedCalculation.projectId) {
+          ProjectStorage.updateProjectSummary(enhancedCalculation.projectId)
+        }
+        
+        // Refresh project data to get updated calculation counts
+        await refreshProjects()
+        await refreshActiveProject()
+        
+        // Also save to regular localStorage for backward compatibility
+        if (typeof window !== 'undefined' && window.localStorage) {
           localStorage.setItem("metal-calculations", JSON.stringify(updated))
-        } catch (error) {
-          console.error("Failed to save to localStorage:", error)
+        }
+      } catch (error) {
+        console.error("Failed to save calculations:", error)
+        // Fallback to regular localStorage
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            localStorage.setItem("metal-calculations", JSON.stringify(updated))
+          } catch (fallbackError) {
+            console.error("Failed to save to localStorage:", fallbackError)
+          }
         }
       }
 
+      const message = activeProject 
+        ? `Your calculation has been saved to ${activeProject.name}.`
+        : "Your calculation has been saved to history."
+
       toast({
         title: "Calculation saved",
-        description: "Your calculation has been saved to history.",
+        description: message,
       })
     } catch (error) {
       console.error("Error saving calculation:", error)
@@ -878,10 +932,10 @@ export default function MetalWeightCalculator() {
   }
 
   const renderResults = () => {
-    // Show loading state with animation
+    // Show loading state
     if (isCalculating) {
       return (
-        <div className={safeAnimation(animations.fadeIn)}>
+        <div>
           <CalculationLoading 
             stage="Computing structural properties..." 
             progress={undefined}
@@ -891,10 +945,10 @@ export default function MetalWeightCalculator() {
       )
     }
 
-    // Show error state with shake animation
+    // Show error state
     if (calculationError) {
       return (
-        <div className={safeAnimation(animations.slideInFromBottom)}>
+        <div>
           <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Calculation Error</AlertTitle>
@@ -908,7 +962,6 @@ export default function MetalWeightCalculator() {
                     setCalculationError(null)
                     performCalculation()
                   }}
-                  className={safeAnimation(animations.buttonPress)}
                 >
                   <RefreshCw className="h-3 w-3 mr-1" />
                   Retry Calculation
@@ -920,28 +973,21 @@ export default function MetalWeightCalculator() {
       )
     }
 
-    // Show validation errors with smooth entrance
+    // Show validation errors
     if (!lastValidation.isValid) {
       return (
-        <div className={safeAnimation(animations.slideInFromBottom)}>
+        <div>
           <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Invalid Inputs</AlertTitle>
             <AlertDescription>
               Please correct the following errors:
               <ul className="list-disc list-inside mt-2 space-y-1">
-                {validationErrors.map((error, index) => {
-                  const staggered = createStaggeredAnimation(validationErrors.length, 100)
-                  return (
-                    <li 
-                      key={index} 
-                      className={`text-sm ${safeAnimation(staggered[index]?.className || '')}`}
-                      style={staggered[index]?.style}
-                    >
-                      {error}
-                    </li>
-                  )
-                })}
+                {validationErrors.map((error, index) => (
+                  <li key={index} className="text-sm">
+                    {error}
+                  </li>
+                ))}
               </ul>
             </AlertDescription>
           </Alert>
@@ -959,7 +1005,6 @@ export default function MetalWeightCalculator() {
             weightUnit={weightUnit}
             structuralProperties={structuralProperties}
             volume={volume}
-            className={safeAnimation(animationPresets.result)}
             onSave={saveCalculation}
             onShare={shareCalculation}
             onAdvancedAnalysis={() => setActiveTab("advanced")}
@@ -968,23 +1013,20 @@ export default function MetalWeightCalculator() {
       }
 
       return (
-        <div className={safeAnimation(animationPresets.result)}>
+        <div>
           <Card className={cn(
             "backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg",
-            safeAnimation(animations.cardHover)
+            hoverStates.card
           )}>
             <CardHeader className="pb-3">
-              <CardTitle className={cn(
-                "text-lg flex items-center gap-2",
-                safeAnimation(animations.fadeIn)
-              )}>
-                <CheckCircle className="h-5 w-5 text-green-500 animate-pulse" />
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
                 Calculation Results
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Quantity and Price Inputs */}
-              <div className={safeAnimation(animations.slideInFromRight)}>
+              <div>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div>
                     <Label htmlFor="quantity" className="text-xs">Quantity</Label>
@@ -1016,10 +1058,7 @@ export default function MetalWeightCalculator() {
               </div>
 
               {/* Single Unit Results */}
-              <div className={cn(
-                "bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-lg",
-                safeAnimation(animations.scaleIn)
-              )}>
+              <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-lg">
                 <h4 className="text-xs font-medium text-muted-foreground mb-2">Single Unit</h4>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="text-center">
@@ -1043,10 +1082,7 @@ export default function MetalWeightCalculator() {
 
               {/* Total Results (if quantity > 1) */}
               {parseFloat(quantity) !== 1 && parseFloat(quantity) > 0 && (
-                <div className={cn(
-                  "bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 p-4 rounded-lg border border-green-200/50 dark:border-green-800/50",
-                  safeAnimation(animations.slideInFromBottom)
-                )}>
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 p-4 rounded-lg border border-green-200/50 dark:border-green-800/50">
                   <h4 className="text-xs font-medium text-green-700 dark:text-green-300 mb-2 flex items-center gap-1">
                     <Calculator className="h-3 w-3" />
                     Total ({quantity} units)
@@ -1081,10 +1117,7 @@ export default function MetalWeightCalculator() {
                 ].map((item, index) => (
                   <div 
                     key={item.label}
-                    className={cn(
-                      "text-center p-2 bg-muted/50 rounded-md border border-border/50",
-                      safeAnimation(`${animations.slideInFromBottom} delay-${(index + 1) * 100}`)
-                    )}
+                    className="text-center p-2 bg-muted/50 rounded-md border border-border/50"
                   >
                     <div className="text-xs text-muted-foreground font-medium">{item.label}</div>
                     <div className="text-xs font-semibold text-foreground mt-1">{item.value}</div>
@@ -1093,7 +1126,7 @@ export default function MetalWeightCalculator() {
               </div>
 
               {/* Structural Properties with enhanced layout */}
-              <div className={safeAnimation(`${animations.slideInFromBottom} delay-300`)}>
+              <div>
                 <Separator className="my-4" />
                 <div>
                   <h4 className="font-semibold mb-4 text-sm flex items-center gap-2">
@@ -1133,10 +1166,7 @@ export default function MetalWeightCalculator() {
                     ].map((section, index) => (
                       <div 
                         key={section.title}
-                        className={cn(
-                          "p-3 bg-background/60 rounded-lg border border-border/30",
-                          safeAnimation(`${animations.slideInFromLeft} delay-${(index + 4) * 100}`)
-                        )}
+                        className="p-3 bg-background/60 rounded-lg border border-border/30"
                       >
                         <div className="text-muted-foreground font-medium mb-2">{section.title}</div>
                         {section.values.map((value, valueIndex) => (
@@ -1150,7 +1180,7 @@ export default function MetalWeightCalculator() {
 
               {/* Temperature Effects - Compact */}
               {useTemperatureEffects && structuralProperties.adjustedDensity && (
-                <div className={safeAnimation(`${animations.slideInFromBottom} delay-400`)}>
+                <div>
                   <Separator className="my-4" />
                   <div className="p-3 bg-gradient-to-br from-blue-50/70 to-cyan-50/70 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
                     <h4 className="font-semibold text-xs mb-2 flex items-center gap-2 text-blue-700 dark:text-blue-300">
@@ -1177,7 +1207,7 @@ export default function MetalWeightCalculator() {
 
               {/* Validation Warnings */}
               {validationWarnings.length > 0 && (
-                <div className={safeAnimation(`${animations.slideInFromBottom} delay-500`)}>
+                <div>
                   <Separator className="my-4" />
                   <ValidationSummary
                     errors={[]}
@@ -1187,10 +1217,7 @@ export default function MetalWeightCalculator() {
               )}
 
               {/* Action Buttons with enhanced styling */}
-              <div className={cn(
-                "flex flex-col sm:flex-row gap-2 pt-2",
-                safeAnimation(`${animations.slideInFromBottom} delay-600`)
-              )}>
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <Button 
                   onClick={saveCalculation} 
                   className="flex-1" 
@@ -1223,16 +1250,10 @@ export default function MetalWeightCalculator() {
       )
     }
 
-    // Default state - waiting for valid inputs with gentle animation
+    // Default state - waiting for valid inputs
     return (
-      <div className={cn(
-        "text-center py-12 text-muted-foreground",
-        safeAnimation(animations.fadeIn)
-      )}>
-        <Calculator className={cn(
-          "h-16 w-16 mx-auto mb-4 opacity-40",
-          safeAnimation(animations.pulse)
-        )} />
+      <div className="text-center py-12 text-muted-foreground">
+        <Calculator className="h-16 w-16 mx-auto mb-4 opacity-40" />
         <p className="text-lg">Select a profile and material to begin calculation</p>
         <p className="text-sm mt-2 opacity-60">Choose from our extensive library of standard profiles</p>
       </div>
@@ -1263,12 +1284,27 @@ export default function MetalWeightCalculator() {
 
       <div className={cn("relative z-10", isDesktop ? "px-4" : "max-w-md mx-auto p-4")}>
         {/* Header */}
-        <div className="text-center space-y-1 mb-4">
-          <div className="flex items-center justify-center gap-2">
-            <Calculator className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">Professional Metal Calculator</h1>
+        <div className="space-y-3 mb-4">
+          <div className="text-center space-y-1">
+            <div className="flex items-center justify-center gap-2">
+              <Calculator className="h-6 w-6 text-primary" />
+              <h1 className="text-xl font-bold text-foreground">Professional Metal Calculator</h1>
+            </div>
+            <p className="text-xs text-muted-foreground">Calculate weights for structural profiles and materials</p>
           </div>
-          <p className="text-xs text-muted-foreground">Calculate weights for structural profiles and materials</p>
+          
+          {/* Project Selector */}
+          <div className="flex justify-center">
+            <ProjectSelector
+              activeProject={activeProject}
+              projects={projects}
+              onProjectChange={setActiveProject}
+              onCreateProject={() => setShowCreateProject(true)}
+              onManageProjects={() => setShowManageProjects(true)}
+              isLoading={isProjectLoading}
+              className="max-w-sm"
+            />
+          </div>
         </div>
 
         <SwipeTabs 
@@ -1281,6 +1317,12 @@ export default function MetalWeightCalculator() {
               label: "Calculator",
               icon: <Calculator className="h-3 w-3" />,
               shortLabel: "Calc"
+            },
+            {
+              value: "projects",
+              label: "Projects",
+              icon: <FolderOpen className="h-3 w-3" />,
+              shortLabel: "Proj"
             },
             {
               value: "breakdown",
@@ -1302,7 +1344,7 @@ export default function MetalWeightCalculator() {
             }
           ]}
         >
-          <SwipeTabs.Content value="calculator" className={safeAnimation(animationPresets.tab)}>
+          <SwipeTabs.Content value="calculator">
             {isDesktop ? (
               // Desktop Layout - Three columns with independent scrolling
               <div className="grid grid-cols-12 gap-2 h-[calc(100vh-120px)]">
@@ -1310,10 +1352,10 @@ export default function MetalWeightCalculator() {
                 <div className="col-span-4 overflow-y-auto pr-2 scrollbar-column">
                   <div className="space-y-3">
                     {/* Material Selection */}
-                    <div className={safeAnimation(`${animations.slideInFromLeft} delay-100`)}>
+                    <div>
                       <Card className={cn(
                         "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                        safeAnimation(animations.cardHover)
+                        hoverStates.card
                       )}>
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg flex items-center gap-2">
@@ -1333,10 +1375,10 @@ export default function MetalWeightCalculator() {
                     </div>
 
                     {/* Profile Selection */}
-                    <div className={safeAnimation(`${animations.slideInFromLeft} delay-200`)}>
+                    <div>
                       <Card className={cn(
                         "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                        safeAnimation(animations.cardHover)
+                        hoverStates.card
                       )}>
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg flex items-center gap-2">
@@ -1365,7 +1407,7 @@ export default function MetalWeightCalculator() {
                                 setCustomInput(true)
                                 setStandardSize("")
                               }}
-                              className={safeAnimation(animations.buttonPress)}
+                              className={hoverStates.buttonSecondary}
                             >
                               {customInput ? "Editing Custom" : "Use Custom"}
                             </Button>
@@ -1379,10 +1421,10 @@ export default function MetalWeightCalculator() {
                 {/* Middle Column - Dimensions */}
                 <div className="col-span-4 overflow-y-auto pr-2 scrollbar-column">
                   <div className="space-y-3">
-                    <div className={safeAnimation(`${animations.slideInFromBottom} delay-100`)}>
+                    <div>
                       <Card className={cn(
                         "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                        safeAnimation(animations.cardHover)
+                        hoverStates.card
                       )}>
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg flex items-center gap-2">
@@ -1396,7 +1438,7 @@ export default function MetalWeightCalculator() {
                             <div>
                               <Label htmlFor="length-unit">Length Unit</Label>
                               <Select value={lengthUnit} onValueChange={handleLengthUnitChange}>
-                                <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                                <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1411,7 +1453,7 @@ export default function MetalWeightCalculator() {
                             <div>
                               <Label htmlFor="weight-unit">Weight Unit</Label>
                               <Select value={weightUnit} onValueChange={handleWeightUnitChange}>
-                                <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                                <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1441,10 +1483,7 @@ export default function MetalWeightCalculator() {
 
                           {/* Temperature Controls */}
                           <Separator className="my-4" />
-                          <div className={cn(
-                            "p-3 bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg border border-border/50",
-                            safeAnimation(animations.slideInFromBottom)
-                          )}>
+                          <div className="p-3 bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg border border-border/50">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-2">
                                 <Switch
@@ -1489,7 +1528,7 @@ export default function MetalWeightCalculator() {
                 {/* Right Column - Results */}
                 <div className="col-span-4 overflow-y-auto pr-2 scrollbar-column">
                   <div className="space-y-3">
-                    <div className={safeAnimation(`${animations.slideInFromRight} delay-200`)}>
+                    <div>
                       {renderResults()}
                     </div>
                   </div>
@@ -1499,10 +1538,10 @@ export default function MetalWeightCalculator() {
               // Mobile Layout - Stacked with animations
               <div className="space-y-6">
                 {/* Material Selection - Now First */}
-                <div className={safeAnimation(`${animations.slideInFromBottom} delay-100`)}>
+                <div>
                   <Card className={cn(
                     "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                    safeAnimation(animations.cardHover)
+                    hoverStates.card
                   )}>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2">
@@ -1522,10 +1561,10 @@ export default function MetalWeightCalculator() {
                 </div>
 
                 {/* Profile Selection - Now Second */}
-                <div className={safeAnimation(`${animations.slideInFromBottom} delay-200`)}>
+                <div>
                   <Card className={cn(
                     "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                    safeAnimation(animations.cardHover)
+                    hoverStates.card
                   )}>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2">
@@ -1548,10 +1587,10 @@ export default function MetalWeightCalculator() {
                 </div>
 
                 {/* Dimensions */}
-                <div className={safeAnimation(`${animations.slideInFromBottom} delay-300`)}>
+                <div>
                   <Card className={cn(
                     "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                    safeAnimation(animations.cardHover)
+                    hoverStates.card
                   )}>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2">
@@ -1565,7 +1604,7 @@ export default function MetalWeightCalculator() {
                         <div>
                           <Label htmlFor="length-unit">Length Unit</Label>
                           <Select value={lengthUnit} onValueChange={handleLengthUnitChange}>
-                            <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                            <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1580,7 +1619,7 @@ export default function MetalWeightCalculator() {
                         <div>
                           <Label htmlFor="weight-unit">Weight Unit</Label>
                           <Select value={weightUnit} onValueChange={handleWeightUnitChange}>
-                            <SelectTrigger className={safeAnimation(animations.inputFocus)}>
+                            <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1625,10 +1664,7 @@ export default function MetalWeightCalculator() {
 
                       {/* Temperature Controls */}
                       <Separator className="my-4" />
-                      <div className={cn(
-                        "space-y-3 p-4 bg-gradient-to-br from-muted/40 to-muted/20 rounded-xl border border-border/50",
-                        safeAnimation(animations.slideInFromBottom)
-                      )}>
+                      <div className="space-y-3 p-4 bg-gradient-to-br from-muted/40 to-muted/20 rounded-xl border border-border/50">
                         <div className="flex items-center space-x-2">
                           <Switch
                             id="temperature-effects"
@@ -1641,10 +1677,7 @@ export default function MetalWeightCalculator() {
                         </div>
                         
                         {useTemperatureEffects && (
-                          <div className={cn(
-                            "space-y-2",
-                            safeAnimation(animations.slideInFromBottom)
-                          )}>
+                          <div className="space-y-2">
                             <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
                             <Input
                               id="operating-temperature"
@@ -1671,6 +1704,18 @@ export default function MetalWeightCalculator() {
                 {renderResults()}
               </div>
             )}
+          </SwipeTabs.Content>
+
+          {/* Projects Tab */}
+          <SwipeTabs.Content value="projects" className="space-y-4">
+            <ProjectDashboard
+              projects={projects}
+              activeProject={activeProject}
+              calculations={calculations}
+              onCreateProject={() => setShowCreateProject(true)}
+              onManageProjects={() => setShowManageProjects(true)}
+              onSetActiveProject={setActiveProject}
+            />
           </SwipeTabs.Content>
 
           {/* New: Calculation Breakdown Tab */}
@@ -1788,6 +1833,28 @@ export default function MetalWeightCalculator() {
           </SwipeTabs.Content>
         </SwipeTabs>
 
+        {/* Project Management Modals */}
+        <CreateProjectModal
+          open={showCreateProject}
+          onOpenChange={setShowCreateProject}
+          onCreateProject={async (data) => {
+            await createProject(data)
+          }}
+          isLoading={isProjectLoading}
+        />
+
+        <ProjectManagementModal
+          open={showManageProjects}
+          onOpenChange={setShowManageProjects}
+          projects={projects}
+          activeProject={activeProject}
+          onUpdateProject={updateProject}
+          onDeleteProject={deleteProject}
+          onSetActiveProject={setActiveProject}
+          onExportProject={exportProject}
+          getProjectCalculations={getProjectCalculations}
+          isLoading={isProjectLoading}
+        />
 
       </div>
     </div>

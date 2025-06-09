@@ -1,82 +1,98 @@
+// Simplified, fast animation system focused on hover states and quick transitions
 export const animations = {
-  // Entrance animations
-  fadeIn: "animate-in fade-in duration-300",
-  slideInFromTop: "animate-in slide-in-from-top-4 duration-300",
-  slideInFromBottom: "animate-in slide-in-from-bottom-4 duration-300",
-  slideInFromLeft: "animate-in slide-in-from-left-4 duration-300",
-  slideInFromRight: "animate-in slide-in-from-right-4 duration-300",
-  scaleIn: "animate-in zoom-in-95 duration-300",
+  // Simple entrance - much faster
+  fadeIn: "animate-in fade-in duration-150",
   
-  // Exit animations
-  fadeOut: "animate-out fade-out duration-200",
-  slideOutToTop: "animate-out slide-out-to-top-4 duration-200",
-  slideOutToBottom: "animate-out slide-out-to-bottom-4 duration-200",
-  slideOutToLeft: "animate-out slide-out-to-left-4 duration-200",
-  slideOutToRight: "animate-out slide-out-to-right-4 duration-200",
-  scaleOut: "animate-out zoom-out-95 duration-200",
+  // Quick hover effects - keep these as they feel responsive
+  hoverScale: "hover:scale-[1.02] transition-transform duration-150",
+  hoverBg: "hover:bg-muted/50 transition-colors duration-150",
+  hoverColor: "hover:text-primary transition-colors duration-150",
+  hoverBorder: "hover:border-primary/50 transition-colors duration-150",
+  hoverShadow: "hover:shadow-sm transition-shadow duration-150",
 
-  // Hover effects
-  hoverScale: "hover:scale-105 transition-transform duration-200",
-  hoverLift: "hover:-translate-y-1 hover:shadow-lg transition-all duration-200",
-  hoverGlow: "hover:shadow-md hover:shadow-primary/25 transition-shadow duration-200",
+  // Micro-interactions - very fast
+  buttonPress: "active:scale-[0.98] transition-transform duration-75",
+  
+  // Focus states - important for accessibility
+  inputFocus: "focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-150",
+  buttonFocus: "focus-visible:ring-2 focus-visible:ring-primary/20 transition-all duration-150",
 
-  // Loading states
+  // Loading states - keep these minimal
   pulse: "animate-pulse",
   spin: "animate-spin",
-  bounce: "animate-bounce",
-
-  // Micro-interactions
-  buttonPress: "active:scale-95 transition-transform duration-100",
-  cardHover: "hover:shadow-md hover:scale-[1.02] transition-all duration-300",
-  inputFocus: "focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200",
-
-  // Staggered animations for lists
-  staggerChildren: "animate-in fade-in duration-500",
-  staggerChild: (delay: number) => `animate-in fade-in slide-in-from-bottom-4 duration-300 delay-${delay}`,
-
-  // Results animations
-  resultEnter: "animate-in fade-in slide-in-from-bottom-6 duration-500 ease-out",
-  errorShake: "animate-pulse",
-
-  // Tab transitions
-  tabContent: "animate-in fade-in slide-in-from-bottom-2 duration-300",
-  tabIndicator: "transition-all duration-200 ease-out",
 }
 
 export const transitions = {
-  fast: "transition-all duration-150",
-  normal: "transition-all duration-200",
-  slow: "transition-all duration-300",
-  colors: "transition-colors duration-200",
-  transform: "transition-transform duration-200",
-  shadow: "transition-shadow duration-200",
+  fast: "transition-all duration-100",
+  normal: "transition-colors duration-150",
+  hover: "transition-all duration-150",
 }
 
-// Animation presets for common components
+// Simplified presets - no complex animations
 export const animationPresets = {
-  card: `${animations.fadeIn} ${animations.cardHover}`,
-  button: `${animations.buttonPress} ${transitions.normal}`,
+  card: `${animations.hoverBg} ${transitions.hover}`,
+  button: `${animations.buttonPress} ${animations.buttonFocus} ${transitions.hover}`,
   input: `${animations.inputFocus} ${transitions.normal}`,
-  result: animations.resultEnter,
-  tab: animations.tabContent,
-  modal: `${animations.fadeIn} ${animations.scaleIn}`,
+  result: animations.fadeIn,
+  tab: "", // No tab animations
+  modal: animations.fadeIn,
 }
 
-// Utility function to create staggered animations
-export const createStaggeredAnimation = (itemCount: number, baseDelay = 100) => {
-  return Array.from({ length: itemCount }, (_, index) => ({
-    className: `animate-in fade-in slide-in-from-bottom-4 duration-300`,
-    style: { animationDelay: `${index * baseDelay}ms` }
-  }))
+// Simple utility for creating hover effects
+export const createHoverEffect = (type: 'bg' | 'scale' | 'color' | 'border' | 'shadow' = 'bg') => {
+  const effects = {
+    bg: animations.hoverBg,
+    scale: animations.hoverScale,
+    color: animations.hoverColor,
+    border: animations.hoverBorder,
+    shadow: animations.hoverShadow
+  }
+  return `${effects[type]} ${transitions.hover}`
 }
 
-// Performance-optimized animation detection
+// Performance check - disable all animations if user prefers reduced motion
 export const prefersReducedMotion = () => {
   if (typeof window === 'undefined') return false
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-// Safe animation wrapper that respects user preferences
+// Safe animation wrapper - returns empty string if reduced motion preferred
 export const safeAnimation = (animationClass: string) => {
   return prefersReducedMotion() ? '' : animationClass
+}
+
+// Create staggered animation effects (simplified version)
+export const createStaggeredAnimation = (count: number, delay: number = 100) => {
+  return Array.from({ length: count }, (_, index) => ({
+    className: animations.fadeIn,
+    style: { animationDelay: `${index * delay}ms` }
+  }))
+}
+
+// Quick hover states for common UI patterns
+export const hoverStates = {
+  // Cards and containers
+  card: "hover:bg-muted/30 hover:border-primary/20 transition-all duration-150",
+  listItem: "hover:bg-muted/50 transition-colors duration-150",
+  
+  // Buttons and interactive elements
+  button: "hover:bg-primary/90 hover:shadow-sm transition-all duration-150",
+  buttonSecondary: "hover:bg-muted hover:text-foreground transition-all duration-150",
+  buttonGhost: "hover:bg-muted/50 hover:text-foreground transition-all duration-150",
+  
+  // Navigation and tabs
+  nav: "hover:text-primary hover:bg-muted/30 transition-all duration-150",
+  tab: "hover:text-foreground hover:bg-muted/50 transition-all duration-150",
+  
+  // Form elements
+  input: "hover:border-primary/30 focus:border-primary transition-all duration-150",
+  select: "hover:border-primary/30 transition-colors duration-150",
+  
+  // Icons and text
+  icon: "hover:text-primary transition-colors duration-150",
+  link: "hover:text-primary hover:underline transition-all duration-150",
+  
+  // Special effects
+  danger: "hover:bg-destructive hover:text-destructive-foreground transition-all duration-150",
+  success: "hover:bg-green-500 hover:text-white transition-all duration-150",
 } 
