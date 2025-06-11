@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { CheckCircle, Info, BarChart3, Layers, Save, Share2, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { animations, safeAnimation } from "@/lib/animations"
-import { WEIGHT_UNITS } from "@/lib/unit-conversions"
+import { WEIGHT_UNITS, LENGTH_UNITS } from "@/lib/unit-conversions"
 import type { StructuralProperties, PricingModel } from "@/lib/types"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -58,7 +58,7 @@ export function MobileResults({
   pricePerUnit = "",
   setPricePerUnit,
   currency = "USD",
-  pricingModel = "per_unit",
+  pricingModel = "per_kg",
   setPricingModel,
   profileCategory = "",
   profileType = "",
@@ -280,7 +280,25 @@ export function MobileResults({
               {parseFloat(quantity) !== 1 && parseFloat(quantity) > 0 && (
                 <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200/50 dark:border-emerald-800/50">
                   <div className="text-xs text-emerald-700 dark:text-emerald-300 mb-1">
-                    Total ({quantity} units)
+                    Total ({quantity} {parseFloat(quantity) === 1 ? 'piece' : 'pieces'}
+                    {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && weightUnit === 'kg') && (
+                      <span>
+                        = {(() => {
+                          const qtyNum = parseFloat(quantity)
+                          if (pricingModel === 'per_kg') {
+                            const weightInKg = (weight * (WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS]?.factor || 1)) / 1000
+                            return `${(qtyNum * weightInKg).toFixed(3)} kg`
+                          }
+                          if (pricingModel === 'per_meter') {
+                            // Use proper length unit conversion
+                            const lengthInCm = parseFloat(length || '1000') * (LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS]?.factor || 1)
+                            const lengthInMeters = lengthInCm / 100 // Convert cm to meters
+                            return `${(qtyNum * lengthInMeters).toFixed(2)} m`
+                          }
+                          return ''
+                        })()}
+                      </span>
+                    )})
                   </div>
                   <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
                     {currency} {calculateTotalCost(

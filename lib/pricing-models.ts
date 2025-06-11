@@ -120,7 +120,7 @@ export function getPricingDisplayUnit(pricingModel: PricingModel, currency: stri
 export function getRecommendedPricingModel(profileCategory: string, profileType: string): PricingModel {
   // Structural items typically sold per unit
   if (profileCategory === 'beams' || profileCategory === 'channels') {
-    return 'per_unit'
+    return 'per_kg'
   }
   
   // Long materials often sold per meter
@@ -133,8 +133,8 @@ export function getRecommendedPricingModel(profileCategory: string, profileType:
     return 'per_kg'
   }
   
-  // Default to per unit
-  return 'per_unit'
+  // Default to per kg
+  return 'per_kg'
 }
 
 // Weight conversion helpers

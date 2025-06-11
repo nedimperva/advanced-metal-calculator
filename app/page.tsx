@@ -161,7 +161,7 @@ export default function MetalWeightCalculator() {
   const [quantity, setQuantity] = useState("1")
   const [pricePerUnit, setPricePerUnit] = useState("")
   const [currency, setCurrency] = useState("USD")
-  const [pricingModel, setPricingModel] = useState<PricingModel>("per_unit")
+  const [pricingModel, setPricingModel] = useState<PricingModel>("per_kg")
 
   // History
   const [calculations, setCalculations] = useState<Calculation[]>([])
@@ -537,6 +537,8 @@ export default function MetalWeightCalculator() {
         lengthUnit
       ) : 0
 
+      const totalWeight = weight * parseFloat(quantity)
+
       const newCalculation: Calculation = {
         id: Date.now().toString(),
         profileCategory,
@@ -549,6 +551,7 @@ export default function MetalWeightCalculator() {
         dimensions: { ...dimensions, length },
         weight,
         weightUnit,
+        lengthUnit,
         crossSectionalArea: structuralProperties.area,
         // Enhanced structural properties
         momentOfInertiaX: structuralProperties.momentOfInertiaX,
@@ -565,6 +568,7 @@ export default function MetalWeightCalculator() {
         currency,
         totalCost,
         unitCost,
+        totalWeight,
         timestamp: new Date(),
       }
 
@@ -719,6 +723,11 @@ export default function MetalWeightCalculator() {
     setMaterial(calc.material)
     setGrade(calc.grade)
     setWeightUnit(calc.weightUnit)
+    
+    // Load length unit if available (backward compatibility)
+    if (calc.lengthUnit) {
+      setLengthUnit(calc.lengthUnit)
+    }
 
     // Extract length from dimensions
     const calcLength = calc.dimensions.length || "1000"
@@ -1130,7 +1139,18 @@ export default function MetalWeightCalculator() {
                 "bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-lg",
                 safeAnimation(animations.scaleIn)
               )}>
-                <h4 className="text-xs font-medium text-muted-foreground mb-2">Single Unit</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                  📦 Single Unit
+                  {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && weightUnit === 'kg') && (
+                    <span className="text-xs">
+                      ({pricingModel === 'per_kg' ? 
+                        `${((weight * (WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS]?.factor || 1)) / 1000).toFixed(3)} kg` : 
+                        pricingModel === 'per_meter' ? 
+                        `${(parseFloat(length) * (LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS]?.factor || 1) / 100).toFixed(2)} m` : 
+                        '1 piece'})
+                    </span>
+                  )}
+                </h4>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="text-center">
                     <div className="text-lg font-bold text-primary">
@@ -1166,7 +1186,26 @@ export default function MetalWeightCalculator() {
                 )}>
                   <h4 className="text-xs font-medium text-green-700 dark:text-green-300 mb-2 flex items-center gap-1">
                     <Calculator className="h-3 w-3" />
-                    Total ({quantity} units)
+                    Total ({quantity} {parseFloat(quantity) === 1 ? 'piece' : 'pieces'}
+                    {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && weightUnit === 'kg') && (
+                      <span>
+                        = {(() => {
+                          const qtyNum = parseFloat(quantity)
+                          if (pricingModel === 'per_kg') {
+                            const weightInKg = (weight * (WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS]?.factor || 1)) / 1000
+                            const totalKg = qtyNum * weightInKg
+                            return `${totalKg.toFixed(3)} kg`
+                          }
+                          if (pricingModel === 'per_meter') {
+                            // Convert length to cm first, then to meters
+                            const lengthInCm = parseFloat(length) * (LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS]?.factor || 1)
+                            const lengthInMeters = lengthInCm / 100 // Convert cm to meters
+                            return `${(qtyNum * lengthInMeters).toFixed(2)} m`
+                          }
+                          return ''
+                        })()}
+                      </span>
+                    )})
                   </h4>
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="text-center">
@@ -1860,35 +1899,141 @@ export default function MetalWeightCalculator() {
                   <p className="text-center text-muted-foreground py-8">No saved calculations yet</p>
                 ) : (
                   <div className="space-y-3">
-                    {calculations.map((calc) => (
-                      <div
-                        key={calc.id}
-                        className="border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => loadCalculation(calc)}
-                      >
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-1">
-                              <div className="font-medium text-sm">
-                                {calc.materialName} {calc.profileName}{" "}
-                                {calc.standardSize !== "Custom" && `(${calc.standardSize})`}
+                    {calculations.map((calc) => {
+                      // Backwards compatibility - provide defaults for older entries
+                      const quantity = calc.quantity || 1
+                      const totalWeight = calc.totalWeight || (calc.weight * quantity)
+                      const hasPrice = calc.priceValue !== undefined && calc.priceValue > 0
+                      const pricingModel = calc.pricingModel || 'per_kg'
+                      const pricingInfo = PRICING_MODELS[pricingModel]
+                      const pricingUnit = pricingInfo?.unit || '/piece'
+                      
+                      // Calculate actual total quantities based on pricing model
+                      const getActualTotalQuantity = (model: string) => {
+                        // Get the actual length value and unit from calc dimensions
+                        const lengthValue = parseFloat(calc.dimensions?.length || '1000')
+                        // Use stored lengthUnit or default to mm for backwards compatibility
+                        const storedLengthUnit = calc.lengthUnit || 'mm'
+                        
+                        // Convert length to meters using proper conversion factors
+                        const lengthUnitData = LENGTH_UNITS[storedLengthUnit as keyof typeof LENGTH_UNITS]
+                        const lengthInMeters = lengthUnitData ? 
+                          (lengthValue * lengthUnitData.factor) / 100 : // Convert cm to meters
+                          lengthValue / 1000 // Fallback: assume mm, convert to meters
+                        
+                        // Convert weight to kg properly using weight unit factors
+                        const weightUnitData = WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS]
+                        const weightInKg = weightUnitData ? 
+                          (calc.weight * weightUnitData.factor) / 1000 : // Convert to grams then to kg
+                          calc.weight // Fallback: assume already in kg
+                        
+                        switch (model) {
+                          case 'per_kg': 
+                            return (quantity * weightInKg).toFixed(3)
+                          case 'per_meter':
+                            return (quantity * lengthInMeters).toFixed(2)
+                          case 'per_unit':
+                          default: 
+                            return quantity.toString()
+                        }
+                      }
+                      
+                      // Get display unit for the actual total
+                      const getQuantityUnit = (model: string) => {
+                        switch (model) {
+                          case 'per_kg': return 'kg'
+                          case 'per_meter': return 'm'
+                          case 'per_unit': 
+                          default: return quantity === 1 ? 'piece' : 'pieces'
+                        }
+                      }
+                      
+                      const actualTotalQuantity = getActualTotalQuantity(pricingModel)
+                      const quantityUnit = getQuantityUnit(pricingModel)
+                      
+                      // Get icon for pricing model
+                      const pricingIcon = pricingInfo?.icon || '📦'
+                      
+                      return (
+                        <div
+                          key={calc.id}
+                          className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => loadCalculation(calc)}
+                        >
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-start">
+                              <div className="space-y-2 flex-1">
+                                {/* Profile and Material */}
+                                <div className="font-medium text-sm">
+                                  {calc.materialName} {calc.profileName}{" "}
+                                  {calc.standardSize !== "Custom" && `(${calc.standardSize})`}
+                                </div>
+                                
+                                {/* Quantity and Unit Weight */}
+                                <div className="flex items-center gap-4 text-sm">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-muted-foreground">Quantity: </span>
+                                    <span className="font-medium flex items-center gap-1">
+                                      {pricingIcon} {quantity} {quantity === 1 ? 'piece' : 'pieces'}
+                                      {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && calc.weightUnit === 'kg') && (
+                                        <span className="text-xs text-muted-foreground">
+                                          ({actualTotalQuantity} {quantityUnit})
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Unit Weight: </span>
+                                    <span className="font-medium">
+                                      {calc.weight.toFixed(3)} {WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Total Weight */}
+                                <div className="text-lg font-bold text-primary">
+                                  Total Weight: {totalWeight.toFixed(3)}{" "}
+                                  {WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}
+                                </div>
+
+                                {/* Pricing Information */}
+                                {hasPrice ? (
+                                  <div className="space-y-1 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg border border-green-200/50 dark:border-green-800/50">
+                                    <div className="text-sm flex items-center gap-2">
+                                      <span className="text-muted-foreground">Price: </span>
+                                      <span className="font-medium flex items-center gap-1">
+                                        {pricingIcon} {calc.currency || 'USD'} {calc.priceValue!.toFixed(2)}{pricingUnit}
+                                      </span>
+                                      <div className="text-xs text-muted-foreground bg-white/60 dark:bg-black/20 px-2 py-1 rounded">
+                                        {pricingInfo?.name || 'Per Unit'}
+                                      </div>
+                                    </div>
+                                    {calc.totalCost && calc.totalCost > 0 && (
+                                      <div className="text-sm font-medium text-green-700 dark:text-green-300 bg-white/40 dark:bg-black/20 p-2 rounded">
+                                        <span className="flex items-center gap-1">
+                                          {pricingIcon} {actualTotalQuantity} {quantityUnit} × {calc.currency || 'USD'} {calc.priceValue!.toFixed(2)}{pricingUnit} = {calc.currency || 'USD'} {calc.totalCost.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="text-sm text-muted-foreground italic p-2 bg-gray-50 dark:bg-gray-900/50 rounded">
+                                    No pricing information recorded
+                                  </div>
+                                )}
+
+                                {/* Technical Details */}
+                                <div className="text-xs text-muted-foreground space-y-1">
+                                  <div>Area: {calc.crossSectionalArea.toFixed(4)} cm²</div>
+                                  <div>{calc.timestamp.toLocaleDateString()} {calc.timestamp.toLocaleTimeString()}</div>
+                                </div>
                               </div>
-                              <div className="text-lg font-bold text-primary">
-                                {calc.weight.toFixed(4)}{" "}
-                                {WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Area: {calc.crossSectionalArea.toFixed(4)} cm²
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {calc.timestamp.toLocaleDateString()} {calc.timestamp.toLocaleTimeString()}
-                              </div>
+                              <ChevronRight className="h-5 w-5 text-muted-foreground ml-4 flex-shrink-0" />
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>

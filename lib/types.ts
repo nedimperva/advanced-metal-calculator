@@ -57,6 +57,7 @@ export interface Calculation {
   dimensions: Record<string, string>
   weight: number
   weightUnit: string
+  lengthUnit?: string
   crossSectionalArea: number
   // Enhanced structural properties (optional for backward compatibility)
   momentOfInertiaX?: number
@@ -73,5 +74,6 @@ export interface Calculation {
   currency?: string
   totalCost?: number
   unitCost?: number
+  totalWeight?: number
   timestamp: Date
 }
