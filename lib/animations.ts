@@ -1,82 +1,80 @@
 export const animations = {
-  // Entrance animations
-  fadeIn: "animate-in fade-in duration-300",
-  slideInFromTop: "animate-in slide-in-from-top-4 duration-300",
-  slideInFromBottom: "animate-in slide-in-from-bottom-4 duration-300",
-  slideInFromLeft: "animate-in slide-in-from-left-4 duration-300",
-  slideInFromRight: "animate-in slide-in-from-right-4 duration-300",
-  scaleIn: "animate-in zoom-in-95 duration-300",
+  // All entrance/exit animations disabled for performance
+  fadeIn: "",
+  slideInFromTop: "",
+  slideInFromBottom: "",
+  slideInFromLeft: "",
+  slideInFromRight: "",
+  scaleIn: "",
   
-  // Exit animations
-  fadeOut: "animate-out fade-out duration-200",
-  slideOutToTop: "animate-out slide-out-to-top-4 duration-200",
-  slideOutToBottom: "animate-out slide-out-to-bottom-4 duration-200",
-  slideOutToLeft: "animate-out slide-out-to-left-4 duration-200",
-  slideOutToRight: "animate-out slide-out-to-right-4 duration-200",
-  scaleOut: "animate-out zoom-out-95 duration-200",
+  fadeOut: "",
+  slideOutToTop: "",
+  slideOutToBottom: "",
+  slideOutToLeft: "",
+  slideOutToRight: "",
+  scaleOut: "",
 
-  // Hover effects
-  hoverScale: "hover:scale-105 transition-transform duration-200",
-  hoverLift: "hover:-translate-y-1 hover:shadow-lg transition-all duration-200",
-  hoverGlow: "hover:shadow-md hover:shadow-primary/25 transition-shadow duration-200",
+  // Only keep color transitions for headers
+  hoverScale: "",
+  hoverLift: "",
+  hoverGlow: "",
 
-  // Loading states
-  pulse: "animate-pulse",
-  spin: "animate-spin",
-  bounce: "animate-bounce",
+  // Remove loading animations for speed
+  pulse: "",
+  spin: "",
+  bounce: "",
 
-  // Micro-interactions
-  buttonPress: "active:scale-95 transition-transform duration-100",
-  cardHover: "hover:shadow-md hover:scale-[1.02] transition-all duration-300",
-  inputFocus: "focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200",
+  // Remove micro-interactions
+  buttonPress: "",
+  cardHover: "",
+  inputFocus: "focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-150",
 
-  // Staggered animations for lists
-  staggerChildren: "animate-in fade-in duration-500",
-  staggerChild: (delay: number) => `animate-in fade-in slide-in-from-bottom-4 duration-300 delay-${delay}`,
+  // Remove staggered animations
+  staggerChildren: "",
+  staggerChild: (delay: number) => "",
 
-  // Results animations
-  resultEnter: "animate-in fade-in slide-in-from-bottom-6 duration-500 ease-out",
-  errorShake: "animate-pulse",
+  // Remove results animations
+  resultEnter: "",
+  errorShake: "",
 
-  // Tab transitions
-  tabContent: "animate-in fade-in slide-in-from-bottom-2 duration-300",
-  tabIndicator: "transition-all duration-200 ease-out",
+  // Remove tab transitions
+  tabContent: "",
+  tabIndicator: "",
 }
 
 export const transitions = {
-  fast: "transition-all duration-150",
-  normal: "transition-all duration-200",
-  slow: "transition-all duration-300",
-  colors: "transition-colors duration-200",
-  transform: "transition-transform duration-200",
-  shadow: "transition-shadow duration-200",
+  fast: "",
+  normal: "",
+  slow: "",
+  colors: "transition-colors duration-150", // Keep only for headers
+  transform: "",
+  shadow: "",
 }
 
-// Animation presets for common components
+// Simplified animation presets - all disabled
 export const animationPresets = {
-  card: `${animations.fadeIn} ${animations.cardHover}`,
-  button: `${animations.buttonPress} ${transitions.normal}`,
-  input: `${animations.inputFocus} ${transitions.normal}`,
-  result: animations.resultEnter,
-  tab: animations.tabContent,
-  modal: `${animations.fadeIn} ${animations.scaleIn}`,
+  card: "",
+  button: "",
+  input: "focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors duration-150",
+  result: "",
+  tab: "",
+  modal: "",
 }
 
-// Utility function to create staggered animations
+// Disabled staggered animations
 export const createStaggeredAnimation = (itemCount: number, baseDelay = 100) => {
   return Array.from({ length: itemCount }, (_, index) => ({
-    className: `animate-in fade-in slide-in-from-bottom-4 duration-300`,
-    style: { animationDelay: `${index * baseDelay}ms` }
+    className: "",
+    style: {}
   }))
 }
 
-// Performance-optimized animation detection
+// Always return true for reduced motion to disable all animations
 export const prefersReducedMotion = () => {
-  if (typeof window === 'undefined') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  return true
 }
 
-// Safe animation wrapper that respects user preferences
+// Always return empty string to disable all animations
 export const safeAnimation = (animationClass: string) => {
-  return prefersReducedMotion() ? '' : animationClass
+  return ""
 } 

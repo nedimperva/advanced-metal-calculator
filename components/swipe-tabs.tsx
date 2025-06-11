@@ -155,7 +155,7 @@ export function SwipeTabs({
                   <div
                     key={index}
                     className={cn(
-                      "w-2 h-2 rounded-full transition-colors",
+                      "w-2 h-2 rounded-full",
                       index === currentIndex ? "bg-primary" : "bg-muted"
                     )}
                   />
@@ -192,8 +192,8 @@ export function SwipeTabs({
         >
           <div
             className={cn(
-              "transition-transform duration-200 ease-out",
-              isDragging && "transition-none"
+              "",
+              isDragging && ""
             )}
             style={{
               transform: `translateX(${isDragging ? dragOffset : 0}px)`

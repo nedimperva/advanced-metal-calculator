@@ -320,7 +320,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
@@ -356,56 +355,23 @@
     height: 6px;
     background: hsl(var(--primary));
     border-radius: 50%;
-    animation: pulse 2s infinite;
   }
 }
 
 @layer utilities {
-  .animation-delay-2000 {
-    animation-delay: 2s;
-  }
-  .animation-delay-4000 {
-    animation-delay: 4s;
-  }
+
   
-  /* Better hover effects */
+  /* Better hover effects - disabled for performance */
   .hover-lift {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
   
   .hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px hsl(var(--primary) / 0.1);
   }
 }
 
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
 
-.animate-blob {
-  animation: blob 7s infinite;
-}
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
+
 
 /* Custom Scrollbar Styles - Theme Aware */
 @layer components {
@@ -423,7 +389,6 @@
   .scrollbar-theme::-webkit-scrollbar-thumb {
     background: hsl(var(--muted-foreground) / 0.3);
     border-radius: 3px;
-    transition: background 0.2s ease;
   }
   
   .scrollbar-theme::-webkit-scrollbar-thumb:hover {
@@ -448,7 +413,6 @@
   .scrollbar-column::-webkit-scrollbar-thumb {
     background: hsl(var(--border));
     border-radius: 2px;
-    transition: background 0.2s ease;
   }
   
   .scrollbar-column::-webkit-scrollbar-thumb:hover {

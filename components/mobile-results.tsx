@@ -10,7 +10,15 @@ import { CheckCircle, Info, BarChart3, Layers, Save, Share2, TrendingUp } from "
 import { cn } from "@/lib/utils"
 import { animations, safeAnimation } from "@/lib/animations"
 import { WEIGHT_UNITS } from "@/lib/unit-conversions"
-import type { StructuralProperties } from "@/lib/types"
+import type { StructuralProperties, PricingModel } from "@/lib/types"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import PricingModelSelector from "@/components/pricing-model-selector"
+import { 
+  PRICING_MODELS, 
+  calculateUnitCost, 
+  calculateTotalCost 
+} from "@/lib/pricing-models"
 
 interface MobileResultsProps {
   weight: number
@@ -21,6 +29,18 @@ interface MobileResultsProps {
   onSave?: () => void
   onShare?: () => void
   onAdvancedAnalysis?: () => void
+  // Pricing props
+  quantity?: string
+  setQuantity?: (quantity: string) => void
+  pricePerUnit?: string
+  setPricePerUnit?: (price: string) => void
+  currency?: string
+  pricingModel?: PricingModel
+  setPricingModel?: (model: PricingModel) => void
+  profileCategory?: string
+  profileType?: string
+  length?: string
+  lengthUnit?: string
 }
 
 export function MobileResults({ 
@@ -31,7 +51,19 @@ export function MobileResults({
   className,
   onSave,
   onShare,
-  onAdvancedAnalysis
+  onAdvancedAnalysis,
+  // Pricing props
+  quantity = "1",
+  setQuantity,
+  pricePerUnit = "",
+  setPricePerUnit,
+  currency = "USD",
+  pricingModel = "per_unit",
+  setPricingModel,
+  profileCategory = "",
+  profileType = "",
+  length = "1000",
+  lengthUnit = "mm"
 }: MobileResultsProps) {
   const DetailedResultsModal = () => (
     <DialogContent className="max-w-sm mx-4 max-h-[80vh] overflow-y-auto">
@@ -164,6 +196,55 @@ export function MobileResults({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {/* Pricing Section - Mobile */}
+          {setPricingModel && setQuantity && setPricePerUnit && (
+            <div className="space-y-3 p-3 bg-muted/30 rounded-lg border border-border/50">
+              <h4 className="text-sm font-medium">Pricing</h4>
+              
+              {/* Pricing Model Selector - Compact for Mobile */}
+              <PricingModelSelector
+                pricingModel={pricingModel}
+                setPricingModel={setPricingModel}
+                currency={currency}
+                profileCategory={profileCategory}
+                profileType={profileType}
+                showRecommendation={false}
+              />
+              
+              {/* Quantity and Price Inputs - Mobile */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="mobile-quantity" className="text-xs">Quantity</Label>
+                  <Input
+                    id="mobile-quantity"
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    placeholder="1"
+                    min="0.001"
+                    step="1"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mobile-price" className="text-xs">
+                    Price ({currency} {PRICING_MODELS[pricingModel].unit})
+                  </Label>
+                  <Input
+                    id="mobile-price"
+                    type="number"
+                    value={pricePerUnit}
+                    onChange={(e) => setPricePerUnit(e.target.value)}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Main Result - Mobile Optimized */}
           <div className={cn(
             "text-center bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-xl",
@@ -176,6 +257,47 @@ export function MobileResults({
               {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
             </div>
           </div>
+
+          {/* Pricing Results - Mobile */}
+          {pricePerUnit && parseFloat(pricePerUnit) > 0 && (
+            <>
+              {/* Single Unit Cost */}
+              <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200/50 dark:border-green-800/50">
+                <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                  {currency} {calculateUnitCost(
+                    pricingModel,
+                    parseFloat(pricePerUnit),
+                    weight,
+                    parseFloat(length),
+                    weightUnit,
+                    lengthUnit
+                  ).toFixed(2)}
+                </div>
+                <div className="text-xs text-green-600 dark:text-green-400">Unit Cost</div>
+              </div>
+
+              {/* Total Cost (if quantity > 1) */}
+              {parseFloat(quantity) !== 1 && parseFloat(quantity) > 0 && (
+                <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200/50 dark:border-emerald-800/50">
+                  <div className="text-xs text-emerald-700 dark:text-emerald-300 mb-1">
+                    Total ({quantity} units)
+                  </div>
+                  <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+                    {currency} {calculateTotalCost(
+                      pricingModel,
+                      parseFloat(pricePerUnit),
+                      weight,
+                      parseFloat(length),
+                      parseFloat(quantity),
+                      weightUnit,
+                      lengthUnit
+                    ).toFixed(2)}
+                  </div>
+                  <div className="text-xs text-emerald-600 dark:text-emerald-400">Total Cost</div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Key Properties - Simplified for Mobile */}
           <div className="grid grid-cols-2 gap-2">

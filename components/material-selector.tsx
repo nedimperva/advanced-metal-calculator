@@ -11,15 +11,17 @@ import { MATERIALS } from "@/lib/metal-data"
 import type { MaterialGrade } from "@/lib/metal-data"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { isProfileCompatible, getMaterialCompatibilityInfo } from "@/lib/material-profile-compatibility"
 
 interface MaterialSelectorProps {
   material: string
   setMaterial: (material: string) => void
   grade: string
   setGrade: (grade: string) => void
+  profileType?: string // Optional profile type for showing compatibility info
 }
 
-export default function MaterialSelector({ material, setMaterial, grade, setGrade }: MaterialSelectorProps) {
+export default function MaterialSelector({ material, setMaterial, grade, setGrade, profileType }: MaterialSelectorProps) {
   const isMobile = useMediaQuery("(max-width: 768px)")
   const { trackMaterial, getSuggestions } = useUserPreferences()
   const suggestions = getSuggestions()

@@ -2,17 +2,25 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Info, Clock } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Info, Clock, AlertTriangle } from "lucide-react"
 import { PROFILES } from "@/lib/metal-data"
 import { cn } from "@/lib/utils"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { 
+  getCompatibleProfileCategories, 
+  getCompatibleProfileTypesInCategory, 
+  isProfileCompatible,
+  getMaterialProfileNotes
+} from "@/lib/material-profile-compatibility"
 
 interface ProfileSelectorProps {
   profileCategory: string
   setProfileCategory: (category: string) => void
   profileType: string
   setProfileType: (type: string) => void
+  material?: string // Add material prop for compatibility filtering
 }
 
 export default function ProfileSelector({
@@ -20,20 +28,39 @@ export default function ProfileSelector({
   setProfileCategory,
   profileType,
   setProfileType,
+  material = "steel", // Default to steel for backward compatibility
 }: ProfileSelectorProps) {
   const isMobile = useMediaQuery("(max-width: 768px)")
   const { trackProfile, getSuggestions } = useUserPreferences()
   const suggestions = getSuggestions()
 
+  // Get material compatibility data
+  const compatibleCategories = getCompatibleProfileCategories(material)
+  const materialNotes = getMaterialProfileNotes(material)
+  
+  // Filter available profile categories based on material compatibility
+  const availableCategories = Object.entries(PROFILES).filter(([key]) => 
+    compatibleCategories.includes(key)
+  )
+
   // Visual selection for profile categories
   const handleCategorySelect = (category: string) => {
     setProfileCategory(category)
-    // Select first profile type in the new category, or most recent if available
-    const recentTypes = suggestions.getProfileTypes(category)
-    const firstType = recentTypes.length > 0 ? recentTypes[0] : Object.keys(PROFILES[category as keyof typeof PROFILES].types)[0]
-    setProfileType(firstType)
-    // Track the selection
-    trackProfile(category, firstType)
+    // Get compatible profile types for this material and category
+    const compatibleTypes = getCompatibleProfileTypesInCategory(material, category)
+    const availableTypes = Object.keys(PROFILES[category as keyof typeof PROFILES].types).filter(type =>
+      compatibleTypes.includes(type)
+    )
+    
+    // Select first compatible profile type in the new category, or most recent if available
+    const recentTypes = suggestions.getProfileTypes(category).filter(type => compatibleTypes.includes(type))
+    const firstType = recentTypes.length > 0 ? recentTypes[0] : availableTypes[0]
+    
+    if (firstType) {
+      setProfileType(firstType)
+      // Track the selection
+      trackProfile(category, firstType)
+    }
   }
 
   const handleTypeSelect = (type: string) => {
@@ -59,15 +86,32 @@ export default function ProfileSelector({
   if (isMobile) {
     return (
       <div className="space-y-3">
+        {/* Material compatibility notice */}
+        {materialNotes && (
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md p-2">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-blue-800 dark:text-blue-200">
+                {materialNotes}
+              </p>
+            </div>
+          </div>
+        )}
+        
         {/* Simplified Category Selection for Mobile */}
         <div className="space-y-2">
-          <div className="text-sm font-medium">Profile Category</div>
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium">Profile Category</div>
+            <Badge variant="secondary" className="text-xs">
+              {availableCategories.length} available
+            </Badge>
+          </div>
           <Select value={profileCategory} onValueChange={handleCategorySelect}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(PROFILES).map(([key, category]) => (
+              {availableCategories.map(([key, category]) => (
                 <SelectItem key={key} value={key}>
                   {category.name}
                 </SelectItem>
@@ -95,38 +139,49 @@ export default function ProfileSelector({
             </SelectTrigger>
             <SelectContent>
               {/* Recent types for this category first */}
-              {suggestions.getProfileTypes(profileCategory).length > 0 && (
-                <>
-                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    Recent in {PROFILES[profileCategory as keyof typeof PROFILES]?.name}
-                  </div>
-                  {suggestions.getProfileTypes(profileCategory).map((key) => {
-                    const profile = PROFILES[profileCategory as keyof typeof PROFILES]?.types[key as keyof (typeof PROFILES)[keyof typeof PROFILES]["types"]] as any
-                    if (!profile) return null
-                    return (
-                      <SelectItem key={`recent-${key}`} value={key}>
-                        <div className="flex items-center gap-2">
-                          <span>{profile.name}</span>
-                          <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
-                        </div>
-                      </SelectItem>
-                    )
-                  })}
-                  <div className="px-2 py-1 text-xs font-medium text-muted-foreground">All Types</div>
-                </>
-              )}
-              {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]: [string, any]) => {
-                // Skip if already shown in recent
-                if (suggestions.getProfileTypes(profileCategory).includes(key)) return null
-                return (
-                  <SelectItem key={key} value={key}>
-                    <div className="flex items-center gap-2">
-                      <span>{profile.name}</span>
-                    </div>
-                  </SelectItem>
+              {(() => {
+                const compatibleTypes = getCompatibleProfileTypesInCategory(material, profileCategory)
+                const recentCompatibleTypes = suggestions.getProfileTypes(profileCategory).filter(type => 
+                  compatibleTypes.includes(type)
                 )
-              })}
+                
+                return (
+                  <>
+                    {recentCompatibleTypes.length > 0 && (
+                      <>
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Recent in {PROFILES[profileCategory as keyof typeof PROFILES]?.name}
+                        </div>
+                        {recentCompatibleTypes.map((key) => {
+                          const profile = PROFILES[profileCategory as keyof typeof PROFILES]?.types[key as keyof (typeof PROFILES)[keyof typeof PROFILES]["types"]] as any
+                          if (!profile) return null
+                          return (
+                            <SelectItem key={`recent-${key}`} value={key}>
+                              <div className="flex items-center gap-2">
+                                <span>{profile.name}</span>
+                                <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
+                              </div>
+                            </SelectItem>
+                          )
+                        })}
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">All Compatible Types</div>
+                      </>
+                    )}
+                    {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]: [string, any]) => {
+                      // Skip if already shown in recent or not compatible
+                      if (recentCompatibleTypes.includes(key) || !compatibleTypes.includes(key)) return null
+                      return (
+                        <SelectItem key={key} value={key}>
+                          <div className="flex items-center gap-2">
+                            <span>{profile.name}</span>
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
+                  </>
+                )
+              })()}
             </SelectContent>
           </Select>
         </div>
@@ -136,24 +191,59 @@ export default function ProfileSelector({
 
   return (
     <div className="space-y-3">
+      {/* Material compatibility notice for desktop */}
+      {materialNotes && (
+        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md p-2">
+          <div className="flex items-start gap-2">
+            <Info className="h-3 w-3 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-blue-800 dark:text-blue-200">
+              {materialNotes}
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Visual Category Selection */}
       <div className="space-y-2">
         <div className="grid grid-cols-3 gap-1">
-          {Object.entries(PROFILES).map(([key, category]) => (
-            <div
-              key={key}
-              className={cn(
-                "border rounded-md p-2 text-center cursor-pointer transition-all duration-200 hover-lift",
-                profileCategory === key
-                  ? "selected-item-strong"
-                  : "hover:bg-muted border-border hover:border-primary/20",
-              )}
-              onClick={() => handleCategorySelect(key)}
-            >
-              <div className="text-xs font-medium">{category.name}</div>
-            </div>
-          ))}
+          {availableCategories.map(([key, category]) => {
+            const compatibleTypesCount = getCompatibleProfileTypesInCategory(material, key).length
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "border rounded-md p-2 text-center cursor-pointer transition-all duration-200 hover-lift",
+                  profileCategory === key
+                    ? "selected-item-strong"
+                    : "hover:bg-muted border-border hover:border-primary/20",
+                )}
+                onClick={() => handleCategorySelect(key)}
+              >
+                <div className="text-xs font-medium">{category.name}</div>
+                <div className="text-xs text-muted-foreground">{compatibleTypesCount} types</div>
+              </div>
+            )
+          })}
         </div>
+        
+        {/* Show incompatible categories if any */}
+        {Object.entries(PROFILES).length > availableCategories.length && (
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Unavailable for {material === "steel" ? "steel" : material === "aluminum" ? "aluminum" : material}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(PROFILES)
+                .filter(([key]) => !compatibleCategories.includes(key))
+                .map(([key, category]) => (
+                  <Badge key={key} variant="outline" className="text-xs opacity-50">
+                    {category.name}
+                  </Badge>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Profile Type Selection */}
@@ -163,13 +253,19 @@ export default function ProfileSelector({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]: [string, any]) => {
-              return (
-                <SelectItem key={key} value={key}>
-                  <span>{profile.name}</span>
-                </SelectItem>
-              )
-            })}
+            {(() => {
+              const compatibleTypes = getCompatibleProfileTypesInCategory(material, profileCategory)
+              return Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]: [string, any]) => {
+                // Only show compatible types
+                if (!compatibleTypes.includes(key)) return null
+                
+                return (
+                  <SelectItem key={key} value={key}>
+                    <span>{profile.name}</span>
+                  </SelectItem>
+                )
+              })
+            })()}
           </SelectContent>
         </Select>
       </div>

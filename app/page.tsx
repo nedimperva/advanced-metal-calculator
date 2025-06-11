@@ -58,11 +58,33 @@ import { MobileEnhancedInput, useDimensionSuggestions } from "@/components/mobil
 import { MobileResults } from "@/components/mobile-results"
 import { SwipeTabs } from "@/components/swipe-tabs"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
+import { 
+  isProfileCompatible, 
+  getCompatibleProfileCategories, 
+  getCompatibleProfileTypesInCategory 
+} from "@/lib/material-profile-compatibility"
+import PricingModelSelector from "@/components/pricing-model-selector"
+import { 
+  type PricingModel,
+  PRICING_MODELS,
+  calculateTotalCost, 
+  calculateUnitCost,
+  getRecommendedPricingModel 
+} from "@/lib/pricing-models"
 
 export default function MetalWeightCalculator() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
+  const [layoutReady, setLayoutReady] = useState(false)
   const { trackStandardSize, trackDimension, trackCalculation, getSuggestions, updateDefaults } = useUserPreferences()
   const suggestions = getSuggestions()
+
+
+
+  // Allow layout to stabilize after mount
+  useEffect(() => {
+    const timer = setTimeout(() => setLayoutReady(true), 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   // State for undo/redo
 
@@ -139,6 +161,7 @@ export default function MetalWeightCalculator() {
   const [quantity, setQuantity] = useState("1")
   const [pricePerUnit, setPricePerUnit] = useState("")
   const [currency, setCurrency] = useState("USD")
+  const [pricingModel, setPricingModel] = useState<PricingModel>("per_unit")
 
   // History
   const [calculations, setCalculations] = useState<Calculation[]>([])
@@ -196,6 +219,48 @@ export default function MetalWeightCalculator() {
       }
     }
   }, [])
+
+  // Material-Profile Compatibility Validation
+  useEffect(() => {
+    // Check if current profile is compatible with selected material
+    if (!isProfileCompatible(material, profileType)) {
+      const compatibleCategories = getCompatibleProfileCategories(material)
+      
+      if (compatibleCategories.length > 0) {
+        // Find the first compatible category
+        const firstCompatibleCategory = compatibleCategories[0]
+        const compatibleTypes = getCompatibleProfileTypesInCategory(material, firstCompatibleCategory)
+        
+        if (compatibleTypes.length > 0) {
+          // Auto-correct to a compatible profile
+          const firstCompatibleType = compatibleTypes[0]
+          
+          toast({
+            title: "Profile Auto-Corrected",
+            description: `${profileType} is not available for ${material}. Switched to ${firstCompatibleType}.`,
+            variant: "default",
+          })
+          
+          setProfileCategory(firstCompatibleCategory)
+          setProfileType(firstCompatibleType)
+          setStandardSize("") // Reset standard size when changing profile
+        }
+      } else {
+        // No compatible profiles at all - this shouldn't happen with our data
+        toast({
+          title: "Compatibility Issue",
+          description: `No compatible profiles found for ${material}. Please select a different material.`,
+          variant: "destructive",
+        })
+      }
+    }
+  }, [material, profileType])
+
+  // Auto-set recommended pricing model when profile changes
+  useEffect(() => {
+    const recommended = getRecommendedPricingModel(profileCategory, profileType)
+    setPricingModel(recommended)
+  }, [profileCategory, profileType])
 
   // Update selected profile and material when type/grade changes
   useEffect(() => {
@@ -453,6 +518,25 @@ export default function MetalWeightCalculator() {
 
     setIsSaving(true)
     try {
+      const unitCost = pricePerUnit ? calculateUnitCost(
+        pricingModel,
+        parseFloat(pricePerUnit),
+        weight,
+        parseFloat(length),
+        weightUnit,
+        lengthUnit
+      ) : 0
+
+      const totalCost = pricePerUnit ? calculateTotalCost(
+        pricingModel,
+        parseFloat(pricePerUnit),
+        weight,
+        parseFloat(length),
+        parseFloat(quantity),
+        weightUnit,
+        lengthUnit
+      ) : 0
+
       const newCalculation: Calculation = {
         id: Date.now().toString(),
         profileCategory,
@@ -474,6 +558,13 @@ export default function MetalWeightCalculator() {
         radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
         radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
         perimeter: structuralProperties.perimeter,
+        // Pricing information
+        quantity: parseFloat(quantity),
+        priceValue: pricePerUnit ? parseFloat(pricePerUnit) : undefined,
+        pricingModel,
+        currency,
+        totalCost,
+        unitCost,
         timestamp: new Date(),
       }
 
@@ -641,6 +732,20 @@ export default function MetalWeightCalculator() {
     // Set standard size if available
     setStandardSize(calc.standardSize === "Custom" ? "" : calc.standardSize)
     setCustomInput(calc.standardSize === "Custom")
+
+    // Load pricing information if available (backward compatibility)
+    if (calc.quantity !== undefined) {
+      setQuantity(calc.quantity.toString())
+    }
+    if (calc.priceValue !== undefined) {
+      setPricePerUnit(calc.priceValue.toString())
+    }
+    if (calc.pricingModel) {
+      setPricingModel(calc.pricingModel)
+    }
+    if (calc.currency) {
+      setCurrency(calc.currency)
+    }
 
     // Switch to calculator tab
     setActiveTab("calculator")
@@ -945,6 +1050,18 @@ export default function MetalWeightCalculator() {
             onSave={saveCalculation}
             onShare={shareCalculation}
             onAdvancedAnalysis={() => setActiveTab("advanced")}
+            // Pricing props
+            quantity={quantity}
+            setQuantity={setQuantity}
+            pricePerUnit={pricePerUnit}
+            setPricePerUnit={setPricePerUnit}
+            currency={currency}
+            pricingModel={pricingModel}
+            setPricingModel={setPricingModel}
+            profileCategory={profileCategory}
+            profileType={profileType}
+            length={length}
+            lengthUnit={lengthUnit}
           />
         )
       }
@@ -956,43 +1073,54 @@ export default function MetalWeightCalculator() {
             safeAnimation(animations.cardHover)
           )}>
             <CardHeader className="pb-3">
-              <CardTitle className={cn(
-                "text-lg flex items-center gap-2",
-                safeAnimation(animations.fadeIn)
-              )}>
-                <CheckCircle className="h-5 w-5 text-green-500 animate-pulse" />
+              <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
+                <CheckCircle className="h-5 w-5 text-green-500" />
                 Calculation Results
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Quantity and Price Inputs */}
+              {/* Enhanced Pricing Section */}
               <div className={safeAnimation(animations.slideInFromRight)}>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div>
-                    <Label htmlFor="quantity" className="text-xs">Quantity</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      placeholder="1"
-                      min="0.001"
-                      step="1"
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="price" className="text-xs">Price per Unit ({currency})</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={pricePerUnit}
-                      onChange={(e) => setPricePerUnit(e.target.value)}
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                      className="h-8 text-xs"
-                    />
+                <div className="space-y-4 mb-4">
+                  {/* Pricing Model Selector */}
+                  <PricingModelSelector
+                    pricingModel={pricingModel}
+                    setPricingModel={setPricingModel}
+                    currency={currency}
+                    profileCategory={profileCategory}
+                    profileType={profileType}
+                  />
+                  
+                  {/* Quantity and Price Inputs */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="quantity" className="text-xs">Quantity</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        placeholder="1"
+                        min="0.001"
+                        step="1"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="price" className="text-xs">
+                        Price ({currency} {PRICING_MODELS[pricingModel].unit})
+                      </Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        value={pricePerUnit}
+                        onChange={(e) => setPricePerUnit(e.target.value)}
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        className="h-8 text-xs"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1015,9 +1143,16 @@ export default function MetalWeightCalculator() {
                   {pricePerUnit && (
                     <div className="text-center">
                       <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                        {currency} {parseFloat(pricePerUnit).toFixed(2)}
+                        {currency} {calculateUnitCost(
+                          pricingModel,
+                          parseFloat(pricePerUnit),
+                          weight,
+                          parseFloat(length),
+                          weightUnit,
+                          lengthUnit
+                        ).toFixed(2)}
                       </div>
-                      <div className="text-muted-foreground">Price</div>
+                      <div className="text-muted-foreground">Unit Cost</div>
                     </div>
                   )}
                 </div>
@@ -1045,7 +1180,15 @@ export default function MetalWeightCalculator() {
                     {pricePerUnit && (
                       <div className="text-center">
                         <div className="text-xl font-bold text-green-700 dark:text-green-300">
-                          {currency} {(parseFloat(pricePerUnit) * parseFloat(quantity)).toFixed(2)}
+                          {currency} {calculateTotalCost(
+                            pricingModel,
+                            parseFloat(pricePerUnit),
+                            weight,
+                            parseFloat(length),
+                            parseFloat(quantity),
+                            weightUnit,
+                            lengthUnit
+                          ).toFixed(2)}
                         </div>
                         <div className="text-green-600 dark:text-green-400">Total Cost</div>
                       </div>
@@ -1191,12 +1334,12 @@ export default function MetalWeightCalculator() {
                   Advanced Analysis
                 </Button>
                 <Button 
-                  onClick={shareCalculation} 
+                  onClick={() => setActiveTab("breakdown")} 
                   variant="outline" 
                   className="flex-1"
                 >
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share
+                  <Layers className="mr-2 h-4 w-4" />
+                  Breakdown
                 </Button>
               </div>
             </CardContent>
@@ -1211,10 +1354,7 @@ export default function MetalWeightCalculator() {
         "text-center py-12 text-muted-foreground",
         safeAnimation(animations.fadeIn)
       )}>
-        <Calculator className={cn(
-          "h-16 w-16 mx-auto mb-4 opacity-40",
-          safeAnimation(animations.pulse)
-        )} />
+        <Calculator className="h-16 w-16 mx-auto mb-4 opacity-40" />
         <p className="text-lg">Select a profile and material to begin calculation</p>
         <p className="text-sm mt-2 opacity-60">Choose from our extensive library of standard profiles</p>
       </div>
@@ -1231,12 +1371,12 @@ export default function MetalWeightCalculator() {
         <ThemeToggle />
       </div>
 
-      <div className={cn("relative z-10", isDesktop ? "px-4" : "max-w-md mx-auto p-4")}>
+      <div className={cn("relative z-10", isDesktop && layoutReady ? "px-4" : "max-w-md mx-auto p-4")}>
         {/* Header */}
         <div className="text-center space-y-1 mb-4">
           <div className="flex items-center justify-center gap-2">
             <Calculator className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">Professional Metal Calculator</h1>
+            <h1 className="text-xl font-bold text-foreground hover:text-primary transition-colors duration-150">Professional Metal Calculator</h1>
           </div>
           <p className="text-xs text-muted-foreground">Calculate weights for structural profiles and materials</p>
         </div>
@@ -1253,12 +1393,6 @@ export default function MetalWeightCalculator() {
               shortLabel: "Calc"
             },
             {
-              value: "breakdown",
-              label: "Breakdown", 
-              icon: <Layers className="h-3 w-3" />,
-              shortLabel: "Break"
-            },
-            {
               value: "comparison",
               label: "Compare",
               icon: <BarChart3 className="h-3 w-3" />,
@@ -1273,7 +1407,7 @@ export default function MetalWeightCalculator() {
           ]}
         >
           <SwipeTabs.Content value="calculator" className={safeAnimation(animationPresets.tab)}>
-            {isDesktop ? (
+            {isDesktop && layoutReady ? (
               // Desktop Layout - Three columns with independent scrolling
               <div className="grid grid-cols-12 gap-2 h-[calc(100vh-120px)]">
                 {/* Left Column - Material & Profile Selection */}
@@ -1286,7 +1420,7 @@ export default function MetalWeightCalculator() {
                         safeAnimation(animations.cardHover)
                       )}>
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center gap-2">
+                          <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                             <Layers className="h-5 w-5 text-primary" />
                             Material Selection
                           </CardTitle>
@@ -1297,6 +1431,7 @@ export default function MetalWeightCalculator() {
                             setMaterial={setMaterial}
                             grade={grade}
                             setGrade={setGrade}
+                            profileType={profileType}
                           />
                         </CardContent>
                       </Card>
@@ -1309,7 +1444,7 @@ export default function MetalWeightCalculator() {
                         safeAnimation(animations.cardHover)
                       )}>
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center gap-2">
+                          <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                             <Calculator className="h-5 w-5 text-primary" />
                             Profile Selection
                           </CardTitle>
@@ -1320,6 +1455,7 @@ export default function MetalWeightCalculator() {
                             setProfileCategory={setProfileCategory}
                             profileType={profileType}
                             setProfileType={setProfileType}
+                            material={material}
                           />
 
                           {/* Standard Sizes */}
@@ -1355,7 +1491,7 @@ export default function MetalWeightCalculator() {
                         safeAnimation(animations.cardHover)
                       )}>
                         <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center gap-2">
+                          <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                             <BarChart3 className="h-5 w-5 text-primary" />
                             Dimensions
                           </CardTitle>
@@ -1399,7 +1535,7 @@ export default function MetalWeightCalculator() {
                           <Separator className="my-4" />
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                              <h3 className="text-sm font-medium">Profile Dimensions</h3>
+                              <h3 className="text-sm font-medium hover:text-primary transition-colors duration-150">Profile Dimensions</h3>
                               {selectedProfile && (
                                 <Badge variant="outline" className="font-normal">
                                   {selectedProfile.name} {standardSize && `(${standardSize})`}
@@ -1475,7 +1611,7 @@ export default function MetalWeightCalculator() {
                     safeAnimation(animations.cardHover)
                   )}>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
+                      <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                         <Layers className="h-5 w-5 text-primary" />
                         Material Selection
                       </CardTitle>
@@ -1486,6 +1622,7 @@ export default function MetalWeightCalculator() {
                         setMaterial={setMaterial}
                         grade={grade}
                         setGrade={setGrade}
+                        profileType={profileType}
                       />
                     </CardContent>
                   </Card>
@@ -1498,7 +1635,7 @@ export default function MetalWeightCalculator() {
                     safeAnimation(animations.cardHover)
                   )}>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
+                      <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                         <Calculator className="h-5 w-5 text-primary" />
                         Profile Selection
                       </CardTitle>
@@ -1509,6 +1646,7 @@ export default function MetalWeightCalculator() {
                         setProfileCategory={setProfileCategory}
                         profileType={profileType}
                         setProfileType={setProfileType}
+                        material={material}
                       />
 
                       {/* Standard Sizes */}
@@ -1524,7 +1662,7 @@ export default function MetalWeightCalculator() {
                     safeAnimation(animations.cardHover)
                   )}>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
+                      <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                         <BarChart3 className="h-5 w-5 text-primary" />
                         Dimensions
                       </CardTitle>
@@ -1583,7 +1721,7 @@ export default function MetalWeightCalculator() {
                       <Separator className="my-4" />
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-medium">Profile Dimensions</h3>
+                          <h3 className="text-sm font-medium hover:text-primary transition-colors duration-150">Profile Dimensions</h3>
                           {selectedProfile && (
                             <Badge variant="outline" className="font-normal">
                               {selectedProfile.name} {standardSize && `(${standardSize})`}
@@ -1712,7 +1850,7 @@ export default function MetalWeightCalculator() {
           <SwipeTabs.Content value="history" className="space-y-4">
             <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
+                <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                   <History className="h-5 w-5" />
                   Calculation History
                 </CardTitle>

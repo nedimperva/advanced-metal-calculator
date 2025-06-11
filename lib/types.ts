@@ -6,6 +6,12 @@ export interface ProfileData {
 // Re-export MaterialGrade interface from metal-data
 export type { MaterialGrade } from './metal-data'
 
+// Re-export pricing types
+export type { PricingModel } from './pricing-models'
+
+// Import PricingModel for use in interfaces
+import type { PricingModel } from './pricing-models'
+
 // Updated MaterialData interface for enhanced properties
 export interface MaterialData {
   name: string
@@ -60,5 +66,12 @@ export interface Calculation {
   radiusOfGyrationX?: number
   radiusOfGyrationY?: number
   perimeter?: number
+  // Pricing information (optional for backward compatibility)
+  quantity?: number
+  priceValue?: number
+  pricingModel?: PricingModel
+  currency?: string
+  totalCost?: number
+  unitCost?: number
   timestamp: Date
 }
