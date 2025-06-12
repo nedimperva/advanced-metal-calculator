@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "prestart": "node prestart.mjs",
-    "start": "next start",
+    "start": "NODE_ENV=production node server.js",
+    "start:next": "next start -H 0.0.0.0 -p ${PORT:-10000}",
     "lint": "next lint"
   },
   "dependencies": {
