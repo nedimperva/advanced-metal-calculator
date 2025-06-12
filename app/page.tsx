@@ -15,7 +15,7 @@ import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangl
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
-import { cn } from "@/lib/utils"
+import { cn, formatCalculationName, getShortMaterialTag } from "@/lib/utils"
 import { animations, animationPresets, safeAnimation, createStaggeredAnimation } from "@/lib/animations"
 import ProfileSelector from "@/components/profile-selector"
 import MaterialSelector from "@/components/material-selector"
@@ -602,11 +602,31 @@ export default function MetalWeightCalculator() {
       return
     }
 
-    const exportData = {
-      // Basic Information
-      profile: `${PROFILES[profileCategory as keyof typeof PROFILES].name} - ${selectedProfile.name}`,
+    // Create a temporary calculation object for formatting
+    const tempCalc: Calculation = {
+      id: 'temp',
+      profileCategory,
+      profileType,
+      profileName: selectedProfile.name,
       standardSize: standardSize || "Custom",
-      material: selectedMaterial.name,
+      material,
+      grade,
+      materialName: selectedMaterial.name,
+      dimensions: { ...dimensions, length },
+      weight,
+      weightUnit,
+      lengthUnit,
+      crossSectionalArea: structuralProperties.area,
+      timestamp: new Date()
+    }
+    
+    const { mainName, materialTag } = formatCalculationName(tempCalc)
+
+    const exportData = {
+      // Basic Information - Using new naming convention
+      profileSpecification: mainName,
+      material: materialTag,
+      standardSize: standardSize || "Custom",
       density: `${selectedMaterial.density} g/cm³`,
       
       // Dimensions
@@ -683,7 +703,7 @@ export default function MetalWeightCalculator() {
   }
 
   const shareCalculation = async () => {
-    if (weight <= 0 || !selectedProfile || !selectedMaterial) {
+    if (weight <= 0 || !selectedProfile || !selectedMaterial || !structuralProperties) {
       toast({
         title: "Cannot share calculation",
         description: "Please select a valid profile and material first.",
@@ -692,9 +712,30 @@ export default function MetalWeightCalculator() {
       return
     }
 
+    // Create a temporary calculation object for formatting
+    const tempCalc: Calculation = {
+      id: 'temp',
+      profileCategory,
+      profileType,
+      profileName: selectedProfile.name,
+      standardSize: standardSize || "Custom",
+      material,
+      grade,
+      materialName: selectedMaterial.name,
+      dimensions: { ...dimensions, length },
+      weight,
+      weightUnit,
+      lengthUnit,
+      crossSectionalArea: structuralProperties.area,
+      timestamp: new Date()
+    }
+    
+    const { mainName, materialTag } = formatCalculationName(tempCalc)
+    const shortMaterialTag = getShortMaterialTag(materialTag)
+
     const shareData = {
       title: "Metal Weight Calculator Result",
-      text: `${selectedMaterial.name} ${selectedProfile.name} ${standardSize ? `(${standardSize})` : ""} weighs ${weight.toFixed(4)} ${WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}`,
+      text: `${mainName} (${shortMaterialTag}) weighs ${weight.toFixed(4)} ${WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}`,
       url: window.location.href,
     }
 
@@ -1576,9 +1617,145 @@ export default function MetalWeightCalculator() {
                             <div className="flex items-center justify-between">
                               <h3 className="text-sm font-medium hover:text-primary transition-colors duration-150">Profile Dimensions</h3>
                               {selectedProfile && (
-                                <Badge variant="outline" className="font-normal">
-                                  {selectedProfile.name} {standardSize && `(${standardSize})`}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="font-normal">
+                                    {(() => {
+                                      // Generate profile spec for display with actual dimensions
+                                      let profileSpec = ""
+                                      switch (profileType) {
+                                        case 'hea':
+                                          profileSpec = standardSize ? `HEA ${standardSize.replace('HEA ', '')}` : `HEA ${dimensions.h || '?'}x${dimensions.b || '?'}`
+                                          break
+                                        case 'heb':
+                                          profileSpec = standardSize ? `HEB ${standardSize.replace('HEB ', '')}` : `HEB ${dimensions.h || '?'}x${dimensions.b || '?'}`
+                                          break
+                                        case 'hem':
+                                          profileSpec = standardSize ? `HEM ${standardSize.replace('HEM ', '')}` : `HEM ${dimensions.h || '?'}x${dimensions.b || '?'}`
+                                          break
+                                        case 'ipe':
+                                          profileSpec = standardSize ? `IPE ${standardSize.replace('IPE ', '')}` : `IPE ${dimensions.h || '?'}x${dimensions.b || '?'}`
+                                          break
+                                        case 'ipn':
+                                          profileSpec = standardSize ? `IPN ${standardSize.replace('IPN ', '')}` : `IPN ${dimensions.h || '?'}x${dimensions.b || '?'}`
+                                          break
+                                        case 'upn':
+                                          profileSpec = standardSize ? `UPN ${standardSize.replace('UPN ', '')}` : `UPN ${dimensions.h || '?'}x${dimensions.b || '?'}`
+                                          break
+                                        case 'rhs': 
+                                          if (standardSize) {
+                                            profileSpec = `RHS ${standardSize.replace('RHS ', '')}`
+                                          } else {
+                                            const h = dimensions.h || '?'
+                                            const b = dimensions.b || '?'
+                                            const t = dimensions.t || '?'
+                                            profileSpec = `RHS ${h}x${b}x${t}`
+                                          }
+                                          break
+                                        case 'shs':
+                                          if (standardSize) {
+                                            profileSpec = `SHS ${standardSize.replace('SHS ', '')}`
+                                          } else {
+                                            const a = dimensions.a || '?'
+                                            const t = dimensions.t || '?'
+                                            profileSpec = `SHS ${a}x${t}`
+                                          }
+                                          break
+                                        case 'chs':
+                                          if (standardSize) {
+                                            profileSpec = `CHS ${standardSize.replace('CHS ', '')}`
+                                          } else {
+                                            const od = dimensions.od || '?'
+                                            const wt = dimensions.wt || '?'
+                                            profileSpec = `CHS ${od}x${wt}`
+                                          }
+                                          break
+                                        case 'plate':
+                                        case 'sheetMetal':
+                                        case 'checkeredPlate':
+                                        case 'perforatedPlate':
+                                          if (standardSize) {
+                                            profileSpec = standardSize
+                                          } else {
+                                            const plateLength = dimensions.length || '?'
+                                            const plateWidth = dimensions.width || '?'
+                                            const plateThickness = dimensions.thickness || '?'
+                                            const plateType = profileType === 'plate' ? 'PLATE' : 
+                                                             profileType === 'sheetMetal' ? 'SHEET' :
+                                                             profileType === 'checkeredPlate' ? 'CHECKER' : 'PERF'
+                                            profileSpec = `${plateType} ${plateLength}x${plateWidth}x${plateThickness}`
+                                          }
+                                          break
+                                        case 'equalAngle':
+                                          if (standardSize) {
+                                            profileSpec = standardSize
+                                          } else {
+                                            const a = dimensions.a || '?'
+                                            const t = dimensions.t || '?'
+                                            profileSpec = `L${a}x${a}x${t}`
+                                          }
+                                          break
+                                        case 'unequalAngle':
+                                          if (standardSize) {
+                                            profileSpec = standardSize
+                                          } else {
+                                            const a = dimensions.a || '?'
+                                            const b = dimensions.b || '?'
+                                            const t = dimensions.t || '?'
+                                            profileSpec = `L${a}x${b}x${t}`
+                                          }
+                                          break
+                                        case 'pipe':
+                                          if (standardSize) {
+                                            profileSpec = standardSize
+                                          } else {
+                                            const diameter = dimensions.diameter || dimensions.od || '?'
+                                            const wallThickness = dimensions.wt || dimensions.t || '?'
+                                            profileSpec = `PIPE ${diameter}x${wallThickness}`
+                                          }
+                                          break
+                                        case 'roundBar':
+                                          if (standardSize) {
+                                            profileSpec = standardSize
+                                          } else {
+                                            const roundDiameter = dimensions.diameter || dimensions.d || '?'
+                                            profileSpec = `Ø${roundDiameter}`
+                                          }
+                                          break
+                                        case 'squareBar':
+                                          if (standardSize) {
+                                            profileSpec = standardSize
+                                          } else {
+                                            const squareSide = dimensions.a || dimensions.side || '?'
+                                            profileSpec = `SQ${squareSide}`
+                                          }
+                                          break
+                                        case 'hexBar':
+                                          if (standardSize) {
+                                            profileSpec = standardSize
+                                          } else {
+                                            const hexDistance = dimensions.distance || dimensions.d || '?'
+                                            profileSpec = `HEX${hexDistance}`
+                                          }
+                                          break
+                                        case 'flatBar':
+                                          if (standardSize) {
+                                            profileSpec = standardSize
+                                          } else {
+                                            const width = dimensions.b || dimensions.width || '?'
+                                            const thickness = dimensions.t || dimensions.thickness || '?'
+                                            profileSpec = `FLAT ${width}x${thickness}`
+                                          }
+                                          break
+                                        default: 
+                                          profileSpec = standardSize || selectedProfile.name
+                                      }
+                                      return profileSpec
+                                    })()}
+                                  </Badge>
+                                  <Badge variant="secondary" className="text-xs font-normal">
+                                    {getShortMaterialTag(selectedMaterial?.name || '')}
+                                  </Badge>
+                                </div>
                               )}
                             </div>
                             {renderDimensionInputs()}
@@ -1888,7 +2065,7 @@ export default function MetalWeightCalculator() {
 
           <SwipeTabs.Content value="history" className="space-y-4">
             <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                   <History className="h-5 w-5" />
                   Calculation History
@@ -1896,141 +2073,128 @@ export default function MetalWeightCalculator() {
               </CardHeader>
               <CardContent>
                 {calculations.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">No saved calculations yet</p>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-lg">No saved calculations yet</p>
+                    <p className="text-sm mt-1">Complete calculations will appear here</p>
+                  </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {calculations.map((calc) => {
-                      // Backwards compatibility - provide defaults for older entries
+                      // Fix calculation logic
                       const quantity = calc.quantity || 1
                       const totalWeight = calc.totalWeight || (calc.weight * quantity)
                       const hasPrice = calc.priceValue !== undefined && calc.priceValue > 0
                       const pricingModel = calc.pricingModel || 'per_kg'
                       const pricingInfo = PRICING_MODELS[pricingModel]
-                      const pricingUnit = pricingInfo?.unit || '/piece'
                       
-                      // Calculate actual total quantities based on pricing model
-                      const getActualTotalQuantity = (model: string) => {
-                        // Get the actual length value and unit from calc dimensions
-                        const lengthValue = parseFloat(calc.dimensions?.length || '1000')
-                        // Use stored lengthUnit or default to mm for backwards compatibility
-                        const storedLengthUnit = calc.lengthUnit || 'mm'
-                        
-                        // Convert length to meters using proper conversion factors
-                        const lengthUnitData = LENGTH_UNITS[storedLengthUnit as keyof typeof LENGTH_UNITS]
-                        const lengthInMeters = lengthUnitData ? 
-                          (lengthValue * lengthUnitData.factor) / 100 : // Convert cm to meters
-                          lengthValue / 1000 // Fallback: assume mm, convert to meters
-                        
-                        // Convert weight to kg properly using weight unit factors
-                        const weightUnitData = WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS]
-                        const weightInKg = weightUnitData ? 
-                          (calc.weight * weightUnitData.factor) / 1000 : // Convert to grams then to kg
-                          calc.weight // Fallback: assume already in kg
-                        
-                        switch (model) {
-                          case 'per_kg': 
-                            return (quantity * weightInKg).toFixed(3)
-                          case 'per_meter':
-                            return (quantity * lengthInMeters).toFixed(2)
-                          case 'per_unit':
-                          default: 
-                            return quantity.toString()
-                        }
+                      // Calculate correct pricing quantities
+                      const lengthValue = parseFloat(calc.dimensions?.length || '1000')
+                      const storedLengthUnit = calc.lengthUnit || 'mm'
+                      
+                      // Convert weight to kg for pricing
+                      const weightUnitData = WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS]
+                      const singleWeightInKg = weightUnitData ? 
+                        (calc.weight * weightUnitData.factor) / 1000 : 
+                        calc.weight
+                      
+                      // Convert length to meters for pricing
+                      const lengthUnitData = LENGTH_UNITS[storedLengthUnit as keyof typeof LENGTH_UNITS]
+                      const lengthInMeters = lengthUnitData ? 
+                        (lengthValue * lengthUnitData.factor) / 100 : 
+                        lengthValue / 1000
+                      
+                      // Calculate billing quantities
+                      let billingQuantity = quantity
+                      let billingUnit = 'pieces'
+                      
+                      if (pricingModel === 'per_kg') {
+                        billingQuantity = singleWeightInKg * quantity
+                        billingUnit = 'kg'
+                      } else if (pricingModel === 'per_meter') {
+                        billingQuantity = lengthInMeters * quantity
+                        billingUnit = 'm'
                       }
                       
-                      // Get display unit for the actual total
-                      const getQuantityUnit = (model: string) => {
-                        switch (model) {
-                          case 'per_kg': return 'kg'
-                          case 'per_meter': return 'm'
-                          case 'per_unit': 
-                          default: return quantity === 1 ? 'piece' : 'pieces'
-                        }
-                      }
-                      
-                      const actualTotalQuantity = getActualTotalQuantity(pricingModel)
-                      const quantityUnit = getQuantityUnit(pricingModel)
-                      
-                      // Get icon for pricing model
-                      const pricingIcon = pricingInfo?.icon || '📦'
+                      // Format name according to new convention
+                      const { mainName, materialTag } = formatCalculationName(calc)
+                      const shortMaterialTag = getShortMaterialTag(materialTag)
                       
                       return (
                         <div
                           key={calc.id}
-                          className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                          className="border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors group"
                           onClick={() => loadCalculation(calc)}
                         >
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-start">
-                              <div className="space-y-2 flex-1">
-                                {/* Profile and Material */}
-                                <div className="font-medium text-sm">
-                                  {calc.materialName} {calc.profileName}{" "}
-                                  {calc.standardSize !== "Custom" && `(${calc.standardSize})`}
-                                </div>
-                                
-                                {/* Quantity and Unit Weight */}
-                                <div className="flex items-center gap-4 text-sm">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-muted-foreground">Quantity: </span>
-                                    <span className="font-medium flex items-center gap-1">
-                                      {pricingIcon} {quantity} {quantity === 1 ? 'piece' : 'pieces'}
-                                      {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && calc.weightUnit === 'kg') && (
-                                        <span className="text-xs text-muted-foreground">
-                                          ({actualTotalQuantity} {quantityUnit})
-                                        </span>
-                                      )}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Unit Weight: </span>
-                                    <span className="font-medium">
-                                      {calc.weight.toFixed(3)} {WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Total Weight */}
-                                <div className="text-lg font-bold text-primary">
-                                  Total Weight: {totalWeight.toFixed(3)}{" "}
-                                  {WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}
-                                </div>
-
-                                {/* Pricing Information */}
-                                {hasPrice ? (
-                                  <div className="space-y-1 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg border border-green-200/50 dark:border-green-800/50">
-                                    <div className="text-sm flex items-center gap-2">
-                                      <span className="text-muted-foreground">Price: </span>
-                                      <span className="font-medium flex items-center gap-1">
-                                        {pricingIcon} {calc.currency || 'USD'} {calc.priceValue!.toFixed(2)}{pricingUnit}
-                                      </span>
-                                      <div className="text-xs text-muted-foreground bg-white/60 dark:bg-black/20 px-2 py-1 rounded">
-                                        {pricingInfo?.name || 'Per Unit'}
-                                      </div>
-                                    </div>
-                                    {calc.totalCost && calc.totalCost > 0 && (
-                                      <div className="text-sm font-medium text-green-700 dark:text-green-300 bg-white/40 dark:bg-black/20 p-2 rounded">
-                                        <span className="flex items-center gap-1">
-                                          {pricingIcon} {actualTotalQuantity} {quantityUnit} × {calc.currency || 'USD'} {calc.priceValue!.toFixed(2)}{pricingUnit} = {calc.currency || 'USD'} {calc.totalCost.toFixed(2)}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="text-sm text-muted-foreground italic p-2 bg-gray-50 dark:bg-gray-900/50 rounded">
-                                    No pricing information recorded
-                                  </div>
-                                )}
-
-                                {/* Technical Details */}
-                                <div className="text-xs text-muted-foreground space-y-1">
-                                  <div>Area: {calc.crossSectionalArea.toFixed(4)} cm²</div>
-                                  <div>{calc.timestamp.toLocaleDateString()} {calc.timestamp.toLocaleTimeString()}</div>
-                                </div>
+                          {/* Header Row */}
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-medium text-sm text-foreground truncate">
+                                  {mainName}
+                                </h3>
+                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20 font-medium flex-shrink-0">
+                                  {shortMaterialTag}
+                                </span>
                               </div>
-                              <ChevronRight className="h-5 w-5 text-muted-foreground ml-4 flex-shrink-0" />
+                              <div className="text-xs text-muted-foreground">
+                                {calc.timestamp.toLocaleDateString()} • {calc.timestamp.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 ml-2" />
+                          </div>
+
+                          {/* Key Metrics Row */}
+                          <div className="grid grid-cols-3 gap-4 py-2 text-xs">
+                            {/* Quantity */}
+                            <div className="text-center">
+                              <div className="text-muted-foreground mb-1">Quantity</div>
+                              <div className="font-semibold text-foreground">
+                                {quantity} {quantity === 1 ? 'piece' : 'pieces'}
+                              </div>
+                            </div>
+                            
+                            {/* Weight */}
+                            <div className="text-center">
+                              <div className="text-muted-foreground mb-1">Total Weight</div>
+                              <div className="font-semibold text-primary">
+                                {totalWeight.toFixed(2)} {WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}
+                              </div>
+                            </div>
+                            
+                            {/* Cost or Area */}
+                            <div className="text-center">
+                              {hasPrice ? (
+                                <>
+                                  <div className="text-muted-foreground mb-1">Total Cost</div>
+                                  <div className="font-semibold text-green-600 dark:text-green-400">
+                                    {calc.currency || 'USD'} {calc.totalCost ? calc.totalCost.toFixed(2) : '0.00'}
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="text-muted-foreground mb-1">Area</div>
+                                  <div className="font-semibold text-foreground">
+                                    {calc.crossSectionalArea.toFixed(2)} cm²
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
+
+                          {/* Pricing Details (if available) */}
+                          {hasPrice && (
+                            <div className="mt-2 pt-2 border-t border-border/50">
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="text-muted-foreground">
+                                  {pricingInfo?.name || 'Pricing'}: {calc.currency || 'USD'} {calc.priceValue!.toFixed(2)}{pricingInfo?.unit || '/piece'}
+                                </div>
+                                <div className="text-muted-foreground">
+                                  {billingQuantity.toFixed(pricingModel === 'per_kg' ? 3 : 2)} {billingUnit}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
