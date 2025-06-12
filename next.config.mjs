@@ -9,12 +9,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Add server configuration for Render
-  experimental: {
-    serverComponentsExternalPackages: [],
-  },
-  // Ensure the app listens on all interfaces and uses the PORT env variable
-  output: 'standalone',
+  // Server external packages (fixed from deprecated experimental.serverComponentsExternalPackages)
+  serverExternalPackages: [],
 }
 
 export default nextConfig
