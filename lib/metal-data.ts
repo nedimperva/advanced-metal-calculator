@@ -632,7 +632,7 @@ export const PROFILES = {
   basic: {
     name: "Basic Shapes",
     types: {
-      rectangular: { name: "Rectangular Bar", dimensions: ["length", "width", "height"] },
+      rectangular: { name: "Rectangular Bar", dimensions: ["width", "height"] },
       round: { name: "Round Bar", dimensions: ["diameter"] },
       square: { name: "Square Bar", dimensions: ["side"] },
       flat: { name: "Flat Bar", dimensions: ["width", "thickness"] },

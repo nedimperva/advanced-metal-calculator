@@ -38,6 +38,16 @@ export const customThemes = {
     foreground: "hsl(205, 30%, 15%)",
     muted: "hsl(205, 20%, 96%)",
     border: "hsl(205, 20%, 88%)",
+    dark: {
+      primary: "hsl(205, 100%, 55%)",
+      primaryForeground: "hsl(205, 30%, 8%)",
+      secondary: "hsl(205, 30%, 15%)",
+      accent: "hsl(205, 30%, 18%)",
+      background: "hsl(205, 30%, 8%)",
+      foreground: "hsl(205, 20%, 95%)",
+      muted: "hsl(205, 30%, 15%)",
+      border: "hsl(205, 30%, 18%)",
+    }
   },
   green: {
     name: "Engineering Green",
@@ -49,6 +59,16 @@ export const customThemes = {
     foreground: "hsl(142, 30%, 15%)",
     muted: "hsl(142, 20%, 96%)",
     border: "hsl(142, 20%, 88%)",
+    dark: {
+      primary: "hsl(142, 76%, 45%)",
+      primaryForeground: "hsl(142, 30%, 8%)",
+      secondary: "hsl(142, 30%, 15%)",
+      accent: "hsl(142, 30%, 18%)",
+      background: "hsl(142, 30%, 8%)",
+      foreground: "hsl(142, 20%, 95%)",
+      muted: "hsl(142, 30%, 15%)",
+      border: "hsl(142, 30%, 18%)",
+    }
   },
   purple: {
     name: "Modern Purple",
@@ -60,20 +80,36 @@ export const customThemes = {
     foreground: "hsl(262, 30%, 15%)",
     muted: "hsl(262, 20%, 96%)",
     border: "hsl(262, 20%, 88%)",
+    dark: {
+      primary: "hsl(262, 83%, 65%)",
+      primaryForeground: "hsl(262, 30%, 8%)",
+      secondary: "hsl(262, 30%, 15%)",
+      accent: "hsl(262, 30%, 18%)",
+      background: "hsl(262, 30%, 8%)",
+      foreground: "hsl(262, 20%, 95%)",
+      muted: "hsl(262, 30%, 15%)",
+      border: "hsl(262, 30%, 18%)",
+    }
   }
 }
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange={true}
+      defaultTheme="light"
+      enableSystem={false}
+      disableTransitionOnChange
       themes={["light", "dark", "blue", "green", "purple"]}
+      storageKey="metal-calculator-theme"
       {...props}
     >
-      <ThemeCustomizer />
       {children}
     </NextThemesProvider>
   )

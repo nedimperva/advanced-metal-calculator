@@ -664,6 +664,99 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
         <text x="60" y="55" textAnchor="middle" className="text-xs fill-current font-bold">½ ROUND</text>
       </svg>
     ),
+    plate: (
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-plate" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+        </defs>
+        {/* Steel plate - top view */}
+        <rect x="20" y="30" width="80" height="20" stroke="currentColor" strokeWidth="2" 
+              fill="currentColor" fillOpacity="0.15" rx="1" />
+        {/* Dimensions */}
+        <line x1="20" y1="60" x2="100" y2="60" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-plate)" markerStart="url(#arrow-plate)" />
+        <text x="60" y="68" textAnchor="middle" className="text-[8px] fill-current font-medium">length</text>
+        <line x1="110" y1="30" x2="110" y2="50" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-plate)" markerStart="url(#arrow-plate)" />
+        <text x="115" y="43" textAnchor="start" className="text-[8px] fill-current font-medium">width</text>
+        {/* Thickness indicator */}
+        <line x1="20" y1="20" x2="20" y2="30" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-plate)" markerStart="url(#arrow-plate)" />
+        <text x="15" y="28" textAnchor="end" className="text-[8px] fill-current font-medium">thickness</text>
+        <text x="60" y="25" textAnchor="middle" className="text-xs fill-current font-bold">PLATE</text>
+      </svg>
+    ),
+    sheetMetal: (
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-sheet" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+        </defs>
+        {/* Sheet metal - top view with thinner appearance */}
+        <rect x="20" y="30" width="80" height="20" stroke="currentColor" strokeWidth="1.5" 
+              fill="currentColor" fillOpacity="0.1" rx="1" />
+        {/* Dimensions */}
+        <line x1="20" y1="60" x2="100" y2="60" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-sheet)" markerStart="url(#arrow-sheet)" />
+        <text x="60" y="68" textAnchor="middle" className="text-[8px] fill-current font-medium">length</text>
+        <line x1="110" y1="30" x2="110" y2="50" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-sheet)" markerStart="url(#arrow-sheet)" />
+        <text x="115" y="43" textAnchor="start" className="text-[8px] fill-current font-medium">width</text>
+        {/* Thickness indicator */}
+        <line x1="20" y1="20" x2="20" y2="30" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-sheet)" markerStart="url(#arrow-sheet)" />
+        <text x="15" y="28" textAnchor="end" className="text-[8px] fill-current font-medium">thickness</text>
+        <text x="60" y="25" textAnchor="middle" className="text-xs fill-current font-bold">SHEET</text>
+      </svg>
+    ),
+    checkeredPlate: (
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-checker" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+        </defs>
+        {/* Checkered plate - top view with diamond pattern */}
+        <rect x="20" y="30" width="80" height="20" stroke="currentColor" strokeWidth="2" 
+              fill="currentColor" fillOpacity="0.15" rx="1" />
+        {/* Diamond pattern overlay */}
+        <path d="M30 40 L40 30 L50 40 L40 50 Z" stroke="currentColor" strokeWidth="1" fill="none" />
+        <path d="M50 40 L60 30 L70 40 L60 50 Z" stroke="currentColor" strokeWidth="1" fill="none" />
+        <path d="M70 40 L80 30 L90 40 L80 50 Z" stroke="currentColor" strokeWidth="1" fill="none" />
+        {/* Dimensions */}
+        <line x1="20" y1="60" x2="100" y2="60" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-checker)" markerStart="url(#arrow-checker)" />
+        <text x="60" y="68" textAnchor="middle" className="text-[8px] fill-current font-medium">length</text>
+        <line x1="110" y1="30" x2="110" y2="50" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-checker)" markerStart="url(#arrow-checker)" />
+        <text x="115" y="43" textAnchor="start" className="text-[8px] fill-current font-medium">width</text>
+        {/* Thickness indicator */}
+        <line x1="20" y1="20" x2="20" y2="30" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-checker)" markerStart="url(#arrow-checker)" />
+        <text x="15" y="28" textAnchor="end" className="text-[8px] fill-current font-medium">thickness</text>
+        <text x="60" y="25" textAnchor="middle" className="text-xs fill-current font-bold">CHECKER</text>
+      </svg>
+    ),
+    perforatedPlate: (
+      <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-perf" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+        </defs>
+        {/* Perforated plate - top view with holes */}
+        <rect x="20" y="30" width="80" height="20" stroke="currentColor" strokeWidth="2" 
+              fill="currentColor" fillOpacity="0.15" rx="1" />
+        {/* Hole pattern overlay */}
+        <circle cx="35" cy="40" r="2" stroke="currentColor" strokeWidth="1" fill="none" />
+        <circle cx="50" cy="40" r="2" stroke="currentColor" strokeWidth="1" fill="none" />
+        <circle cx="65" cy="40" r="2" stroke="currentColor" strokeWidth="1" fill="none" />
+        <circle cx="80" cy="40" r="2" stroke="currentColor" strokeWidth="1" fill="none" />
+        {/* Dimensions */}
+        <line x1="20" y1="60" x2="100" y2="60" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-perf)" markerStart="url(#arrow-perf)" />
+        <text x="60" y="68" textAnchor="middle" className="text-[8px] fill-current font-medium">length</text>
+        <line x1="110" y1="30" x2="110" y2="50" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-perf)" markerStart="url(#arrow-perf)" />
+        <text x="115" y="43" textAnchor="start" className="text-[8px] fill-current font-medium">width</text>
+        {/* Thickness indicator */}
+        <line x1="20" y1="20" x2="20" y2="30" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-perf)" markerStart="url(#arrow-perf)" />
+        <text x="15" y="28" textAnchor="end" className="text-[8px] fill-current font-medium">thickness</text>
+        <text x="60" y="25" textAnchor="middle" className="text-xs fill-current font-bold">PERF</text>
+      </svg>
+    ),
   }
 
   return (

@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { Calculation } from "./types"
 import { LENGTH_UNITS } from "./unit-conversions"
+import { STANDARD_SIZES } from "@/lib/metal-data"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -29,11 +30,17 @@ export function formatCalculationName(calc: Calculation): { mainName: string; ma
     // European I-Beams
     case 'hea':
       if (standardSize && standardSize !== "Custom") {
-        profileSpec = `HEA ${standardSize.replace('HEA ', '')}`
+        profileSpec = standardSize
       } else {
-        const h = dimensions.h || '?'
-        const b = dimensions.b || '?'
-        profileSpec = `HEA ${h}x${b}`
+        // Find the closest standard size based on height
+        const sizes = STANDARD_SIZES.hea
+        const height = parseFloat(dimensions.h || '0')
+        const closestSize = sizes.reduce((prev: typeof sizes[0], curr: typeof sizes[0]) => {
+          const prevHeight = parseFloat(prev.dimensions.h)
+          const currHeight = parseFloat(curr.dimensions.h)
+          return Math.abs(currHeight - height) < Math.abs(prevHeight - height) ? curr : prev
+        })
+        profileSpec = closestSize.designation
       }
       break
     case 'heb':

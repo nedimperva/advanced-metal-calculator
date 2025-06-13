@@ -1624,7 +1624,19 @@ export default function MetalWeightCalculator() {
                                       let profileSpec = ""
                                       switch (profileType) {
                                         case 'hea':
-                                          profileSpec = standardSize ? `HEA ${standardSize.replace('HEA ', '')}` : `HEA ${dimensions.h || '?'}x${dimensions.b || '?'}`
+                                          if (standardSize) {
+                                            profileSpec = standardSize
+                                          } else {
+                                            // Find the closest standard size based on height
+                                            const sizes = STANDARD_SIZES.hea
+                                            const height = parseFloat(dimensions.h || '0')
+                                            const closestSize = sizes.reduce((prev, curr) => {
+                                              const prevHeight = parseFloat(prev.dimensions.h)
+                                              const currHeight = parseFloat(curr.dimensions.h)
+                                              return Math.abs(currHeight - height) < Math.abs(prevHeight - height) ? curr : prev
+                                            })
+                                            profileSpec = closestSize.designation
+                                          }
                                           break
                                         case 'heb':
                                           profileSpec = standardSize ? `HEB ${standardSize.replace('HEB ', '')}` : `HEB ${dimensions.h || '?'}x${dimensions.b || '?'}`
@@ -1753,7 +1765,7 @@ export default function MetalWeightCalculator() {
                                     })()}
                                   </Badge>
                                   <Badge variant="secondary" className="text-xs font-normal">
-                                    {getShortMaterialTag(selectedMaterial?.name || '')}
+                                    {selectedMaterial?.name || ''}
                                   </Badge>
                                 </div>
                               )}
@@ -2134,7 +2146,7 @@ export default function MetalWeightCalculator() {
                                   {mainName}
                                 </h3>
                                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20 font-medium flex-shrink-0">
-                                  {shortMaterialTag}
+                                  {calc.materialName}
                                 </span>
                               </div>
                               <div className="text-xs text-muted-foreground">
