@@ -1,6 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { useTheme } from 'next-themes'
 import { ColorTheme, COLOR_THEMES, DEFAULT_COLOR_THEME, applyColorTheme } from '@/lib/color-themes'
 
 interface ColorThemeContextType {
@@ -21,23 +22,44 @@ interface ColorThemeProviderProps {
 
 export function ColorThemeProvider({ children }: ColorThemeProviderProps) {
   const [colorTheme, setColorThemeState] = useState<ColorTheme>(DEFAULT_COLOR_THEME)
+  const { theme, resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  // Track mount state
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Load saved color theme preference on mount
   useEffect(() => {
+    if (!mounted) return
+
     const savedTheme = localStorage.getItem('metal-calculator-color-theme') as ColorTheme
     if (savedTheme && COLOR_THEMES[savedTheme]) {
       setColorThemeState(savedTheme)
-      applyColorTheme(savedTheme)
-    } else {
-      // Apply default theme
-      applyColorTheme(DEFAULT_COLOR_THEME)
     }
-  }, [])
+  }, [mounted])
+
+  // Apply color theme whenever the color theme or light/dark mode changes
+  useEffect(() => {
+    if (!mounted) return
+
+    // Determine the current mode
+    const currentMode = resolvedTheme === 'dark' ? 'dark' : 'light'
+    
+    // Apply the color theme with the current mode
+    applyColorTheme(colorTheme, currentMode)
+  }, [mounted, colorTheme, resolvedTheme, theme])
 
   const setColorTheme = (newTheme: ColorTheme) => {
     setColorThemeState(newTheme)
     localStorage.setItem('metal-calculator-color-theme', newTheme)
-    applyColorTheme(newTheme)
+    
+    // Apply immediately if mounted
+    if (mounted) {
+      const currentMode = resolvedTheme === 'dark' ? 'dark' : 'light'
+      applyColorTheme(newTheme, currentMode)
+    }
   }
 
   const availableThemes = Object.entries(COLOR_THEMES).map(([key, config]) => ({

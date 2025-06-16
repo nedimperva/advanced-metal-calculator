@@ -29,16 +29,16 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <I18nProvider>
-          <ColorThemeProvider>
-            <ThemeProvider>
+          <ThemeProvider>
+            <ColorThemeProvider>
               <div className="min-h-screen bg-background text-foreground antialiased">
                 <ErrorBoundary>
                   {children}
                   <Toaster />
                 </ErrorBoundary>
               </div>
-            </ThemeProvider>
-          </ColorThemeProvider>
+            </ColorThemeProvider>
+          </ThemeProvider>
         </I18nProvider>
       </body>
     </html>

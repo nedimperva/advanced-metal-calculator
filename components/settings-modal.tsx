@@ -160,11 +160,22 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           <div 
                             className="w-4 h-4 rounded-full border border-border"
                             style={{ 
-                              background: `hsl(${themeOption.value === 'professional-blue' ? '209 142% 47%' : 
-                                                  themeOption.value === 'engineering-green' ? '142 76% 36%' :
-                                                  themeOption.value === 'industrial-orange' ? '25 95% 53%' :
-                                                  themeOption.value === 'structural-gray' ? '215 28% 17%' :
-                                                  themeOption.value === 'copper-bronze' ? '19 78% 44%' : '209 142% 47%'})`
+                              background: (() => {
+                                switch (themeOption.value) {
+                                  case 'professional-blue':
+                                    return 'hsl(209, 142%, 47%)'
+                                  case 'engineering-green':
+                                    return 'hsl(142, 76%, 36%)'
+                                  case 'industrial-orange':
+                                    return 'hsl(25, 95%, 53%)'
+                                  case 'structural-gray':
+                                    return 'hsl(215, 28%, 17%)'
+                                  case 'copper-bronze':
+                                    return 'hsl(19, 78%, 44%)'
+                                  default:
+                                    return 'hsl(209, 142%, 47%)'
+                                }
+                              })()
                             }}
                           />
                           <div>
