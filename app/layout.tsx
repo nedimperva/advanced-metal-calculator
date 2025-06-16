@@ -4,6 +4,8 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { Toaster } from "@/components/ui/toaster"
+import { I18nProvider } from "@/contexts/i18n-context"
+import { ColorThemeProvider } from "@/contexts/color-theme-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -26,14 +28,18 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider>
-          <div className="min-h-screen bg-background text-foreground antialiased">
-        <ErrorBoundary>
-            {children}
-            <Toaster />
-            </ErrorBoundary>
-          </div>
-          </ThemeProvider>
+        <I18nProvider>
+          <ColorThemeProvider>
+            <ThemeProvider>
+              <div className="min-h-screen bg-background text-foreground antialiased">
+                <ErrorBoundary>
+                  {children}
+                  <Toaster />
+                </ErrorBoundary>
+              </div>
+            </ThemeProvider>
+          </ColorThemeProvider>
+        </I18nProvider>
       </body>
     </html>
   )

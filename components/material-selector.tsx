@@ -57,8 +57,8 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
   // Availability color coding
   const getAvailabilityColor = (availability: string) => {
     switch (availability) {
-      case 'excellent': return 'bg-green-500'
-      case 'good': return 'bg-blue-500'
+      case 'excellent': return 'bg-accent'
+      case 'good': return 'bg-accent/70'
       case 'fair': return 'bg-yellow-500'
       case 'limited': return 'bg-red-500'
       default: return 'bg-gray-500'
@@ -263,7 +263,7 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
 
         {/* Simple Material Summary for Mobile */}
         {selectedMaterialData && (
-          <Card className="bg-muted/30 border-primary/10">
+          <Card className="bg-muted/30 border-accent">
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
@@ -299,7 +299,7 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
               className={`border rounded-md p-2 cursor-pointer transition-all duration-200 hover-lift ${
                 material === key
                   ? "selected-item-strong"
-                  : "hover:bg-muted border-border hover:border-primary/20 hover:shadow-sm"
+                  : "hover:bg-muted border-border hover:border-accent hover:shadow-sm"
               }`}
               onClick={() => handleMaterialChange(key)}
             >
@@ -335,7 +335,7 @@ export default function MaterialSelector({ material, setMaterial, grade, setGrad
 
       {/* Compact Material Summary */}
       {selectedMaterialData && (
-        <div className="bg-muted/30 border border-primary/10 rounded-md p-2">
+        <div className="bg-muted/30 border border-accent rounded-md p-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded-full ${selectedMaterialData.color}`} />

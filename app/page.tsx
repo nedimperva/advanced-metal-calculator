@@ -53,7 +53,8 @@ import {
 import type { Calculation, ProfileData, MaterialData, StructuralProperties } from "@/lib/types"
 import type { MaterialGrade } from "@/lib/metal-data"
 import BackgroundElements from "@/components/background-elements"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { SettingsButton } from "@/components/settings-button"
+import { useI18n } from "@/contexts/i18n-context"
 import { MobileEnhancedInput, useDimensionSuggestions } from "@/components/mobile-enhanced-input"
 import { MobileResults } from "@/components/mobile-results"
 import { SwipeTabs } from "@/components/swipe-tabs"
@@ -77,6 +78,7 @@ export default function MetalWeightCalculator() {
   const [layoutReady, setLayoutReady] = useState(false)
   const { trackStandardSize, trackDimension, trackCalculation, getSuggestions, updateDefaults } = useUserPreferences()
   const suggestions = getSuggestions()
+  const { t } = useI18n()
 
 
 
@@ -104,6 +106,12 @@ export default function MetalWeightCalculator() {
   // Use refs to store timeout IDs for debouncing
   const lengthUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lengthCalculationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Initialize pricing from settings
+  useEffect(() => {
+    setCurrency(suggestions.defaults.defaultCurrency)
+    setPricingModel(suggestions.defaults.defaultPricingModel as PricingModel)
+  }, [suggestions.defaults.defaultCurrency, suggestions.defaults.defaultPricingModel])
 
   // Track unit changes
   const handleLengthUnitChange = useCallback((newUnit: string) => {
@@ -160,8 +168,8 @@ export default function MetalWeightCalculator() {
   // Quantity and pricing
   const [quantity, setQuantity] = useState("1")
   const [pricePerUnit, setPricePerUnit] = useState("")
-  const [currency, setCurrency] = useState("USD")
-  const [pricingModel, setPricingModel] = useState<PricingModel>("per_kg")
+  const [currency, setCurrency] = useState(suggestions.defaults.defaultCurrency)
+  const [pricingModel, setPricingModel] = useState<PricingModel>(suggestions.defaults.defaultPricingModel as PricingModel)
 
   // History
   const [calculations, setCalculations] = useState<Calculation[]>([])
@@ -1119,65 +1127,57 @@ export default function MetalWeightCalculator() {
       return (
         <div className={safeAnimation(animationPresets.result)}>
           <Card className={cn(
-            "backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg",
+            "backdrop-blur-sm bg-card/90 border-accent/20 shadow-lg",
             safeAnimation(animations.cardHover)
           )}>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
-                <CheckCircle className="h-5 w-5 text-green-500" />
+                <CheckCircle className="h-5 w-5 text-foreground" />
                 Calculation Results
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Enhanced Pricing Section */}
-              <div className={safeAnimation(animations.slideInFromRight)}>
-                <div className="space-y-4 mb-4">
-                  {/* Pricing Model Selector */}
-                  <PricingModelSelector
-                    pricingModel={pricingModel}
-                    setPricingModel={setPricingModel}
-                    currency={currency}
-                    profileCategory={profileCategory}
-                    profileType={profileType}
+              {/* Current Pricing Display */}
+              <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg mb-3">
+                <span>Defaults: {currency} • {PRICING_MODELS[pricingModel].name}</span>
+                <span className="text-foreground">Change in Settings</span>
+              </div>
+
+              {/* Quantity and Price Inputs */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <Label htmlFor="quantity" className="text-xs">{t('quantity')}</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    placeholder="1"
+                    min="0.001"
+                    step="1"
+                    className="h-8 text-xs"
                   />
-                  
-                  {/* Quantity and Price Inputs */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="quantity" className="text-xs">Quantity</Label>
-                      <Input
-                        id="quantity"
-                        type="number"
-                        value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                        placeholder="1"
-                        min="0.001"
-                        step="1"
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="price" className="text-xs">
-                        Price ({currency} {PRICING_MODELS[pricingModel].unit})
-                      </Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        value={pricePerUnit}
-                        onChange={(e) => setPricePerUnit(e.target.value)}
-                        placeholder="0.00"
-                        min="0"
-                        step="0.01"
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="price" className="text-xs">
+                    {t('price')} ({currency} {PRICING_MODELS[pricingModel].unit})
+                  </Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    value={pricePerUnit}
+                    onChange={(e) => setPricePerUnit(e.target.value)}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    className="h-8 text-xs"
+                  />
                 </div>
               </div>
 
               {/* Single Unit Results */}
               <div className={cn(
-                "bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-lg",
+                "bg-accent/10 border border-accent/20 p-4 rounded-lg",
                 safeAnimation(animations.scaleIn)
               )}>
                 <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
@@ -1194,7 +1194,7 @@ export default function MetalWeightCalculator() {
                 </h4>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="text-center">
-                    <div className="text-lg font-bold text-primary">
+                    <div className="text-lg font-bold text-foreground">
                       {weight.toFixed(4)}
                     </div>
                     <div className="text-muted-foreground">
@@ -1203,7 +1203,7 @@ export default function MetalWeightCalculator() {
                   </div>
                   {pricePerUnit && (
                     <div className="text-center">
-                      <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                      <div className="text-lg font-bold text-foreground">
                         {currency} {calculateUnitCost(
                           pricingModel,
                           parseFloat(pricePerUnit),
@@ -1222,10 +1222,10 @@ export default function MetalWeightCalculator() {
               {/* Total Results (if quantity > 1) */}
               {parseFloat(quantity) !== 1 && parseFloat(quantity) > 0 && (
                 <div className={cn(
-                  "bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 p-4 rounded-lg border border-green-200/50 dark:border-green-800/50",
+                  "bg-accent/20 border border-accent/30 p-4 rounded-lg",
                   safeAnimation(animations.slideInFromBottom)
                 )}>
-                  <h4 className="text-xs font-medium text-green-700 dark:text-green-300 mb-2 flex items-center gap-1">
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
                     <Calculator className="h-3 w-3" />
                     Total ({quantity} {parseFloat(quantity) === 1 ? 'piece' : 'pieces'}
                     {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && weightUnit === 'kg') && (
@@ -1250,16 +1250,16 @@ export default function MetalWeightCalculator() {
                   </h4>
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="text-center">
-                      <div className="text-xl font-bold text-green-700 dark:text-green-300">
+                      <div className="text-xl font-bold text-foreground">
                         {(weight * parseFloat(quantity)).toFixed(4)}
                       </div>
-                      <div className="text-green-600 dark:text-green-400">
+                      <div className="text-muted-foreground">
                         {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
                       </div>
                     </div>
                     {pricePerUnit && (
                       <div className="text-center">
-                        <div className="text-xl font-bold text-green-700 dark:text-green-300">
+                        <div className="text-xl font-bold text-foreground">
                           {currency} {calculateTotalCost(
                             pricingModel,
                             parseFloat(pricePerUnit),
@@ -1270,7 +1270,7 @@ export default function MetalWeightCalculator() {
                             lengthUnit
                           ).toFixed(2)}
                         </div>
-                        <div className="text-green-600 dark:text-green-400">Total Cost</div>
+                        <div className="text-muted-foreground">Total Cost</div>
                       </div>
                     )}
                   </div>
@@ -1446,9 +1446,9 @@ export default function MetalWeightCalculator() {
       {/* Background Elements */}
       <BackgroundElements />
 
-      {/* Theme Toggle */}
+      {/* Settings Button */}
       <div className="absolute top-4 right-4 z-50">
-        <ThemeToggle />
+        <SettingsButton />
       </div>
 
       <div className={cn("relative z-10", isDesktop && layoutReady ? "px-4" : "max-w-md mx-auto p-4")}>
@@ -1456,9 +1456,9 @@ export default function MetalWeightCalculator() {
         <div className="text-center space-y-1 mb-4">
           <div className="flex items-center justify-center gap-2">
             <Calculator className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold text-foreground hover:text-primary transition-colors duration-150">Professional Metal Calculator</h1>
+            <h1 className="text-xl font-bold text-foreground hover:text-primary transition-colors duration-150">{t('appTitle')}</h1>
           </div>
-          <p className="text-xs text-muted-foreground">Calculate weights for structural profiles and materials</p>
+          <p className="text-xs text-muted-foreground">{t('appSubtitle')}</p>
         </div>
 
         <SwipeTabs 
@@ -1468,21 +1468,21 @@ export default function MetalWeightCalculator() {
           tabs={[
             {
               value: "calculator",
-              label: "Calculator",
+              label: t('calculator'),
               icon: <Calculator className="h-3 w-3" />,
-              shortLabel: "Calc"
+              shortLabel: t('calculator').slice(0, 4)
             },
             {
               value: "comparison",
-              label: "Compare",
+              label: t('compare'),
               icon: <BarChart3 className="h-3 w-3" />,
-              shortLabel: "Comp"
+              shortLabel: t('compare').slice(0, 4)
             },
             {
               value: "history", 
-              label: "History",
+              label: t('history'),
               icon: <History className="h-3 w-3" />,
-              shortLabel: "Hist"
+              shortLabel: t('history').slice(0, 4)
             }
           ]}
         >
@@ -1496,13 +1496,13 @@ export default function MetalWeightCalculator() {
                     {/* Material Selection */}
                     <div className={safeAnimation(`${animations.slideInFromLeft} delay-100`)}>
                       <Card className={cn(
-                        "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                        "backdrop-blur-sm bg-card/95 border-accent/20 shadow-lg",
                         safeAnimation(animations.cardHover)
                       )}>
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                             <Layers className="h-5 w-5 text-primary" />
-                            Material Selection
+{t('materialSelection')}
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -1520,13 +1520,13 @@ export default function MetalWeightCalculator() {
                     {/* Profile Selection */}
                     <div className={safeAnimation(`${animations.slideInFromLeft} delay-200`)}>
                       <Card className={cn(
-                        "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
+                        "backdrop-blur-sm bg-card/95 border-accent/20 shadow-lg",
                         safeAnimation(animations.cardHover)
                       )}>
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                             <Calculator className="h-5 w-5 text-primary" />
-                            Profile Selection
+{t('profileSelection')}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -1566,49 +1566,21 @@ export default function MetalWeightCalculator() {
                 <div className="col-span-4 overflow-y-auto pr-2 scrollbar-column">
                   <div className="space-y-3">
                     <div className={safeAnimation(`${animations.slideInFromBottom} delay-100`)}>
-                      <Card className={cn(
-                        "backdrop-blur-sm bg-card/95 border-primary/10 shadow-lg",
-                        safeAnimation(animations.cardHover)
-                      )}>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
-                            <BarChart3 className="h-5 w-5 text-primary" />
-                            Dimensions
+                                          <Card className={cn(
+                      "backdrop-blur-sm bg-card/95 border-accent/20 shadow-lg",
+                      safeAnimation(animations.cardHover)
+                    )}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
+                          <BarChart3 className="h-5 w-5 text-primary" />
+{t('dimensions')}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          {/* Unit Selection */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label htmlFor="length-unit">Length Unit</Label>
-                              <Select value={lengthUnit} onValueChange={handleLengthUnitChange}>
-                                <SelectTrigger className={safeAnimation(animations.inputFocus)}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Object.entries(LENGTH_UNITS).map(([key, unit]) => (
-                                    <SelectItem key={key} value={key}>
-                                      {unit.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="weight-unit">Weight Unit</Label>
-                              <Select value={weightUnit} onValueChange={handleWeightUnitChange}>
-                                <SelectTrigger className={safeAnimation(animations.inputFocus)}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Object.entries(WEIGHT_UNITS).map(([key, unit]) => (
-                                    <SelectItem key={key} value={key}>
-                                      {unit.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                          {/* Current Units Display */}
+                          <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg">
+                            <span>Units: {LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].name} • {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}</span>
+                            <span className="text-foreground">Change in Settings</span>
                           </div>
 
                           {/* Profile Dimensions */}
@@ -1896,38 +1868,10 @@ export default function MetalWeightCalculator() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {/* Unit Selection */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="length-unit">Length Unit</Label>
-                          <Select value={lengthUnit} onValueChange={handleLengthUnitChange}>
-                            <SelectTrigger className={safeAnimation(animations.inputFocus)}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(LENGTH_UNITS).map(([key, unit]) => (
-                                <SelectItem key={key} value={key}>
-                                  {unit.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="weight-unit">Weight Unit</Label>
-                          <Select value={weightUnit} onValueChange={handleWeightUnitChange}>
-                            <SelectTrigger className={safeAnimation(animations.inputFocus)}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(WEIGHT_UNITS).map(([key, unit]) => (
-                                <SelectItem key={key} value={key}>
-                                  {unit.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                      {/* Current Units Display */}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg">
+                        <span>Units: {LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].name} • {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}</span>
+                        <span className="text-foreground">Change in Settings</span>
                       </div>
 
                       {/* Toggle for custom dimensions */}
@@ -2027,7 +1971,7 @@ export default function MetalWeightCalculator() {
                 } : undefined}
               />
             ) : (
-              <Card className="backdrop-blur-sm bg-card/90 border-primary/10">
+              <Card className="backdrop-blur-sm bg-card/90 border-accent/20">
                 <CardContent className="text-center py-8">
                   <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p className="text-muted-foreground">Complete a calculation to see the breakdown</p>
@@ -2046,7 +1990,7 @@ export default function MetalWeightCalculator() {
                 profileName={selectedProfile?.name || `${profileType.toUpperCase()}${standardSize ? ` ${standardSize}` : ''}`}
               />
             ) : (
-              <Card className="backdrop-blur-sm bg-card/90 border-primary/10">
+              <Card className="backdrop-blur-sm bg-card/90 border-accent/20">
                 <CardContent className="text-center py-8">
                   <Cog className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p className="text-muted-foreground">Complete a calculation to access advanced structural analysis</p>
@@ -2076,7 +2020,7 @@ export default function MetalWeightCalculator() {
           </SwipeTabs.Content>
 
           <SwipeTabs.Content value="history" className="space-y-4">
-            <Card className="backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg">
+            <Card className="backdrop-blur-sm bg-card/90 border-accent/20 shadow-lg">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                   <History className="h-5 w-5" />
@@ -2145,9 +2089,9 @@ export default function MetalWeightCalculator() {
                                 <h3 className="font-medium text-sm text-foreground truncate">
                                   {mainName}
                                 </h3>
-                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full border border-primary/20 font-medium flex-shrink-0">
-                                  {calc.materialName}
-                                </span>
+                                                <span className="text-xs bg-accent/50 text-foreground px-2 py-0.5 rounded-full border border-accent font-medium flex-shrink-0">
+                  {calc.materialName}
+                </span>
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {calc.timestamp.toLocaleDateString()} • {calc.timestamp.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
@@ -2169,7 +2113,7 @@ export default function MetalWeightCalculator() {
                             {/* Weight */}
                             <div className="text-center">
                               <div className="text-muted-foreground mb-1">Total Weight</div>
-                              <div className="font-semibold text-primary">
+                              <div className="font-semibold text-foreground">
                                 {totalWeight.toFixed(2)} {WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}
                               </div>
                             </div>
@@ -2179,7 +2123,7 @@ export default function MetalWeightCalculator() {
                               {hasPrice ? (
                                 <>
                                   <div className="text-muted-foreground mb-1">Total Cost</div>
-                                  <div className="font-semibold text-green-600 dark:text-green-400">
+                                  <div className="font-semibold text-foreground">
                                     {calc.currency || 'USD'} {calc.totalCost ? calc.totalCost.toFixed(2) : '0.00'}
                                   </div>
                                 </>

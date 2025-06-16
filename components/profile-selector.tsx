@@ -88,10 +88,10 @@ export default function ProfileSelector({
       <div className="space-y-3">
         {/* Material compatibility notice */}
         {materialNotes && (
-          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md p-2">
+          <div className="bg-muted/50 border border-border rounded-md p-2">
             <div className="flex items-start gap-2">
-              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-blue-800 dark:text-blue-200">
+              <Info className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">
                 {materialNotes}
               </p>
             </div>
@@ -193,10 +193,10 @@ export default function ProfileSelector({
     <div className="space-y-3">
       {/* Material compatibility notice for desktop */}
       {materialNotes && (
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md p-2">
-          <div className="flex items-start gap-2">
-            <Info className="h-3 w-3 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-blue-800 dark:text-blue-200">
+                        <div className="bg-muted/50 border border-border rounded-md p-2">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-muted-foreground">
               {materialNotes}
             </p>
           </div>
@@ -215,7 +215,7 @@ export default function ProfileSelector({
                   "border rounded-md p-2 text-center cursor-pointer transition-all duration-200 hover-lift",
                   profileCategory === key
                     ? "selected-item-strong"
-                    : "hover:bg-muted border-border hover:border-primary/20",
+                    : "hover:bg-muted border-border hover:border-accent",
                 )}
                 onClick={() => handleCategorySelect(key)}
               >

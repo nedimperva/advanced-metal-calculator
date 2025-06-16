@@ -23,6 +23,8 @@ export interface UserPreferences {
   defaultLengthUnit: string
   defaultWeightUnit: string
   defaultLength: string
+  defaultCurrency: string
+  defaultPricingModel: string
   
   // Usage stats
   totalCalculations: number
@@ -45,6 +47,8 @@ function getDefaultPreferences(): UserPreferences {
     defaultLengthUnit: 'mm',
     defaultWeightUnit: 'kg',
     defaultLength: '1000',
+    defaultCurrency: 'USD',
+    defaultPricingModel: 'per_kg',
     totalCalculations: 0,
     lastUpdated: Date.now()
   }
@@ -212,7 +216,7 @@ export function useUserPreferences() {
   }, [savePreferences])
 
   // Update default settings
-  const updateDefaults = useCallback((updates: Partial<Pick<UserPreferences, 'defaultLengthUnit' | 'defaultWeightUnit' | 'defaultLength'>>) => {
+  const updateDefaults = useCallback((updates: Partial<Pick<UserPreferences, 'defaultLengthUnit' | 'defaultWeightUnit' | 'defaultLength' | 'defaultCurrency' | 'defaultPricingModel'>>) => {
     setPreferences(prev => {
       const updated = {
         ...prev,
@@ -267,7 +271,9 @@ export function useUserPreferences() {
       defaults: {
         lengthUnit: preferences.defaultLengthUnit,
         weightUnit: preferences.defaultWeightUnit,
-        length: preferences.defaultLength
+        length: preferences.defaultLength,
+        defaultCurrency: preferences.defaultCurrency,
+        defaultPricingModel: preferences.defaultPricingModel
       }
     }
   }, [preferences])

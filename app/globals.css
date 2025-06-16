@@ -25,11 +25,7 @@
     --ring: 213 94% 55%;
     --radius: 0.5rem;
     
-    /* Enhanced selection contrast */
-    --selection-bg: 213 94% 55%;
-    --selection-fg: 210 40% 98%;
-    --selection-border: 213 94% 45%;
-    --selection-ring: 213 94% 55%;
+
   }
 
   .dark {
@@ -53,11 +49,7 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 213 94% 55%;
     
-    /* Enhanced selection contrast for dark mode */
-    --selection-bg: 213 94% 55%;
-    --selection-fg: 222.2 84% 4.9%;
-    --selection-border: 213 94% 70%;
-    --selection-ring: 213 94% 55%;
+
   }
 
   /* Light color themes */
@@ -82,10 +74,7 @@
     --input: 205 20% 88%;
     --ring: 205 100% 42%;
     
-    --selection-bg: 205 100% 42%;
-    --selection-fg: 210 40% 98%;
-    --selection-border: 205 100% 35%;
-    --selection-ring: 205 100% 42%;
+
   }
 
   .light-green {
@@ -109,10 +98,7 @@
     --input: 142 20% 88%;
     --ring: 142 76% 36%;
     
-    --selection-bg: 142 76% 36%;
-    --selection-fg: 355.7 100% 97.3%;
-    --selection-border: 142 76% 30%;
-    --selection-ring: 142 76% 36%;
+
   }
 
   .light-purple {
@@ -136,10 +122,7 @@
     --input: 262 20% 88%;
     --ring: 262 83% 58%;
     
-    --selection-bg: 262 83% 58%;
-    --selection-fg: 210 40% 98%;
-    --selection-border: 262 83% 50%;
-    --selection-ring: 262 83% 58%;
+
   }
 
   /* Dark color themes */
@@ -164,10 +147,7 @@
     --input: 205 30% 18%;
     --ring: 205 100% 55%;
     
-    --selection-bg: 205 100% 55%;
-    --selection-fg: 205 30% 8%;
-    --selection-border: 205 100% 65%;
-    --selection-ring: 205 100% 55%;
+
   }
 
   .dark-green {
@@ -191,10 +171,7 @@
     --input: 142 30% 18%;
     --ring: 142 76% 45%;
     
-    --selection-bg: 142 76% 45%;
-    --selection-fg: 142 30% 8%;
-    --selection-border: 142 76% 55%;
-    --selection-ring: 142 76% 45%;
+
   }
 
   .dark-purple {
@@ -218,10 +195,7 @@
     --input: 262 30% 18%;
     --ring: 262 83% 65%;
     
-    --selection-bg: 262 83% 65%;
-    --selection-fg: 262 30% 8%;
-    --selection-border: 262 83% 75%;
-    --selection-ring: 262 83% 65%;
+
   }
 
   /* System themes - inherit from light/dark based on system preference */
@@ -246,10 +220,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 213 94% 55%;
     
-    --selection-bg: 213 94% 55%;
-    --selection-fg: 210 40% 98%;
-    --selection-border: 213 94% 45%;
-    --selection-ring: 213 94% 55%;
+
   }
 
   @media (prefers-color-scheme: dark) {
@@ -274,10 +245,7 @@
       --input: 217.2 32.6% 17.5%;
       --ring: 213 94% 55%;
       
-      --selection-bg: 213 94% 55%;
-      --selection-fg: 222.2 84% 4.9%;
-      --selection-border: 213 94% 70%;
-      --selection-ring: 213 94% 55%;
+
     }
   }
 
@@ -302,10 +270,7 @@
     --input: 205 20% 88%;
     --ring: 205 100% 42%;
     
-    --selection-bg: 205 100% 42%;
-    --selection-fg: 210 40% 98%;
-    --selection-border: 205 100% 35%;
-    --selection-ring: 205 100% 42%;
+
   }
 
   @media (prefers-color-scheme: dark) {
@@ -330,10 +295,7 @@
       --input: 205 30% 18%;
       --ring: 205 100% 55%;
       
-      --selection-bg: 205 100% 55%;
-      --selection-fg: 205 30% 8%;
-      --selection-border: 205 100% 65%;
-      --selection-ring: 205 100% 55%;
+
     }
   }
 
@@ -358,10 +320,7 @@
     --input: 142 20% 88%;
     --ring: 142 76% 36%;
     
-    --selection-bg: 142 76% 36%;
-    --selection-fg: 355.7 100% 97.3%;
-    --selection-border: 142 76% 30%;
-    --selection-ring: 142 76% 36%;
+
   }
 
   @media (prefers-color-scheme: dark) {
@@ -386,10 +345,7 @@
       --input: 142 30% 18%;
       --ring: 142 76% 45%;
       
-      --selection-bg: 142 76% 45%;
-      --selection-fg: 142 30% 8%;
-      --selection-border: 142 76% 55%;
-      --selection-ring: 142 76% 45%;
+
     }
   }
 
@@ -414,10 +370,7 @@
     --input: 262 20% 88%;
     --ring: 262 83% 58%;
     
-    --selection-bg: 262 83% 58%;
-    --selection-fg: 210 40% 98%;
-    --selection-border: 262 83% 50%;
-    --selection-ring: 262 83% 58%;
+
   }
 
   @media (prefers-color-scheme: dark) {
@@ -442,10 +395,7 @@
       --input: 262 30% 18%;
       --ring: 262 83% 65%;
       
-      --selection-bg: 262 83% 65%;
-      --selection-fg: 262 30% 8%;
-      --selection-border: 262 83% 75%;
-      --selection-ring: 262 83% 65%;
+
     }
   }
 
@@ -461,16 +411,16 @@
 
   /* Enhanced selection styles for improved visibility */
   .selected-item {
-    background-color: hsl(var(--selection-bg) / 0.1);
-    border-color: hsl(var(--selection-border));
-    box-shadow: 0 0 0 1px hsl(var(--selection-ring) / 0.3);
+    background-color: hsl(var(--accent) / 0.1);
+    border-color: hsl(var(--accent));
+    box-shadow: 0 0 0 1px hsl(var(--accent) / 0.3);
   }
 
   .selected-item-strong {
-    background-color: hsl(var(--selection-bg) / 0.15);
-    border-color: hsl(var(--selection-border));
-    box-shadow: 0 0 0 2px hsl(var(--selection-ring) / 0.4);
-    color: hsl(var(--selection-fg));
+    background-color: hsl(var(--accent) / 0.15);
+    border-color: hsl(var(--accent));
+    box-shadow: 0 0 0 2px hsl(var(--accent) / 0.4);
+    color: hsl(var(--foreground));
   }
 
   /* Enhanced recent item indicator */
@@ -566,17 +516,17 @@
 @layer components {
   /* Enhanced selected item styling */
   .selected-item {
-    background: hsl(var(--selection-bg) / 0.15);
-    border-color: hsl(var(--selection-border));
+    background: hsl(var(--accent) / 0.15);
+    border-color: hsl(var(--accent));
     color: hsl(var(--foreground));
-    box-shadow: 0 0 0 2px hsl(var(--selection-ring) / 0.2);
+    box-shadow: 0 0 0 2px hsl(var(--accent) / 0.2);
   }
   
   .selected-item-strong {
-    background: hsl(var(--selection-bg) / 0.9);
-    border-color: hsl(var(--selection-border));
-    color: hsl(var(--selection-fg));
-    box-shadow: 0 4px 12px hsl(var(--selection-bg) / 0.25);
+    background: hsl(var(--accent) / 0.2);
+    border-color: hsl(var(--accent));
+    color: hsl(var(--foreground));
+    box-shadow: 0 4px 12px hsl(var(--accent) / 0.25);
   }
   
   /* Recent item styling */

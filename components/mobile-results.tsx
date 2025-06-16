@@ -173,7 +173,7 @@ export function MobileResults({
   return (
     <div className={cn("space-y-3", className)}>
       <Card className={cn(
-        "backdrop-blur-sm bg-card/90 border-primary/10 shadow-lg",
+        "backdrop-blur-sm bg-card/90 border-accent/20 shadow-lg",
         safeAnimation(animations.cardHover)
       )}>
         <CardHeader className="pb-2">
@@ -182,7 +182,7 @@ export function MobileResults({
             safeAnimation(animations.fadeIn)
           )}>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-foreground" />
               Results
             </div>
             <Dialog>
@@ -196,126 +196,117 @@ export function MobileResults({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Pricing Section - Mobile */}
-          {setPricingModel && setQuantity && setPricePerUnit && (
-            <div className="space-y-3 p-3 bg-muted/30 rounded-lg border border-border/50">
-              <h4 className="text-sm font-medium">Pricing</h4>
-              
-              {/* Pricing Model Selector - Compact for Mobile */}
-              <PricingModelSelector
-                pricingModel={pricingModel}
-                setPricingModel={setPricingModel}
-                currency={currency}
-                profileCategory={profileCategory}
-                profileType={profileType}
-                showRecommendation={false}
-              />
-              
-              {/* Quantity and Price Inputs - Mobile */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label htmlFor="mobile-quantity" className="text-xs">Quantity</Label>
-                  <Input
-                    id="mobile-quantity"
-                    type="number"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    placeholder="1"
-                    min="0.001"
-                    step="1"
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="mobile-price" className="text-xs">
-                    Price ({currency} {PRICING_MODELS[pricingModel].unit})
-                  </Label>
-                  <Input
-                    id="mobile-price"
-                    type="number"
-                    value={pricePerUnit}
-                    onChange={(e) => setPricePerUnit(e.target.value)}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    className="h-8 text-xs"
-                  />
-                </div>
+          {/* Current Pricing Display - Mobile */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg mb-3">
+            <span>Defaults: {currency} • {PRICING_MODELS[pricingModel].name}</span>
+            <span className="text-foreground">Change in Settings</span>
+          </div>
+
+          {/* Quantity and Price Inputs - Mobile */}
+          {setQuantity && setPricePerUnit && (
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div>
+                <Label htmlFor="mobile-quantity" className="text-xs">Quantity</Label>
+                <Input
+                  id="mobile-quantity"
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="1"
+                  min="0.001"
+                  step="1"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Label htmlFor="mobile-price" className="text-xs">
+                  Price ({currency} {PRICING_MODELS[pricingModel].unit})
+                </Label>
+                <Input
+                  id="mobile-price"
+                  type="number"
+                  value={pricePerUnit}
+                  onChange={(e) => setPricePerUnit(e.target.value)}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  className="h-8 text-xs"
+                />
               </div>
             </div>
           )}
 
           {/* Main Result - Mobile Optimized */}
-          <div className={cn(
-            "text-center bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-xl",
-            safeAnimation(animations.scaleIn)
-          )}>
-            <div className="text-2xl font-bold text-primary">
-              {weight.toFixed(4)}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
-            </div>
+                  <div className={cn(
+          "text-center bg-accent/10 border border-accent/20 p-4 rounded-xl",
+          safeAnimation(animations.scaleIn)
+        )}>
+          <div className="text-2xl font-bold text-foreground">
+            {weight.toFixed(4)}
           </div>
+          <div className="text-xs text-muted-foreground">
+            {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}
+          </div>
+        </div>
 
           {/* Pricing Results - Mobile */}
-          {pricePerUnit && parseFloat(pricePerUnit) > 0 && (
-            <>
-              {/* Single Unit Cost */}
-              <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200/50 dark:border-green-800/50">
-                <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {currency} {calculateUnitCost(
+                  {pricePerUnit && parseFloat(pricePerUnit) > 0 && (
+          <>
+            {/* Single Unit Cost */}
+            <div className="text-center p-3 bg-accent/10 border border-accent/20 rounded-lg">
+              <div className="text-lg font-bold text-foreground">
+                {currency} {calculateUnitCost(
+                  pricingModel,
+                  parseFloat(pricePerUnit),
+                  weight,
+                  parseFloat(length),
+                  weightUnit,
+                  lengthUnit
+                ).toFixed(2)}
+              </div>
+              <div className="text-xs text-muted-foreground">Unit Cost</div>
+            </div>
+
+            {/* Total Cost (if quantity > 1) */}
+            {parseFloat(quantity) !== 1 && parseFloat(quantity) > 0 && (
+              <div className="text-center p-3 bg-accent/20 border border-accent/30 rounded-lg">
+                <div className="text-xs text-muted-foreground mb-1">
+                  Total ({quantity} {parseFloat(quantity) === 1 ? 'piece' : 'pieces'}
+                  {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && weightUnit === 'kg') && (
+                    <span>
+                      = {(() => {
+                        const qtyNum = parseFloat(quantity)
+                        if (pricingModel === 'per_kg') {
+                          const weightInKg = (weight * (WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS]?.factor || 1)) / 1000
+                          return `${(qtyNum * weightInKg).toFixed(3)} kg`
+                        }
+                        if (pricingModel === 'per_meter') {
+                          // Use proper length unit conversion
+                          const lengthInCm = parseFloat(length || '1000') * (LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS]?.factor || 1)
+                          const lengthInMeters = lengthInCm / 100 // Convert cm to meters
+                          return `${(qtyNum * lengthInMeters).toFixed(2)} m`
+                        }
+                        return ''
+                      })()}
+                    </span>
+                  )})
+                </div>
+                <div className="text-xl font-bold text-foreground">
+                  {currency} {calculateTotalCost(
                     pricingModel,
                     parseFloat(pricePerUnit),
                     weight,
                     parseFloat(length),
+                    parseFloat(quantity),
                     weightUnit,
                     lengthUnit
                   ).toFixed(2)}
                 </div>
-                <div className="text-xs text-green-600 dark:text-green-400">Unit Cost</div>
+                <div className="text-xs text-muted-foreground">Total Cost</div>
               </div>
-
-              {/* Total Cost (if quantity > 1) */}
-              {parseFloat(quantity) !== 1 && parseFloat(quantity) > 0 && (
-                <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200/50 dark:border-emerald-800/50">
-                  <div className="text-xs text-emerald-700 dark:text-emerald-300 mb-1">
-                    Total ({quantity} {parseFloat(quantity) === 1 ? 'piece' : 'pieces'}
-                    {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && weightUnit === 'kg') && (
-                      <span>
-                        = {(() => {
-                          const qtyNum = parseFloat(quantity)
-                          if (pricingModel === 'per_kg') {
-                            const weightInKg = (weight * (WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS]?.factor || 1)) / 1000
-                            return `${(qtyNum * weightInKg).toFixed(3)} kg`
-                          }
-                          if (pricingModel === 'per_meter') {
-                            // Use proper length unit conversion
-                            const lengthInCm = parseFloat(length || '1000') * (LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS]?.factor || 1)
-                            const lengthInMeters = lengthInCm / 100 // Convert cm to meters
-                            return `${(qtyNum * lengthInMeters).toFixed(2)} m`
-                          }
-                          return ''
-                        })()}
-                      </span>
-                    )})
-                  </div>
-                  <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
-                    {currency} {calculateTotalCost(
-                      pricingModel,
-                      parseFloat(pricePerUnit),
-                      weight,
-                      parseFloat(length),
-                      parseFloat(quantity),
-                      weightUnit,
-                      lengthUnit
-                    ).toFixed(2)}
-                  </div>
-                  <div className="text-xs text-emerald-600 dark:text-emerald-400">Total Cost</div>
-                </div>
-              )}
-            </>
-          )}
+            )}
+          </>
+        )}
 
           {/* Key Properties - Simplified for Mobile */}
           <div className="grid grid-cols-2 gap-2">
