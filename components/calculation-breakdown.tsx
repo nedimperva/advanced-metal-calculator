@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
-import { ChevronDown, ChevronRight, Calculator, FunctionSquare, Info } from 'lucide-react'
+import { ChevronDown, ChevronRight, Calculator, FunctionSquare, Info, CheckCircle } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { ProfileData, MaterialData, StructuralProperties } from '@/lib/types'
+import { ProfileDiagram } from '@/components/profile-diagram'
 
 interface CalculationStep {
   id: string
@@ -31,6 +32,22 @@ interface CalculationBreakdownProps {
     adjustedDensity: number
     temperature: number
   }
+}
+
+// Helper function to determine profile type from name
+function getProfileTypeFromName(name: string): string {
+  const lowerName = name.toLowerCase()
+  if (lowerName.includes('hea') || lowerName.includes('heb') || lowerName.includes('hem') || 
+      lowerName.includes('ipe') || lowerName.includes('ipn')) return 'ibeam'
+  if (lowerName.includes('upn') || lowerName.includes('channel')) return 'channel'
+  if (lowerName.includes('rhs') || lowerName.includes('rectangular')) return 'rhs'
+  if (lowerName.includes('shs') || lowerName.includes('square')) return 'shs'
+  if (lowerName.includes('chs') || lowerName.includes('circular')) return 'chs'
+  if (lowerName.includes('equal angle')) return 'equal_angle'
+  if (lowerName.includes('unequal angle')) return 'unequal_angle'
+  if (lowerName.includes('round')) return 'round'
+  if (lowerName.includes('flat')) return 'flat'
+  return 'generic'
 }
 
 export function CalculationBreakdown({
@@ -220,15 +237,24 @@ export function CalculationBreakdown({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Profile and Material Summary */}
-        <div className="grid grid-cols-2 gap-4 p-3 bg-muted/30 rounded-lg">
+        {/* Profile and Material Summary with Visualization */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
           <div>
             <div className="text-xs text-muted-foreground">Profile</div>
             <div className="font-medium">{profileData.name}</div>
+            <div className="text-xs text-green-600">Standard Engineering Profile</div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">Material</div>
             <div className="font-medium">{materialData.name}</div>
+            <div className="text-xs text-blue-600">Yield: {materialData.yieldStrength} MPa</div>
+          </div>
+          <div className="lg:col-span-1">
+            <ProfileDiagram 
+              profileType={getProfileTypeFromName(profileData.name)}
+              dimensions={dimensions}
+              className="h-24"
+            />
           </div>
         </div>
 
@@ -265,32 +291,77 @@ export function CalculationBreakdown({
               </CollapsibleTrigger>
               <CollapsibleContent className="px-3 pb-3">
                 <div className="space-y-3 mt-3 border-l-2 border-primary/20 pl-4">
-                  {/* Formula */}
-                  <div className="bg-background/50 p-3 rounded border">
-                    <div className="text-xs text-muted-foreground mb-1">Formula</div>
-                    <code className="text-sm font-mono">{step.formula}</code>
-                  </div>
-
-                  {/* Variables */}
-                  <div className="space-y-2">
-                    <div className="text-xs text-muted-foreground">Variables</div>
-                    <div className="grid gap-2">
-                      {Object.entries(step.variables).map(([key, variable]) => (
-                        <div key={key} className="flex justify-between items-center text-sm bg-background/30 p-2 rounded">
-                          <span className="text-muted-foreground">{variable.description}:</span>
-                          <span className="font-medium">{variable.value} {variable.unit}</span>
+                                      {/* Enhanced Formula Display */}
+                    <div className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                      <div className="text-xs text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-1 font-medium">
+                        <FunctionSquare className="h-3 w-3" />
+                        Engineering Formula
+                      </div>
+                      <code className="text-lg font-mono font-semibold text-blue-900 dark:text-blue-100 block mb-2">
+                        {step.formula}
+                      </code>
+                      {step.id === 'step1' && (
+                        <div className="text-xs text-blue-600 dark:text-blue-400 bg-white/60 dark:bg-blue-950/20 p-2 rounded mt-2">
+                          <strong>Cross-sectional area</strong> is fundamental in structural analysis - it determines:
+                          <br />• Axial load capacity (compression/tension)
+                          <br />• Material weight per unit length
+                          <br />• Base value for other geometric properties
                         </div>
-                      ))}
+                      )}
+                      {step.id === 'step4' && (
+                        <div className="text-xs text-blue-600 dark:text-blue-400 bg-white/60 dark:bg-blue-950/20 p-2 rounded mt-2">
+                          <strong>Second moment of area</strong> measures how area is distributed relative to the neutral axis:
+                          <br />• Higher I = greater bending stiffness
+                          <br />• Used in beam deflection calculations: δ = (wL⁴)/(8EI)
+                          <br />• Critical for buckling analysis
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Result */}
-                  <div className="bg-primary/5 p-3 rounded">
-                    <div className="text-xs text-muted-foreground mb-1">Result</div>
-                    <div className="font-medium text-primary">
-                      {step.result.value} {step.result.unit}
+                                      {/* Enhanced Variables Section */}
+                    <div className="space-y-3">
+                      <div className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
+                        <Calculator className="h-3 w-3" />
+                        Variables & Parameters
+                      </div>
+                      <div className="grid gap-2">
+                        {Object.entries(step.variables).map(([key, variable]) => (
+                          <div key={key} className="flex justify-between items-center text-sm bg-gradient-to-r from-background/60 to-background/30 p-3 rounded-lg border border-border/30 hover:border-border/60 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <code className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded font-semibold">
+                                {key}
+                              </code>
+                              <span className="text-muted-foreground">{variable.description}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-semibold text-foreground">{variable.value}</span>
+                              <span className="text-muted-foreground ml-1 text-xs">{variable.unit}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+
+                                      {/* Enhanced Result Display */}
+                    <div className="bg-gradient-to-br from-green-50/80 to-emerald-50/80 dark:from-green-950/30 dark:to-emerald-950/30 p-4 rounded-lg border border-green-200/50 dark:border-green-800/50">
+                      <div className="text-xs text-green-700 dark:text-green-300 mb-2 flex items-center gap-1 font-medium">
+                        <CheckCircle className="h-3 w-3" />
+                        Calculated Result
+                      </div>
+                      <div className="font-bold text-lg text-green-900 dark:text-green-100">
+                        {step.result.value} {step.result.unit}
+                      </div>
+                      {step.id === 'step1' && structuralProperties.area > 0 && (
+                        <div className="text-xs text-green-600 dark:text-green-400 mt-2">
+                          Weight per meter: ~{structuralProperties.weight.toFixed(2)} kg/m
+                        </div>
+                      )}
+                      {step.id === 'step3' && (
+                        <div className="text-xs text-green-600 dark:text-green-400 mt-2">
+                          Density factor: {temperatureEffects ? 'Temperature-adjusted' : 'Standard conditions (20°C)'}
+                        </div>
+                      )}
+                    </div>
 
                   {/* Notes */}
                   {step.notes && (

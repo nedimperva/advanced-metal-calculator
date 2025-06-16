@@ -72,13 +72,14 @@ import {
   calculateUnitCost,
   getRecommendedPricingModel 
 } from "@/lib/pricing-models"
+import { getProfileTypeName } from "@/lib/i18n"
 
 export default function MetalWeightCalculator() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [layoutReady, setLayoutReady] = useState(false)
   const { trackStandardSize, trackDimension, trackCalculation, getSuggestions, updateDefaults } = useUserPreferences()
   const suggestions = getSuggestions()
-  const { t } = useI18n()
+  const { t, language } = useI18n()
 
 
 
@@ -206,8 +207,8 @@ export default function MetalWeightCalculator() {
       } catch (error) {
         console.error("Error loading saved calculations:", error)
         toast({
-          title: "Loading Error",
-          description: "Failed to load saved calculations.",
+                  title: t('loadingError'),
+        description: t('failedToLoad'),
           variant: "destructive",
         })
       }
@@ -244,8 +245,8 @@ export default function MetalWeightCalculator() {
           const firstCompatibleType = compatibleTypes[0]
           
           toast({
-            title: "Profile Auto-Corrected",
-            description: `${profileType} is not available for ${material}. Switched to ${firstCompatibleType}.`,
+                      title: t('profileAutoCorrect'),
+          description: `${profileType} is not available for ${material}. Switched to ${firstCompatibleType}.`,
             variant: "default",
           })
           
@@ -256,8 +257,8 @@ export default function MetalWeightCalculator() {
       } else {
         // No compatible profiles at all - this shouldn't happen with our data
         toast({
-          title: "Compatibility Issue",
-          description: `No compatible profiles found for ${material}. Please select a different material.`,
+                  title: t('compatibilityIssue'),
+        description: `No compatible profiles found for ${material}. Please select a different material.`,
           variant: "destructive",
         })
       }
@@ -336,7 +337,7 @@ export default function MetalWeightCalculator() {
   // Validate inputs
   const validateInputs = useCallback(() => {
     if (!selectedProfile || !selectedMaterial) {
-      return { isValid: false, errors: ["Please select a profile and material"], warnings: [] }
+      return { isValid: false, errors: [t('selectProfileMaterial')], warnings: [] }
     }
 
     const validation = validateCalculationInputs(
@@ -447,7 +448,7 @@ export default function MetalWeightCalculator() {
       setWeight(0)
 
       toast({
-        title: "Calculation Error",
+        title: t('calculationError'),
         description: errorMessage,
         variant: "destructive",
       })
@@ -517,8 +518,8 @@ export default function MetalWeightCalculator() {
   const saveCalculation = async () => {
     if (weight <= 0 || !selectedProfile || !selectedMaterial || !structuralProperties) {
       toast({
-        title: "Cannot save calculation",
-        description: "Please ensure all inputs are valid and calculation is complete.",
+              title: t('cannotSave'),
+      description: "Please ensure all inputs are valid and calculation is complete.",
         variant: "destructive",
       })
       return
@@ -551,7 +552,7 @@ export default function MetalWeightCalculator() {
         id: Date.now().toString(),
         profileCategory,
         profileType,
-        profileName: selectedProfile.name,
+        profileName: getProfileTypeName(language, profileType),
         standardSize: standardSize || "Custom",
         material,
         grade,
@@ -585,13 +586,13 @@ export default function MetalWeightCalculator() {
       localStorage.setItem("metal-calculations", JSON.stringify(updated))
 
       toast({
-        title: "Calculation saved",
+        title: t('calculationSaved'),
         description: "Your calculation has been saved to history.",
       })
     } catch (error) {
       console.error("Error saving calculation:", error)
       toast({
-        title: "Saving Error",
+        title: t('savingError'),
         description: "Failed to save calculation.",
         variant: "destructive",
       })
@@ -603,8 +604,8 @@ export default function MetalWeightCalculator() {
   const exportCalculation = () => {
     if (weight <= 0 || !selectedProfile || !selectedMaterial || !structuralProperties) {
       toast({
-        title: "Cannot export calculation",
-        description: "Please select a valid profile and material first.",
+              title: t('cannotExport'),
+      description: "Please select a valid profile and material first.",
         variant: "destructive",
       })
       return
@@ -615,7 +616,7 @@ export default function MetalWeightCalculator() {
       id: 'temp',
       profileCategory,
       profileType,
-      profileName: selectedProfile.name,
+      profileName: getProfileTypeName(language, profileType),
       standardSize: standardSize || "Custom",
       material,
       grade,
@@ -705,16 +706,16 @@ export default function MetalWeightCalculator() {
     URL.revokeObjectURL(url)
 
     toast({
-      title: "Enhanced calculation exported",
-      description: "Comprehensive CSV with material properties and temperature effects downloaded.",
+          title: t('enhancedCalculationExported'),
+    description: "Comprehensive CSV with material properties and temperature effects downloaded.",
     })
   }
 
   const shareCalculation = async () => {
     if (weight <= 0 || !selectedProfile || !selectedMaterial || !structuralProperties) {
       toast({
-        title: "Cannot share calculation",
-        description: "Please select a valid profile and material first.",
+              title: t('cannotShare'),
+      description: "Please select a valid profile and material first.",
         variant: "destructive",
       })
       return
@@ -725,7 +726,7 @@ export default function MetalWeightCalculator() {
       id: 'temp',
       profileCategory,
       profileType,
-      profileName: selectedProfile.name,
+      profileName: getProfileTypeName(language, profileType),
       standardSize: standardSize || "Custom",
       material,
       grade,
@@ -751,8 +752,8 @@ export default function MetalWeightCalculator() {
       try {
         await navigator.share(shareData)
         toast({
-          title: "Shared successfully",
-          description: "Calculation shared successfully.",
+                  title: t('sharedSuccessfully'),
+        description: "Calculation shared successfully.",
         })
       } catch (error) {
         // User cancelled sharing
@@ -760,8 +761,8 @@ export default function MetalWeightCalculator() {
     } else {
       navigator.clipboard.writeText(shareData.text)
       toast({
-        title: "Copied to clipboard",
-        description: "Calculation details copied to clipboard.",
+              title: t('copiedToClipboard'),
+      description: "Calculation details copied to clipboard.",
       })
     }
   }
@@ -814,45 +815,45 @@ export default function MetalWeightCalculator() {
 
     const dimensionLabels: Record<string, string> = {
       // Common dimensions
-      h: "Height (h)",
-      b: "Width (b)", 
-      a: "Side length (a)",
-      length: "Length",
-      width: "Width",
-      height: "Height",
-      side: "Side length",
-      thickness: "Thickness",
-      distance: "Across flats",
+      h: `${t('height')} (h)`,
+      b: `${t('width')} (b)`, 
+      a: `${t('sideLength')} (a)`,
+      length: t('length'),
+      width: t('width'),
+      height: t('height'),
+      side: t('sideLength'),
+      thickness: t('thickness'),
+      distance: t('acrossFlats'),
       
       // Steel profile specific
-      tw: "Web thickness (tw)",
-      tf: "Flange thickness (tf)",
-      t: "Thickness (t)",
-      r: "Root radius (r)",
+      tw: `${t('webThickness')} (tw)`,
+      tf: `${t('flangeThickness')} (tf)`,
+      t: `${t('thickness')} (t)`,
+      r: `${t('rootRadius')} (r)`,
       
       // Hollow sections
-      od: "Outer diameter (OD)",
-      id: "Inner diameter (ID)",
-      wt: "Wall thickness (wt)",
+      od: `${t('outerDiameter')} (OD)`,
+      id: `${t('innerDiameter')} (ID)`,
+      wt: `${t('wallThickness')} (wt)`,
       
       // Pipes and tubes
-      diameter: "Diameter",
-      d: "Diameter (d)",
+      diameter: t('diameter'),
+      d: `${t('diameter')} (d)`,
     }
 
     const getInputDescription = (key: string): string => {
       const descriptions: Record<string, string> = {
-        h: "Overall height of the profile - critical for moment calculations",
-        b: "Overall width of the flange - affects lateral stability",
-        tw: "Thickness of the vertical web - resists shear forces",
-        tf: "Thickness of the horizontal flange - resists bending",
-        t: "Material thickness - affects all structural properties",
-        r: "Corner radius (fillet) - stress concentration factor",
-        od: "Outside diameter - determines overall size",
-        wt: "Wall thickness for pipes - affects strength and weight",
-        a: "Equal dimension for square profiles",
-        diameter: "Full diameter of round section",
-        distance: "Distance across flats for hexagonal profiles",
+        h: t('heightDesc'),
+        b: t('widthDesc'),
+        tw: t('webThicknessDesc'),
+        tf: t('flangeThicknessDesc'),
+        t: t('thicknessDesc'),
+        r: t('rootRadiusDesc'),
+        od: t('outerDiameterDesc'),
+        wt: t('wallThicknessDesc'),
+        a: t('sideLengthDesc'),
+        diameter: t('diameterDesc'),
+        distance: t('acrossFlatsDesc'),
       }
       return descriptions[key] || ""
     }
@@ -860,7 +861,7 @@ export default function MetalWeightCalculator() {
     if (!selectedProfile.dimensions || selectedProfile.dimensions.length === 0) {
       return (
         <div className="text-center py-8 text-muted-foreground">
-          <p>No dimensions required for this profile type</p>
+          <p>{t('noDimensionsRequired')}</p>
         </div>
       )
     }
@@ -870,8 +871,8 @@ export default function MetalWeightCalculator() {
 
     return (
       <EnhancedInputGroup
-        title="Profile Dimensions"
-        description={`Enter dimensions for ${selectedProfile.name}`}
+        title={t('profileDimensions')}
+        description={`${t('enterDimensionsFor')} ${getProfileTypeName(language, profileType)}`}
         isLoading={isCalculating}
         hasErrors={validationErrors.length > 0}
       >
@@ -896,7 +897,7 @@ export default function MetalWeightCalculator() {
                   type="number"
                   value={value}
                   onChange={(e) => updateDimension(dimensionKey, e.target.value)}
-                  placeholder="Enter value"
+                  placeholder={t('enterValue')}
                   disabled={isCalculating}
                   min={0.001}
                   max={100000}
@@ -913,20 +914,20 @@ export default function MetalWeightCalculator() {
         {/* Length input - Only show for non-plate profiles */}
         {profileCategory !== "plates" && (
           <div className="space-y-2">
-            <Label htmlFor="length">Length</Label>
+            <Label htmlFor="length">{t('length')}</Label>
             <Input
               id="length"
               type="number"
               value={lengthInput}
               onChange={(e) => handleLengthChange(e.target.value)}
-              placeholder="Enter length"
+              placeholder={t('enterLength')}
               disabled={isCalculating}
               min={0.1}
               max={1000000}
               step={1}
             />
             <div className="text-xs text-muted-foreground">
-              Total length of the profile for weight calculation
+              {t('totalLengthDescription')}
             </div>
           </div>
         )}
@@ -934,7 +935,7 @@ export default function MetalWeightCalculator() {
         {/* Temperature input (if enabled) */}
         {useTemperatureEffects && (
           <div className="space-y-2">
-            <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
+            <Label htmlFor="operating-temperature">{t('operatingTemperature')} (°C)</Label>
             <Input
               id="operating-temperature"
               type="number"
@@ -947,7 +948,7 @@ export default function MetalWeightCalculator() {
               step={1}
             />
             <div className="text-xs text-muted-foreground">
-              Reference temperature: 20°C. Temperature affects material density.
+              {t('referenceTemperature')}
             </div>
           </div>
         )}
@@ -969,27 +970,27 @@ export default function MetalWeightCalculator() {
     if (!sizes || sizes.length === 0) {
       return (
         <div className="text-sm text-muted-foreground italic">
-          No standard sizes available for this profile type.
+          {t('noStandardSizes')}
         </div>
       )
     }
 
     return (
       <div className="grid grid-cols-1 gap-2">
-        <Label htmlFor="standard-size">Standard Size</Label>
+        <Label htmlFor="standard-size">{t('standardSize')}</Label>
         <Select value={standardSize} onValueChange={setStandardSize} disabled={isCalculating}>
           <SelectTrigger>
-            <SelectValue placeholder="Select a standard size" />
+            <SelectValue placeholder={t('selectStandardSize')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="custom">Custom Dimensions</SelectItem>
+            <SelectItem value="custom">{t('customDimensions')}</SelectItem>
             
             {/* Recent sizes first if available */}
             {recentSizes.length > 0 && (
               <>
                 <div className="px-2 py-1 text-xs font-medium text-muted-foreground flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  Recent
+                  {t('recent')}
                 </div>
                 {recentSizes.map((designation) => {
                   const size = sizes.find(s => s.designation === designation)
@@ -1003,7 +1004,7 @@ export default function MetalWeightCalculator() {
                     </SelectItem>
                   )
                 })}
-                <div className="px-2 py-1 text-xs font-medium text-muted-foreground">All Sizes</div>
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground">{t('allSizes')}</div>
               </>
             )}
             
@@ -1030,7 +1031,7 @@ export default function MetalWeightCalculator() {
           <CalculationLoading 
             stage="Computing structural properties..." 
             progress={undefined}
-            details="Analyzing profile geometry and material properties"
+            details={t('computingProperties')}
           />
         </div>
       )
@@ -1042,7 +1043,7 @@ export default function MetalWeightCalculator() {
         <div className={safeAnimation(animations.slideInFromBottom)}>
           <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Calculation Error</AlertTitle>
+            <AlertTitle>{t('calculationError')}</AlertTitle>
             <AlertDescription>
               <div className="space-y-2">
                 <p>{calculationError}</p>
@@ -1056,7 +1057,7 @@ export default function MetalWeightCalculator() {
                   className={safeAnimation(animations.buttonPress)}
                 >
                   <RefreshCw className="h-3 w-3 mr-1" />
-                  Retry Calculation
+                  {t('retryCalculation')}
                 </Button>
               </div>
             </AlertDescription>
@@ -1071,9 +1072,9 @@ export default function MetalWeightCalculator() {
         <div className={safeAnimation(animations.slideInFromBottom)}>
           <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Invalid Inputs</AlertTitle>
+            <AlertTitle>{t('invalidInputs')}</AlertTitle>
             <AlertDescription>
-              Please correct the following errors:
+              {t('pleaseCorrectErrors')}
               <ul className="list-disc list-inside mt-2 space-y-1">
                 {validationErrors.map((error, index) => {
                   const staggered = createStaggeredAnimation(validationErrors.length, 100)
@@ -1133,14 +1134,14 @@ export default function MetalWeightCalculator() {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                 <CheckCircle className="h-5 w-5 text-foreground" />
-                Calculation Results
+                {t('calculationResults')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Current Pricing Display */}
               <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg mb-3">
                 <span>Defaults: {currency} • {PRICING_MODELS[pricingModel].name}</span>
-                <span className="text-foreground">Change in Settings</span>
+                <span className="text-foreground">{t('changeInSettings')}</span>
               </div>
 
               {/* Quantity and Price Inputs */}
@@ -1181,7 +1182,7 @@ export default function MetalWeightCalculator() {
                 safeAnimation(animations.scaleIn)
               )}>
                 <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                  📦 Single Unit
+                  📦 {t('singleUnit')}
                   {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && weightUnit === 'kg') && (
                     <span className="text-xs">
                       ({pricingModel === 'per_kg' ? 
@@ -1213,7 +1214,7 @@ export default function MetalWeightCalculator() {
                           lengthUnit
                         ).toFixed(2)}
                       </div>
-                      <div className="text-muted-foreground">Unit Cost</div>
+                      <div className="text-muted-foreground">{t('unitCost')}</div>
                     </div>
                   )}
                 </div>
@@ -1227,7 +1228,7 @@ export default function MetalWeightCalculator() {
                 )}>
                   <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
                     <Calculator className="h-3 w-3" />
-                    Total ({quantity} {parseFloat(quantity) === 1 ? 'piece' : 'pieces'}
+                    Total ({quantity} {parseFloat(quantity) === 1 ? t('piece') : t('pieces')}
                     {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && weightUnit === 'kg') && (
                       <span>
                         = {(() => {
@@ -1270,7 +1271,7 @@ export default function MetalWeightCalculator() {
                             lengthUnit
                           ).toFixed(2)}
                         </div>
-                        <div className="text-muted-foreground">Total Cost</div>
+                        <div className="text-muted-foreground">{t('totalCost')}</div>
                       </div>
                     )}
                   </div>
@@ -1281,8 +1282,8 @@ export default function MetalWeightCalculator() {
               <Separator className="my-3" />
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Cross-sectional Area", value: `${structuralProperties.area.toFixed(4)} cm²` },
-                  { label: "Volume", value: `${volume.toFixed(4)} cm³` }
+                  { label: t('crossSectionalArea'), value: `${structuralProperties.area.toFixed(4)} cm²` },
+                  { label: t('volume'), value: `${volume.toFixed(4)} cm³` }
                 ].map((item, index) => (
                   <div 
                     key={item.label}
@@ -1303,36 +1304,36 @@ export default function MetalWeightCalculator() {
                 <div>
                   <h4 className="font-semibold mb-4 text-sm flex items-center gap-2">
                     <BarChart3 className="h-4 w-4" />
-                    Structural Properties
+                    {t('structuralProperties')}
                   </h4>
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     {[
                       {
-                        title: "Moment of Inertia",
+                        title: t('momentOfInertia'),
                         values: [
                           `Ix: ${structuralProperties.momentOfInertiaX.toFixed(2)} cm⁴`,
                           `Iy: ${structuralProperties.momentOfInertiaY.toFixed(2)} cm⁴`
                         ]
                       },
                       {
-                        title: "Section Modulus", 
+                        title: t('sectionModulus'), 
                         values: [
                           `Sx: ${structuralProperties.sectionModulusX.toFixed(2)} cm³`,
                           `Sy: ${structuralProperties.sectionModulusY.toFixed(2)} cm³`
                         ]
                       },
                       {
-                        title: "Radius of Gyration",
+                        title: t('radiusOfGyration'),
                         values: [
                           `rx: ${structuralProperties.radiusOfGyrationX.toFixed(2)} cm`,
                           `ry: ${structuralProperties.radiusOfGyrationY.toFixed(2)} cm`
                         ]
                       },
                       {
-                        title: "Physical Properties",
+                        title: t('physicalProperties'),
                         values: [
-                          `Perimeter: ${structuralProperties.perimeter.toFixed(2)} cm`,
-                          `Weight/m: ${structuralProperties.weight.toFixed(2)} kg/m`
+                          `${t('perimeter')}: ${structuralProperties.perimeter.toFixed(2)} cm`,
+                          `${t('weightPerLength')}: ${structuralProperties.weight.toFixed(2)} kg/m`
                         ]
                       }
                     ].map((section, index) => (
@@ -1360,21 +1361,21 @@ export default function MetalWeightCalculator() {
                   <div className="p-3 bg-gradient-to-br from-blue-50/70 to-cyan-50/70 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
                     <h4 className="font-semibold text-xs mb-2 flex items-center gap-2 text-blue-700 dark:text-blue-300">
                       <Layers className="h-3 w-3" />
-                      Temperature Effects
+                      {t('temperatureEffects')}
                     </h4>
                     <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
-                        <span className="text-muted-foreground block">Adjusted Density</span>
-                        <div className="font-medium text-blue-700 dark:text-blue-300">{structuralProperties.adjustedDensity.toFixed(3)} g/cm³</div>
-                      </div>
-                      <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
-                        <span className="text-muted-foreground block">Density Change</span>
-                        <div className="font-medium text-blue-700 dark:text-blue-300">{((structuralProperties.adjustedDensity - (selectedMaterial?.density || 0)) / (selectedMaterial?.density || 1) * 100).toFixed(2)}%</div>
-                      </div>
-                      <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
-                        <span className="text-muted-foreground block">Original</span>
-                        <div className="font-medium text-blue-700 dark:text-blue-300">{selectedMaterial?.density.toFixed(3)} g/cm³</div>
-                      </div>
+                                              <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
+                          <span className="text-muted-foreground block">{t('adjustedDensity')}</span>
+                          <div className="font-medium text-blue-700 dark:text-blue-300">{structuralProperties.adjustedDensity.toFixed(3)} g/cm³</div>
+                        </div>
+                        <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
+                          <span className="text-muted-foreground block">{t('densityChange')}</span>
+                          <div className="font-medium text-blue-700 dark:text-blue-300">{((structuralProperties.adjustedDensity - (selectedMaterial?.density || 0)) / (selectedMaterial?.density || 1) * 100).toFixed(2)}%</div>
+                        </div>
+                        <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
+                          <span className="text-muted-foreground block">{t('originalDensity')}</span>
+                          <div className="font-medium text-blue-700 dark:text-blue-300">{selectedMaterial?.density.toFixed(3)} g/cm³</div>
+                        </div>
                     </div>
                   </div>
                 </div>
@@ -1403,7 +1404,7 @@ export default function MetalWeightCalculator() {
                   loading={isSaving}
                 >
                   <Save className="mr-2 h-4 w-4" />
-                  Save
+                  {t('save')}
                 </Button>
                 <Button 
                   onClick={() => setActiveTab("advanced")} 
@@ -1411,7 +1412,7 @@ export default function MetalWeightCalculator() {
                   className="flex-1"
                 >
                   <Cog className="mr-2 h-4 w-4" />
-                  Advanced Analysis
+                  {t('advancedAnalysis')}
                 </Button>
                 <Button 
                   onClick={() => setActiveTab("breakdown")} 
@@ -1419,7 +1420,7 @@ export default function MetalWeightCalculator() {
                   className="flex-1"
                 >
                   <Layers className="mr-2 h-4 w-4" />
-                  Breakdown
+                  {t('breakdown')}
                 </Button>
               </div>
             </CardContent>
@@ -1435,7 +1436,7 @@ export default function MetalWeightCalculator() {
         safeAnimation(animations.fadeIn)
       )}>
         <Calculator className="h-16 w-16 mx-auto mb-4 opacity-40" />
-        <p className="text-lg">Select a profile and material to begin calculation</p>
+        <p className="text-lg">{t('selectToBegin')}</p>
         <p className="text-sm mt-2 opacity-60">Choose from our extensive library of standard profiles</p>
       </div>
     )
@@ -1543,18 +1544,18 @@ export default function MetalWeightCalculator() {
 
                           {/* Toggle for custom dimensions */}
                           <div className="flex items-center justify-between">
-                            <span className="text-sm">Custom Dimensions</span>
-                            <Button
-                              variant={customInput ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => {
-                                setCustomInput(true)
-                                setStandardSize("")
-                              }}
-                              className={safeAnimation(animations.buttonPress)}
-                            >
-                              {customInput ? "Editing Custom" : "Use Custom"}
-                            </Button>
+                                                      <span className="text-sm">{t('customDimensions')}</span>
+                          <Button
+                            variant={customInput ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setCustomInput(true)
+                              setStandardSize("")
+                            }}
+                            className={safeAnimation(animations.buttonPress)}
+                          >
+                            {customInput ? t('editingCustom') : t('useCustom')}
+                          </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -1580,14 +1581,14 @@ export default function MetalWeightCalculator() {
                           {/* Current Units Display */}
                           <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg">
                             <span>Units: {LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].name} • {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}</span>
-                            <span className="text-foreground">Change in Settings</span>
+                            <span className="text-foreground">{t('changeInSettings')}</span>
                           </div>
 
                           {/* Profile Dimensions */}
                           <Separator className="my-4" />
                           <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                              <h3 className="text-sm font-medium hover:text-primary transition-colors duration-150">Profile Dimensions</h3>
+                              <h3 className="text-sm font-medium hover:text-primary transition-colors duration-150">{t('profileDimensions')}</h3>
                               {selectedProfile && (
                                 <div className="flex items-center gap-2">
                                   <Badge variant="outline" className="font-normal">
@@ -1759,7 +1760,7 @@ export default function MetalWeightCalculator() {
                                   onCheckedChange={setUseTemperatureEffects}
                                 />
                                 <Label htmlFor="temperature-effects" className="text-sm font-medium">
-                                  Temperature Effects
+                                  {t('temperatureEffects')}
                                 </Label>
                               </div>
                               {useTemperatureEffects && (
@@ -1813,7 +1814,7 @@ export default function MetalWeightCalculator() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                         <Layers className="h-5 w-5 text-primary" />
-                        Material Selection
+                        {t('materialSelection')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1837,7 +1838,7 @@ export default function MetalWeightCalculator() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                         <Calculator className="h-5 w-5 text-primary" />
-                        Profile Selection
+                                                    {t('profileSelection')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -1864,19 +1865,19 @@ export default function MetalWeightCalculator() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
                         <BarChart3 className="h-5 w-5 text-primary" />
-                        Dimensions
+                        {t('dimensions')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {/* Current Units Display */}
                       <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg">
                         <span>Units: {LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].name} • {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}</span>
-                        <span className="text-foreground">Change in Settings</span>
+                        <span className="text-foreground">{t('changeInSettings')}</span>
                       </div>
 
                       {/* Toggle for custom dimensions */}
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">Custom Dimensions</span>
+                        <span className="text-sm">{t('customDimensions')}</span>
                         <Button
                           variant={customInput ? "default" : "outline"}
                           size="sm"
@@ -1885,7 +1886,7 @@ export default function MetalWeightCalculator() {
                             setStandardSize("")
                           }}
                         >
-                          {customInput ? "Editing Custom" : "Use Custom"}
+                          {customInput ? t('editingCustom') : t('useCustom')}
                         </Button>
                       </div>
 
@@ -1893,10 +1894,10 @@ export default function MetalWeightCalculator() {
                       <Separator className="my-4" />
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-medium hover:text-primary transition-colors duration-150">Profile Dimensions</h3>
+                          <h3 className="text-sm font-medium hover:text-primary transition-colors duration-150">{t('profileDimensions')}</h3>
                           {selectedProfile && (
                             <Badge variant="outline" className="font-normal">
-                              {selectedProfile.name} {standardSize && `(${standardSize})`}
+                              {getProfileTypeName(language, profileType)} {standardSize && `(${standardSize})`}
                             </Badge>
                           )}
                         </div>
@@ -1916,7 +1917,7 @@ export default function MetalWeightCalculator() {
                             onCheckedChange={setUseTemperatureEffects}
                           />
                           <Label htmlFor="temperature-effects" className="text-sm font-medium">
-                            Enable Temperature Effects
+                            {t('enableTemperatureEffects')}
                           </Label>
                         </div>
                         
@@ -1925,7 +1926,7 @@ export default function MetalWeightCalculator() {
                             "space-y-2",
                             safeAnimation(animations.slideInFromBottom)
                           )}>
-                            <Label htmlFor="operating-temperature">Operating Temperature (°C)</Label>
+                            <Label htmlFor="operating-temperature">{t('operatingTemperature')} (°C)</Label>
                             <Input
                               id="operating-temperature"
                               type="number"
@@ -1938,7 +1939,7 @@ export default function MetalWeightCalculator() {
                               step={1}
                             />
                             <div className="text-xs text-muted-foreground">
-                              Reference temperature: 20°C. Temperature affects material density.
+                              {t('referenceTemperature')}
                             </div>
                           </div>
                         )}
@@ -1974,7 +1975,7 @@ export default function MetalWeightCalculator() {
               <Card className="backdrop-blur-sm bg-card/90 border-accent/20">
                 <CardContent className="text-center py-8">
                   <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-muted-foreground">Complete a calculation to see the breakdown</p>
+                  <p className="text-muted-foreground">{t('completeToSee')}</p>
                 </CardContent>
               </Card>
             )}
@@ -1993,7 +1994,7 @@ export default function MetalWeightCalculator() {
               <Card className="backdrop-blur-sm bg-card/90 border-accent/20">
                 <CardContent className="text-center py-8">
                   <Cog className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-muted-foreground">Complete a calculation to access advanced structural analysis</p>
+                  <p className="text-muted-foreground">{t('completeToSee')}</p>
                   <p className="text-sm text-muted-foreground mt-2">
                     Buckling analysis, load capacity, stress analysis, and deflection calculations
                   </p>
@@ -2022,17 +2023,17 @@ export default function MetalWeightCalculator() {
           <SwipeTabs.Content value="history" className="space-y-4">
             <Card className="backdrop-blur-sm bg-card/90 border-accent/20 shadow-lg">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
-                  <History className="h-5 w-5" />
-                  Calculation History
-                </CardTitle>
+                                        <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
+                          <History className="h-5 w-5" />
+                          {t('calculationHistory')}
+                        </CardTitle>
               </CardHeader>
               <CardContent>
                 {calculations.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-lg">No saved calculations yet</p>
-                    <p className="text-sm mt-1">Complete calculations will appear here</p>
+                    <p className="text-lg">{t('noCalculations')}</p>
+                    <p className="text-sm mt-1">{t('noCalculationsDesc')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">

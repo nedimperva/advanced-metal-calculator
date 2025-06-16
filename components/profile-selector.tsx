@@ -14,6 +14,8 @@ import {
   isProfileCompatible,
   getMaterialProfileNotes
 } from "@/lib/material-profile-compatibility"
+import { useI18n } from "@/contexts/i18n-context"
+import { getProfileCategoryName, getProfileTypeName } from "@/lib/i18n"
 
 interface ProfileSelectorProps {
   profileCategory: string
@@ -33,6 +35,7 @@ export default function ProfileSelector({
   const isMobile = useMediaQuery("(max-width: 768px)")
   const { trackProfile, getSuggestions } = useUserPreferences()
   const suggestions = getSuggestions()
+  const { t, language } = useI18n()
 
   // Get material compatibility data
   const compatibleCategories = getCompatibleProfileCategories(material)
@@ -72,13 +75,13 @@ export default function ProfileSelector({
   const ProfileVisualizationModal = () => (
     <DialogContent className="max-w-sm mx-4">
       <DialogHeader>
-        <DialogTitle>Profile Visualization</DialogTitle>
+        <DialogTitle>{t('profileVisualization')}</DialogTitle>
       </DialogHeader>
       <div className="flex justify-center items-center p-4">
         <ProfileVisualization profileType={profileType} />
       </div>
       <div className="text-sm text-muted-foreground text-center">
-        Selected profile visualization
+        {t('selectedProfileVisualization')}
       </div>
     </DialogContent>
   )
@@ -101,9 +104,9 @@ export default function ProfileSelector({
         {/* Simplified Category Selection for Mobile */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-medium">Profile Category</div>
+            <div className="text-sm font-medium">{t('profileCategory')}</div>
             <Badge variant="secondary" className="text-xs">
-              {availableCategories.length} available
+              {availableCategories.length} {t('available')}
             </Badge>
           </div>
           <Select value={profileCategory} onValueChange={handleCategorySelect}>
@@ -113,7 +116,7 @@ export default function ProfileSelector({
             <SelectContent>
               {availableCategories.map(([key, category]) => (
                 <SelectItem key={key} value={key}>
-                  {category.name}
+                  {getProfileCategoryName(language, key)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -123,7 +126,7 @@ export default function ProfileSelector({
         {/* Simplified Profile Type Selection for Mobile */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-medium">Profile Type</div>
+            <div className="text-sm font-medium">{t('profileType')}</div>
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -151,7 +154,7 @@ export default function ProfileSelector({
                       <>
                         <div className="px-2 py-1 text-xs font-medium text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          Recent in {PROFILES[profileCategory as keyof typeof PROFILES]?.name}
+                          {t('recentIn')} {PROFILES[profileCategory as keyof typeof PROFILES]?.name}
                         </div>
                         {recentCompatibleTypes.map((key) => {
                           const profile = PROFILES[profileCategory as keyof typeof PROFILES]?.types[key as keyof (typeof PROFILES)[keyof typeof PROFILES]["types"]] as any
@@ -159,13 +162,13 @@ export default function ProfileSelector({
                           return (
                             <SelectItem key={`recent-${key}`} value={key}>
                               <div className="flex items-center gap-2">
-                                <span>{profile.name}</span>
+                                <span>{getProfileTypeName(language, key)}</span>
                                 <Clock className="h-3 w-3 text-muted-foreground ml-auto" />
                               </div>
                             </SelectItem>
                           )
                         })}
-                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">All Compatible Types</div>
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">{t('allCompatibleTypes')}</div>
                       </>
                     )}
                     {Object.entries(PROFILES[profileCategory as keyof typeof PROFILES]?.types || {}).map(([key, profile]: [string, any]) => {
@@ -174,7 +177,7 @@ export default function ProfileSelector({
                       return (
                         <SelectItem key={key} value={key}>
                           <div className="flex items-center gap-2">
-                            <span>{profile.name}</span>
+                            <span>{getProfileTypeName(language, key)}</span>
                           </div>
                         </SelectItem>
                       )
@@ -219,8 +222,8 @@ export default function ProfileSelector({
                 )}
                 onClick={() => handleCategorySelect(key)}
               >
-                <div className="text-xs font-medium">{category.name}</div>
-                <div className="text-xs text-muted-foreground">{compatibleTypesCount} types</div>
+                <div className="text-xs font-medium">{getProfileCategoryName(language, key)}</div>
+                <div className="text-xs text-muted-foreground">{compatibleTypesCount} {t('types')}</div>
               </div>
             )
           })}
@@ -231,14 +234,14 @@ export default function ProfileSelector({
           <div className="space-y-1">
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
-              Unavailable for {material === "steel" ? "steel" : material === "aluminum" ? "aluminum" : material}
+              {t('unavailableFor')} {material === "steel" ? "steel" : material === "aluminum" ? "aluminum" : material}
             </div>
             <div className="flex flex-wrap gap-1">
               {Object.entries(PROFILES)
                 .filter(([key]) => !compatibleCategories.includes(key))
                 .map(([key, category]) => (
                   <Badge key={key} variant="outline" className="text-xs opacity-50">
-                    {category.name}
+                    {getProfileCategoryName(language, key)}
                   </Badge>
                 ))}
             </div>
@@ -261,7 +264,7 @@ export default function ProfileSelector({
                 
                 return (
                   <SelectItem key={key} value={key}>
-                    <span>{profile.name}</span>
+                    <span>{getProfileTypeName(language, key)}</span>
                   </SelectItem>
                 )
               })
