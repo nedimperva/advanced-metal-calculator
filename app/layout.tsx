@@ -28,12 +28,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider>
           <div className="min-h-screen bg-background text-foreground antialiased">
-            <ErrorBoundary>
-              {children}
-              <Toaster />
+        <ErrorBoundary>
+            {children}
+            <Toaster />
             </ErrorBoundary>
           </div>
-        </ThemeProvider>
+          </ThemeProvider>
       </body>
     </html>
   )
