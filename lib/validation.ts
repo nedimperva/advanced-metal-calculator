@@ -326,7 +326,7 @@ export function validateCalculationInputs(
 // Get required dimensions for profile type
 function getRequiredDimensions(profileType: string): string[] {
   const dimensionMap: Record<string, string[]> = {
-    rectangular: ['length', 'width', 'height'],
+    rectangular: ['width', 'height'],
     round: ['diameter'],
     square: ['side'],
     flat: ['width', 'thickness'],

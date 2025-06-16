@@ -153,7 +153,7 @@ function getEmptyProperties(): StructuralProperties {
 
 // Rectangular bar calculations
 function calculateRectangularProperties(dims: Record<string, number>, density: number): StructuralProperties {
-  if (!dims.length || !dims.width || !dims.height) return getEmptyProperties()
+  if (!dims.width || !dims.height) return getEmptyProperties()
 
   const b = dims.width  // width
   const h = dims.height // height
@@ -236,17 +236,35 @@ function calculateFlatProperties(dims: Record<string, number>, density: number):
 function calculateHexagonalProperties(dims: Record<string, number>, density: number): StructuralProperties {
   if (!dims.distance) return getEmptyProperties()
 
-  const s = dims.distance / 2 // Side length from across flats
-  const area = (3 * Math.sqrt(3) / 2) * Math.pow(s, 2)
-  const i = (5 * Math.sqrt(3) / 16) * Math.pow(s, 4)
-  const sectionModulus = i / (Math.sqrt(3) * s / 2)
+  const W = dims.distance // Distance across flats (width across flats)
+  
+  // Correct formula for hexagon area using distance across flats
+  // Area = (√3/2) × W² = 0.866025... × W²
+  const area = (Math.sqrt(3) / 2) * Math.pow(W, 2)
+  
+  // Side length from distance across flats: s = W / √3
+  const s = W / Math.sqrt(3)
+  
+  // Moment of inertia for regular hexagon about center
+  // I = (5 × √3 / 16) × s⁴, but convert to use W instead of s
+  // Since s = W/√3, then s⁴ = W⁴/(√3)⁴ = W⁴/9
+  const i = (5 * Math.sqrt(3) / 16) * Math.pow(W, 4) / 9
+  
+  // Section modulus - distance from center to flat edge is W/2
+  const sectionModulus = i / (W / 2)
+  
+  // Radius of gyration
   const rg = Math.sqrt(i / area)
-  const perimeter = 6 * s
+  
+  // Perimeter = 6 × side length = 6 × W/√3 = 6W/√3 = 2√3 × W
+  const perimeter = 2 * Math.sqrt(3) * W
+  
+  // Weight per unit length
   const weight = area * density / 1000
 
   return {
     area, momentOfInertiaX: i, momentOfInertiaY: i, sectionModulusX: sectionModulus, sectionModulusY: sectionModulus,
-    radiusOfGyrationX: rg, radiusOfGyrationY: rg, centroidX: s, centroidY: s, perimeter, weight,
+    radiusOfGyrationX: rg, radiusOfGyrationY: rg, centroidX: W / 2, centroidY: W / 2, perimeter, weight,
   }
 }
 
