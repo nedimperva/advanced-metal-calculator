@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -13,7 +13,12 @@ export const metadata: Metadata = {
   title: "Professional Metal Calculator",
   description: "Calculate weights and properties for structural profiles and materials",
   keywords: ["metal calculator", "steel calculator", "weight calculator", "structural calculator", "engineering calculator"],
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "white" },
     { media: "(prefers-color-scheme: dark)", color: "black" }

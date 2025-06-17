@@ -302,7 +302,7 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
         {/* Height dimension */}
         <line x1="105" y1="25" x2="105" y2="55" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow)" markerStart="url(#arrow)" />
         <text x="110" y="43" textAnchor="start" className="text-[8px] fill-current font-medium">height</text>
-        <text x="60" y="43" textAnchor="middle" className="text-xs fill-current font-bold">RECT</text>
+
       </svg>
     ),
     round: (
@@ -318,7 +318,6 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
         {/* Diameter dimension */}
         <line x1="35" y1="65" x2="85" y2="65" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-round)" markerStart="url(#arrow-round)" />
         <text x="60" y="73" textAnchor="middle" className="text-[8px] fill-current font-medium">diameter</text>
-        <text x="60" y="28" textAnchor="middle" className="text-xs fill-current font-bold">ROUND</text>
       </svg>
     ),
     square: (
@@ -335,7 +334,6 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
         <text x="18" y="43" textAnchor="middle" className="text-[8px] fill-current font-medium" transform="rotate(-90, 18, 43)">side</text>
         <line x1="35" y1="70" x2="85" y2="70" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-square)" markerStart="url(#arrow-square)" />
         <text x="60" y="78" textAnchor="middle" className="text-[8px] fill-current font-medium">side</text>
-        <text x="60" y="15" textAnchor="middle" className="text-xs fill-current font-bold">SQUARE</text>
       </svg>
     ),
     flat: (
@@ -352,7 +350,6 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
         <text x="60" y="68" textAnchor="middle" className="text-[8px] fill-current font-medium">width</text>
         <line x1="105" y1="35" x2="105" y2="45" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-flat)" markerStart="url(#arrow-flat)" />
         <text x="110" y="43" textAnchor="start" className="text-[8px] fill-current font-medium">thickness</text>
-        <text x="60" y="30" textAnchor="middle" className="text-xs fill-current font-bold">FLAT</text>
       </svg>
     ),
     hexagonal: (
@@ -367,9 +364,7 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
         {/* Distance across flats dimension */}
         <line x1="25" y1="40" x2="95" y2="40" stroke="currentColor" strokeWidth="1" strokeDasharray="2,2" />
         <line x1="25" y1="70" x2="95" y2="70" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-hex)" markerStart="url(#arrow-hex)" />
-        <text x="60" y="78" textAnchor="middle" className="text-[8px] fill-current font-medium">distance</text>
-        <text x="60" y="15" textAnchor="middle" className="text-xs fill-current font-bold">HEX</text>
-        <text x="60" y="50" textAnchor="middle" className="text-[9px] fill-current opacity-70">across flats</text>
+        <text x="60" y="78" textAnchor="middle" className="text-[8px] fill-current font-medium">across flats</text>
       </svg>
     ),
 
@@ -462,19 +457,114 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
     ),
     hec: (
       <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* H-beam profile - heaviest version */}
-        <path d="M20 10 L100 10 L100 30 L70 30 L70 50 L100 50 L100 70 L20 70 L20 50 L50 50 L50 30 L20 30 Z" 
-              stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
-        <text x="60" y="6" textAnchor="middle" className="text-xs fill-current font-bold">HEC</text>
-        <text x="60" y="78" className="text-xs fill-current">b</text>
+        <defs>
+          <marker id="arrow-hec" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+          {/* Dense crosshatch pattern for heavy section */}
+          <pattern id="steelCrosshatch-hec" patternUnits="userSpaceOnUse" width="4" height="4">
+            <path d="M 0,4 L 4,0 M 0,0 L 4,4" stroke="currentColor" strokeWidth="0.4" opacity="0.4"/>
+            <path d="M 2,6 L 6,2 M -2,2 L 2,-2" stroke="currentColor" strokeWidth="0.4" opacity="0.4"/>
+          </pattern>
+          {/* Gradient for professional appearance */}
+          <linearGradient id="hecGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.2"/>
+            <stop offset="50%" stopColor="currentColor" stopOpacity="0.3"/>
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0.15"/>
+          </linearGradient>
+        </defs>
+        
+        {/* HEC H-beam profile - extra heavy European column with thick flanges */}
+        <g transform="translate(10, 8)">
+          {/* Main H-shape with very thick flanges and web */}
+          <path d="M 10 5 L 90 5 L 90 20 L 62 20 L 62 44 L 90 44 L 90 59 L 10 59 L 10 44 L 38 44 L 38 20 L 10 20 Z" 
+                stroke="currentColor" strokeWidth="2.5" fill="url(#hecGradient)" />
+          
+          {/* Dense crosshatch overlay for heavy section */}
+          <path d="M 10 5 L 90 5 L 90 20 L 62 20 L 62 44 L 90 44 L 90 59 L 10 59 L 10 44 L 38 44 L 38 20 L 10 20 Z" 
+                fill="url(#steelCrosshatch-hec)" opacity="0.6" />
+          
+          {/* Root radius indicators at corners */}
+          <path d="M 38 20 Q 35 17 38 14 Q 41 17 44 20" 
+                stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.7" />
+          <path d="M 56 20 Q 59 17 56 14 Q 53 17 50 20" 
+                stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.7" />
+          <path d="M 38 44 Q 35 47 38 50 Q 41 47 44 44" 
+                stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.7" />
+          <path d="M 56 44 Q 59 47 56 50 Q 53 47 50 44" 
+                stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.7" />
+          
+          {/* Enhanced dimensions with professional arrows */}
+          <line x1="2" y1="5" x2="2" y2="59" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-hec)" markerStart="url(#arrow-hec)" />
+          <text x="-4" y="34" textAnchor="middle" className="text-[8px] fill-current font-bold" 
+                transform="rotate(-90, -4, 34)">h</text>
+          
+          <line x1="10" y1="68" x2="90" y2="68" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-hec)" markerStart="url(#arrow-hec)" />
+          <text x="50" y="72" textAnchor="middle" className="text-[8px] fill-current font-bold">b</text>
+          
+          {/* Profile designation with enhanced styling */}
+          <text x="50" y="2" textAnchor="middle" className="text-xs fill-current font-bold">HEC</text>
+          
+          {/* Enhanced thickness indicators */}
+          <text x="98" y="14" className="text-[7px] fill-current font-semibold">tf</text>
+          <text x="103" y="32" className="text-[7px] fill-current font-semibold">tw</text>
+          <text x="98" y="50" className="text-[7px] fill-current font-medium opacity-80">r</text>
+        </g>
       </svg>
     ),
     wBeam: (
       <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* American W-beam */}
-        <path d="M35 15 L85 15 L85 25 L65 25 L65 55 L85 55 L85 65 L35 65 L35 55 L55 55 L55 25 L35 25 Z" 
-              stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
-        <text x="60" y="10" textAnchor="middle" className="text-xs fill-current font-bold">W</text>
+        <defs>
+          <marker id="arrow-wbeam" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+          {/* Professional gradient for W-beam */}
+          <linearGradient id="wbeamGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.25"/>
+            <stop offset="50%" stopColor="currentColor" stopOpacity="0.15"/>
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0.2"/>
+          </linearGradient>
+          {/* Crosshatch pattern for American steel */}
+          <pattern id="steelCrosshatch-wbeam" patternUnits="userSpaceOnUse" width="5" height="5">
+            <path d="M 0,5 L 5,0 M 0,0 L 5,5" stroke="currentColor" strokeWidth="0.5" opacity="0.3"/>
+          </pattern>
+        </defs>
+        
+        {/* American W-beam profile with tapered flanges */}
+        <g transform="translate(15, 10)">
+          {/* Main W-shape with tapered flanges (characteristic of American W-beams) */}
+          <path d="M 15 8 L 75 8 L 75 18 L 55 20 L 55 40 L 75 42 L 75 52 L 15 52 L 15 42 L 35 40 L 35 20 L 15 18 Z" 
+                stroke="currentColor" strokeWidth="2.5" fill="url(#wbeamGradient)" />
+          
+          {/* Crosshatch overlay */}
+          <path d="M 15 8 L 75 8 L 75 18 L 55 20 L 55 40 L 75 42 L 75 52 L 15 52 L 15 42 L 35 40 L 35 20 L 15 18 Z" 
+                fill="url(#steelCrosshatch-wbeam)" opacity="0.4" />
+          
+          {/* Tapered flange edges (characteristic of W-beams) */}
+          <line x1="15" y1="8" x2="15" y2="18" stroke="currentColor" strokeWidth="2" />
+          <line x1="75" y1="8" x2="75" y2="18" stroke="currentColor" strokeWidth="2" />
+          <line x1="15" y1="42" x2="15" y2="52" stroke="currentColor" strokeWidth="2" />
+          <line x1="75" y1="42" x2="75" y2="52" stroke="currentColor" strokeWidth="2" />
+          
+          {/* Professional dimensions with American notation */}
+          <line x1="7" y1="8" x2="7" y2="52" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-wbeam)" markerStart="url(#arrow-wbeam)" />
+          <text x="1" y="32" textAnchor="middle" className="text-[8px] fill-current font-bold" 
+                transform="rotate(-90, 1, 32)">d</text>
+          
+          <line x1="15" y1="62" x2="75" y2="62" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-wbeam)" markerStart="url(#arrow-wbeam)" />
+          <text x="45" y="66" textAnchor="middle" className="text-[8px] fill-current font-bold">bf</text>
+          
+          {/* Profile designation */}
+          <text x="45" y="5" textAnchor="middle" className="text-xs fill-current font-bold">W</text>
+          
+          {/* American notation thickness indicators */}
+          <text x="83" y="14" className="text-[7px] fill-current font-semibold">tf</text>
+          <text x="88" y="30" className="text-[7px] fill-current font-semibold">tw</text>
+        </g>
       </svg>
     ),
 
@@ -503,10 +593,56 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
     ),
     uChannel: (
       <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* American C-channel */}
-        <path d="M35 15 L35 65 L85 65 L85 55 L45 55 L45 25 L85 25 L85 15 Z" 
-              stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
-        <text x="60" y="10" textAnchor="middle" className="text-xs fill-current font-bold">C</text>
+        <defs>
+          <marker id="arrow-uchannel" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+          {/* Professional gradient for C-channel */}
+          <linearGradient id="uchannelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.25"/>
+            <stop offset="50%" stopColor="currentColor" stopOpacity="0.15"/>
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0.2"/>
+          </linearGradient>
+          {/* Crosshatch pattern for American C-channel */}
+          <pattern id="steelCrosshatch-uchannel" patternUnits="userSpaceOnUse" width="5" height="5">
+            <path d="M 0,5 L 5,0 M 0,0 L 5,5" stroke="currentColor" strokeWidth="0.5" opacity="0.3"/>
+          </pattern>
+        </defs>
+        
+        {/* American C-channel profile with professional styling */}
+        <g transform="translate(20, 12)">
+          {/* Main C-shape with rounded corners */}
+          <path d="M 10 8 L 10 52 L 70 52 L 70 44 L 18 44 L 18 16 L 70 16 L 70 8 Z" 
+                stroke="currentColor" strokeWidth="2.5" fill="url(#uchannelGradient)" rx="2" />
+          
+          {/* Crosshatch overlay */}
+          <path d="M 10 8 L 10 52 L 70 52 L 70 44 L 18 44 L 18 16 L 70 16 L 70 8 Z" 
+                fill="url(#steelCrosshatch-uchannel)" opacity="0.4" />
+          
+          {/* Rounded corners for professional appearance */}
+          <path d="M 18 16 Q 15 13 18 10 Q 21 13 24 16" 
+                stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6" />
+          <path d="M 18 44 Q 15 47 18 50 Q 21 47 24 44" 
+                stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6" />
+          
+          {/* Enhanced dimensions with professional arrows */}
+          <line x1="2" y1="8" x2="2" y2="52" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-uchannel)" markerStart="url(#arrow-uchannel)" />
+          <text x="-4" y="32" textAnchor="middle" className="text-[8px] fill-current font-bold" 
+                transform="rotate(-90, -4, 32)">d</text>
+          
+          <line x1="10" y1="62" x2="70" y2="62" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-uchannel)" markerStart="url(#arrow-uchannel)" />
+          <text x="40" y="66" textAnchor="middle" className="text-[8px] fill-current font-bold">bf</text>
+          
+          {/* Profile designation */}
+          <text x="40" y="5" textAnchor="middle" className="text-xs fill-current font-bold">C</text>
+          
+          {/* American notation thickness indicators */}
+          <text x="78" y="14" className="text-[7px] fill-current font-semibold">tf</text>
+          <text x="5" y="30" className="text-[7px] fill-current font-semibold">tw</text>
+          <text x="78" y="48" className="text-[7px] fill-current font-medium opacity-80">r</text>
+        </g>
       </svg>
     ),
 
@@ -621,7 +757,7 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
         <text x="11" y="43" textAnchor="middle" className="text-[8px] fill-current font-medium" transform="rotate(-90, 11, 43)">h</text>
         <line x1="25" y1="70" x2="95" y2="70" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-rhs)" markerStart="url(#arrow-rhs)" />
         <text x="60" y="78" textAnchor="middle" className="text-[8px] fill-current font-medium">b</text>
-        <text x="60" y="18" textAnchor="middle" className="text-xs fill-current font-bold">RHS</text>
+
         {/* Wall thickness indicator */}
         <text x="103" y="30" className="text-[7px] fill-current">t</text>
         <line x1="95" y1="25" x2="95" y2="30" stroke="currentColor" strokeWidth="1" />
@@ -643,7 +779,7 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
         <text x="16" y="43" textAnchor="middle" className="text-[8px] fill-current font-medium" transform="rotate(-90, 16, 43)">a</text>
         <line x1="30" y1="70" x2="90" y2="70" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-shs)" markerStart="url(#arrow-shs)" />
         <text x="60" y="78" textAnchor="middle" className="text-[8px] fill-current font-medium">a</text>
-        <text x="60" y="15" textAnchor="middle" className="text-xs fill-current font-bold">SHS</text>
+
         {/* Wall thickness indicator */}
         <text x="98" y="25" className="text-[7px] fill-current">t</text>
         <line x1="90" y1="20" x2="90" y2="25" stroke="currentColor" strokeWidth="1" />

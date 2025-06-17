@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Input, UnitInput } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -76,19 +76,48 @@ import {
 import { getProfileTypeName } from "@/lib/i18n"
 
 // Helper function to map profile types for cross-section viewer
-function getProfileTypeForViewer(profileType: string): string {
+function getProfileTypeForViewer(profileType: string, dimensions: Record<string, string> = {}): string {
   const lowerType = profileType.toLowerCase()
+  
+  // I-beams and channels
   if (lowerType.includes('hea') || lowerType.includes('heb') || lowerType.includes('hem') || 
       lowerType.includes('ipe') || lowerType.includes('ipn')) return 'ibeam'
-  if (lowerType.includes('upn') || lowerType.includes('channel')) return 'channel'
-  if (lowerType.includes('rhs') || lowerType.includes('rectangular')) return 'rhs'
-  if (lowerType.includes('shs') || lowerType.includes('square')) return 'shs'
+  if (lowerType.includes('hec')) return 'hec'
+  if (lowerType.includes('wbeam') || lowerType === 'w') return 'wbeam'
+  if (lowerType.includes('upn') || lowerType.includes('channel') || lowerType.includes('uchannel') || lowerType === 'c') return 'channel'
+  
+  // Determine if it's solid or hollow based on dimensions
+  const hasThickness = dimensions.t || dimensions.wt || dimensions.thickness
+  
+  // Rectangular profiles
+  if (lowerType.includes('rhs') || lowerType.includes('rectangular')) {
+    // If no thickness dimension, it's a solid rectangular bar
+    if (!hasThickness) return 'rectangular'
+    // If has thickness, it's a hollow rectangular section
+    return 'rhs'
+  }
+  
+  // Square profiles  
+  if (lowerType.includes('shs') || lowerType.includes('square')) {
+    // If no thickness dimension, it's a solid square bar
+    if (!hasThickness) return 'square'
+    // If has thickness, it's a hollow square section
+    return 'shs'
+  }
+  
+  // Specific bar types
+  if (lowerType.includes('squarebar') || lowerType.includes('square_bar')) return 'square'
+  if (lowerType.includes('rectangularbar') || lowerType.includes('rectangular_bar')) return 'rectangular'
+  
+  // Other profiles
   if (lowerType.includes('chs') || lowerType.includes('circular')) return 'chs'
   if (lowerType.includes('unequal') && lowerType.includes('angle')) return 'unequal_angle'
   if (lowerType.includes('equal') && lowerType.includes('angle')) return 'equal_angle'
   if (lowerType.includes('round') || lowerType.includes('bar')) return 'round'
   if (lowerType.includes('flat')) return 'flat'
+  if (lowerType.includes('hex')) return 'hexagonal'
   if (lowerType.includes('plate') || lowerType.includes('sheet')) return 'plate'
+  
   return profileType
 }
 
@@ -126,13 +155,19 @@ export default function MetalWeightCalculator() {
   const lengthUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lengthCalculationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Initialize pricing from settings
+  // Initialize pricing and units from settings
   useEffect(() => {
     setCurrency(suggestions.defaults.defaultCurrency)
     setPricingModel(suggestions.defaults.defaultPricingModel as PricingModel)
   }, [suggestions.defaults.defaultCurrency, suggestions.defaults.defaultPricingModel])
 
-  // Track unit changes
+  // Update units when settings change
+  useEffect(() => {
+    setLengthUnit(suggestions.defaults.lengthUnit)
+    setWeightUnit(suggestions.defaults.weightUnit)
+  }, [suggestions.defaults.lengthUnit, suggestions.defaults.weightUnit])
+
+  // Track unit changes and recalculate when units change
   const handleLengthUnitChange = useCallback((newUnit: string) => {
     setLengthUnit(newUnit)
     updateDefaults({ defaultLengthUnit: newUnit })
@@ -142,6 +177,8 @@ export default function MetalWeightCalculator() {
     setWeightUnit(newUnit)
     updateDefaults({ defaultWeightUnit: newUnit })
   }, [updateDefaults])
+
+
 
   // Handle length input changes with aggressive debouncing
   const handleLengthChange = useCallback((newLength: string) => {
@@ -910,9 +947,9 @@ export default function MetalWeightCalculator() {
                 <Label htmlFor={dimensionKey}>
                   {dimensionLabels[dimensionKey] || dimensionKey}
                 </Label>
-                <Input
+                <UnitInput
                   id={dimensionKey}
-                  type="number"
+                  unit={lengthUnit}
                   value={value}
                   onChange={(e) => updateDimension(dimensionKey, e.target.value)}
                   placeholder={t('enterValue')}
@@ -933,9 +970,9 @@ export default function MetalWeightCalculator() {
         {profileCategory !== "plates" && (
           <div className="space-y-2">
             <Label htmlFor="length">{t('length')}</Label>
-            <Input
+            <UnitInput
               id="length"
-              type="number"
+              unit={lengthUnit}
               value={lengthInput}
               onChange={(e) => handleLengthChange(e.target.value)}
               placeholder={t('enterLength')}
@@ -953,10 +990,10 @@ export default function MetalWeightCalculator() {
         {/* Temperature input (if enabled) */}
         {useTemperatureEffects && (
           <div className="space-y-2">
-            <Label htmlFor="operating-temperature">{t('operatingTemperature')} (°C)</Label>
-            <Input
+            <Label htmlFor="operating-temperature">{t('operatingTemperature')}</Label>
+            <UnitInput
               id="operating-temperature"
-              type="number"
+              unit="°C"
               value={operatingTemperature}
               onChange={(e) => setOperatingTemperature(e.target.value)}
               placeholder="20"
@@ -1166,29 +1203,29 @@ export default function MetalWeightCalculator() {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
                   <Label htmlFor="quantity" className="text-xs">{t('quantity')}</Label>
-                  <Input
+                  <UnitInput
                     id="quantity"
-                    type="number"
+                    unit="pcs"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="1"
-                    min="0.001"
-                    step="1"
+                    min={0.001}
+                    step={1}
                     className="h-8 text-xs"
                   />
                 </div>
                 <div>
                   <Label htmlFor="price" className="text-xs">
-                    {t('price')} ({currency} {PRICING_MODELS[pricingModel].unit})
+                    {t('price')} {PRICING_MODELS[pricingModel].name}
                   </Label>
-                  <Input
+                  <UnitInput
                     id="price"
-                    type="number"
+                    unit={`${currency}/${PRICING_MODELS[pricingModel].unit}`}
                     value={pricePerUnit}
                     onChange={(e) => setPricePerUnit(e.target.value)}
                     placeholder="0.00"
-                    min="0"
-                    step="0.01"
+                    min={0}
+                    step={0.01}
                     className="h-8 text-xs"
                   />
                 </div>
@@ -1811,13 +1848,13 @@ export default function MetalWeightCalculator() {
                           {selectedProfile && (
                             <>
                               <Separator className="my-4" />
-                              <CrossSectionViewer
-                                profileType={getProfileTypeForViewer(profileType)}
-                                dimensions={dimensions}
-                                defaultVisible={false}
-                                size="medium"
-                                className="mt-4"
-                              />
+                                                        <CrossSectionViewer
+                            profileType={getProfileTypeForViewer(profileType, dimensions)}
+                            dimensions={dimensions}
+                            defaultVisible={false}
+                            size="medium"
+                            className="mt-4"
+                          />
                             </>
                           )}
                         </CardContent>
@@ -1959,10 +1996,10 @@ export default function MetalWeightCalculator() {
                             "space-y-2",
                             safeAnimation(animations.slideInFromBottom)
                           )}>
-                            <Label htmlFor="operating-temperature">{t('operatingTemperature')} (°C)</Label>
-                            <Input
+                            <Label htmlFor="operating-temperature">{t('operatingTemperature')}</Label>
+                            <UnitInput
                               id="operating-temperature"
-                              type="number"
+                              unit="°C"
                               value={operatingTemperature}
                               onChange={(e) => setOperatingTemperature(e.target.value)}
                               placeholder="20"
@@ -1983,7 +2020,7 @@ export default function MetalWeightCalculator() {
                         <>
                           <Separator className="my-4" />
                           <CrossSectionViewer
-                            profileType={getProfileTypeForViewer(profileType)}
+                            profileType={getProfileTypeForViewer(profileType, dimensions)}
                             dimensions={dimensions}
                             defaultVisible={false}
                             size="large"

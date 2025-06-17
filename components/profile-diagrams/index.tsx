@@ -186,20 +186,20 @@ export const RHSProfile: React.FC<BaseProfileProps> = ({
               <line x1={scaledB + config.dimOffset} y1="0" x2={scaledB + config.dimOffset} y2={scaledH}
                     markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
               <text x={scaledB + config.textOffset} y={scaledH/2} textAnchor="start" dominantBaseline="central">
-                h = {dims.h}
+                height = {dims.h}
               </text>
               
               {/* Width dimension */}
               <line x1="0" y1={scaledH + config.dimOffset} x2={scaledB} y2={scaledH + config.dimOffset}
                     markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
               <text x={scaledB/2} y={scaledH + config.textOffset} textAnchor="middle">
-                b = {dims.b}
+                width = {dims.b}
               </text>
               
               {/* Wall thickness indicator */}
               <text x={scaledT/2} y={scaledT + 5} textAnchor="start" 
                     className="fill-blue-700 dark:fill-blue-300" fontSize={config.fontSize}>
-                t = {dims.t}
+                thickness = {dims.t}
               </text>
             </g>
           )}
@@ -252,13 +252,13 @@ export const SHSProfile: React.FC<BaseProfileProps> = ({
               <line x1={scaledA + config.dimOffset} y1="0" x2={scaledA + config.dimOffset} y2={scaledA}
                     markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
               <text x={scaledA + config.textOffset} y={scaledA/2} textAnchor="start" dominantBaseline="central">
-                a = {dims.a}
+                side = {dims.a}
               </text>
               
               {/* Wall thickness indicator */}
               <text x={scaledT/2} y={scaledT + 5} textAnchor="start" 
                     className="fill-blue-700 dark:fill-blue-300" fontSize={config.fontSize}>
-                t = {dims.t}
+                thickness = {dims.t}
               </text>
             </g>
           )}
@@ -375,7 +375,7 @@ export const RoundBarProfile: React.FC<BaseProfileProps> = ({
               <line x1={-scaledD/2} y1="0" x2={scaledD/2} y2="0" 
                     markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
               <text x="0" y={scaledD/2 + config.textOffset} textAnchor="middle">
-                d = {dims.diameter}
+                diameter = {dims.diameter}
               </text>
             </g>
           )}
@@ -555,20 +555,239 @@ export const PlateProfile: React.FC<BaseProfileProps> = ({
               <line x1="0" y1={scaledW + config.dimOffset} x2={scaledL} y2={scaledW + config.dimOffset}
                     markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
               <text x={scaledL/2} y={scaledW + config.textOffset} textAnchor="middle">
-                L = {dims.length}
+                length = {dims.length}
               </text>
               
               {/* Width dimension */}
               <line x1={scaledL + config.dimOffset} y1="0" x2={scaledL + config.dimOffset} y2={scaledW}
                     markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
               <text x={scaledL + config.textOffset} y={scaledW/2} textAnchor="start" dominantBaseline="central">
-                W = {dims.width}
+                width = {dims.width}
               </text>
               
               {/* Thickness indicator */}
               <text x={scaledL/2} y={scaledW/2} textAnchor="middle" dominantBaseline="central" 
                     className="fill-blue-700 dark:fill-blue-300" fontSize={config.fontSize}>
-                t = {dims.thickness}
+                thickness = {dims.thickness}
+              </text>
+            </g>
+          )}
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+// Hexagonal Bar Profile Component
+export const HexBarProfile: React.FC<BaseProfileProps> = ({ 
+  dimensions, 
+  showDimensions = true, 
+  size = 'medium', 
+  className = "" 
+}) => {
+  const dims = {
+    distance: parseFloat(dimensions.distance?.toString() || dimensions.d?.toString() || '50'),
+  }
+  
+  const config = getSizeConfig(size)
+  const centerX = size === 'large' ? 200 : size === 'small' ? 100 : 150
+  const centerY = size === 'large' ? 150 : size === 'small' ? 75 : 100
+  
+  const scale = (size === 'large' ? 150 : size === 'small' ? 60 : 80) / dims.distance
+  const scaledDistance = dims.distance * scale
+  
+  // Calculate hexagon vertices
+  const radius = scaledDistance / (2 * Math.cos(Math.PI / 6)) // Distance from center to vertex
+  const vertices = Array.from({ length: 6 }, (_, i) => {
+    const angle = (i * Math.PI) / 3
+    return {
+      x: radius * Math.cos(angle),
+      y: radius * Math.sin(angle)
+    }
+  })
+
+  return (
+    <div className={`bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950 
+                     rounded-lg border border-border/30 p-4 ${config.containerClass} ${className}`}>
+      <svg viewBox={config.viewBox} className="w-full h-full">
+        <CommonSVGDefs />
+        
+        <g transform={`translate(${centerX}, ${centerY})`}>
+          {/* Hexagon */}
+          <polygon 
+            points={vertices.map(v => `${v.x},${v.y}`).join(' ')}
+            fill="url(#steelCrosshatchDense)" 
+            stroke="#1e40af" 
+            strokeWidth={config.strokeWidth}
+          />
+          
+          {/* Center point */}
+          <circle r="2" fill="#1e40af"/>
+          
+          {/* Dimension lines and labels */}
+          {showDimensions && (
+            <g stroke="#dc2626" strokeWidth="1" fill="#dc2626" fontSize={config.fontSize} fontWeight="600">
+              {/* Across flats dimension line */}
+              <line x1={-scaledDistance/2} y1="0" x2={scaledDistance/2} y2="0" 
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x="0" y={scaledDistance/2 + config.textOffset} textAnchor="middle">
+                across flats = {dims.distance}
+              </text>
+            </g>
+          )}
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+// Flat Bar Profile Component
+export const FlatBarProfile: React.FC<BaseProfileProps> = ({ 
+  dimensions, 
+  showDimensions = true, 
+  size = 'medium', 
+  className = "" 
+}) => {
+  const dims = {
+    width: parseFloat(dimensions.width?.toString() || dimensions.b?.toString() || '50'),
+    thickness: parseFloat(dimensions.thickness?.toString() || dimensions.t?.toString() || '5'),
+  }
+  
+  const config = getSizeConfig(size)
+  const centerX = size === 'large' ? 200 : size === 'small' ? 100 : 150
+  const centerY = size === 'large' ? 150 : size === 'small' ? 75 : 100
+  
+  const scale = (size === 'large' ? 200 : size === 'small' ? 80 : 120) / dims.width
+  const scaledWidth = dims.width * scale
+  const scaledThickness = dims.thickness * scale
+
+  return (
+    <div className={`bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950 
+                     rounded-lg border border-border/30 p-4 ${config.containerClass} ${className}`}>
+      <svg viewBox={config.viewBox} className="w-full h-full">
+        <CommonSVGDefs />
+        
+        <g transform={`translate(${centerX - scaledWidth/2}, ${centerY - scaledThickness/2})`}>
+          {/* Flat bar rectangle */}
+          <rect x="0" y="0" width={scaledWidth} height={scaledThickness} 
+                fill="url(#steelCrosshatchDense)" stroke="#1e40af" strokeWidth={config.strokeWidth}/>
+          
+          {/* Dimension lines and labels */}
+          {showDimensions && (
+            <g stroke="#dc2626" strokeWidth="1" fill="#dc2626" fontSize={config.fontSize} fontWeight="600">
+              {/* Width dimension */}
+              <line x1="0" y1={scaledThickness + config.dimOffset} x2={scaledWidth} y2={scaledThickness + config.dimOffset}
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledWidth/2} y={scaledThickness + config.textOffset} textAnchor="middle">
+                width = {dims.width}
+              </text>
+              
+              {/* Thickness dimension */}
+              <line x1={scaledWidth + config.dimOffset} y1="0" x2={scaledWidth + config.dimOffset} y2={scaledThickness}
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledWidth + config.textOffset} y={scaledThickness/2} textAnchor="start" dominantBaseline="central">
+                thickness = {dims.thickness}
+              </text>
+            </g>
+          )}
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+// Solid Square Bar Profile Component (for solid bars, not hollow)
+export const SquareBarProfile: React.FC<BaseProfileProps> = ({ 
+  dimensions, 
+  showDimensions = true, 
+  size = 'medium', 
+  className = "" 
+}) => {
+  const dims = {
+    a: parseFloat(dimensions.a?.toString() || dimensions.side?.toString() || '50'),
+  }
+  
+  const config = getSizeConfig(size)
+  const centerX = size === 'large' ? 200 : size === 'small' ? 100 : 150
+  const centerY = size === 'large' ? 150 : size === 'small' ? 75 : 100
+  
+  const scale = (size === 'large' ? 200 : size === 'small' ? 80 : 120) / dims.a
+  const scaledA = dims.a * scale
+
+  return (
+    <div className={`bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950 
+                     rounded-lg border border-border/30 p-4 ${config.containerClass} ${className}`}>
+      <svg viewBox={config.viewBox} className="w-full h-full">
+        <CommonSVGDefs />
+        
+        <g transform={`translate(${centerX - scaledA/2}, ${centerY - scaledA/2})`}>
+          {/* Solid square */}
+          <rect x="0" y="0" width={scaledA} height={scaledA} 
+                fill="url(#steelCrosshatchDense)" stroke="#1e40af" strokeWidth={config.strokeWidth}/>
+          
+          {/* Dimension lines and labels */}
+          {showDimensions && (
+            <g stroke="#dc2626" strokeWidth="1" fill="#dc2626" fontSize={config.fontSize} fontWeight="600">
+              {/* Side dimension */}
+              <line x1={scaledA + config.dimOffset} y1="0" x2={scaledA + config.dimOffset} y2={scaledA}
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledA + config.textOffset} y={scaledA/2} textAnchor="start" dominantBaseline="central">
+                side = {dims.a}
+              </text>
+            </g>
+          )}
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+// Solid Rectangular Bar Profile Component (for solid bars, not hollow)
+export const RectangularBarProfile: React.FC<BaseProfileProps> = ({ 
+  dimensions, 
+  showDimensions = true, 
+  size = 'medium', 
+  className = "" 
+}) => {
+  const dims = {
+    h: parseFloat(dimensions.h?.toString() || dimensions.height?.toString() || '100'),
+    b: parseFloat(dimensions.b?.toString() || dimensions.width?.toString() || '60'),
+  }
+  
+  const config = getSizeConfig(size)
+  const centerX = size === 'large' ? 200 : size === 'small' ? 100 : 150
+  const centerY = size === 'large' ? 150 : size === 'small' ? 75 : 100
+  
+  const scale = (size === 'large' ? 250 : size === 'small' ? 110 : 140) / Math.max(dims.h, dims.b)
+  const scaledH = dims.h * scale
+  const scaledB = dims.b * scale
+
+  return (
+    <div className={`bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950 
+                     rounded-lg border border-border/30 p-4 ${config.containerClass} ${className}`}>
+      <svg viewBox={config.viewBox} className="w-full h-full">
+        <CommonSVGDefs />
+        
+        <g transform={`translate(${centerX - scaledB/2}, ${centerY - scaledH/2})`}>
+          {/* Solid rectangle */}
+          <rect x="0" y="0" width={scaledB} height={scaledH} 
+                fill="url(#steelCrosshatchDense)" stroke="#1e40af" strokeWidth={config.strokeWidth}/>
+          
+          {/* Dimension lines and labels */}
+          {showDimensions && (
+            <g stroke="#dc2626" strokeWidth="1" fill="#dc2626" fontSize={config.fontSize} fontWeight="600">
+              {/* Height dimension */}
+              <line x1={scaledB + config.dimOffset} y1="0" x2={scaledB + config.dimOffset} y2={scaledH}
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledB + config.textOffset} y={scaledH/2} textAnchor="start" dominantBaseline="central">
+                height = {dims.h}
+              </text>
+              
+              {/* Width dimension */}
+              <line x1="0" y1={scaledH + config.dimOffset} x2={scaledB} y2={scaledH + config.dimOffset}
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledB/2} y={scaledH + config.textOffset} textAnchor="middle">
+                width = {dims.b}
               </text>
             </g>
           )}
@@ -607,6 +826,14 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
     switch (profileType) {
       case 'ibeam':
         return <IBeamProfile {...props} />
+      case 'hec':
+        return <HECProfile {...props} />
+      case 'wbeam':
+      case 'w':
+        return <WBeamProfile {...props} />
+      case 'channel':
+      case 'c':
+        return <CChannelProfile {...props} />
       case 'rhs':
         return <RHSProfile {...props} />
       case 'shs':
@@ -624,6 +851,16 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
       case 'checkeredPlate':
       case 'perforatedPlate':
         return <PlateProfile {...props} />
+      case 'hexagonal':
+      case 'hexBar':
+        return <HexBarProfile {...props} />
+      case 'flat':
+      case 'flatBar':
+        return <FlatBarProfile {...props} />
+      case 'square':
+        return <SquareBarProfile {...props} />
+      case 'rectangular':
+        return <RectangularBarProfile {...props} />
       default:
         return (
           <div className="h-32 bg-muted/30 rounded-lg border border-dashed border-border/50 flex items-center justify-center">
@@ -659,6 +896,289 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// HEC Beam Profile Component (Heavy European Column)
+export const HECProfile: React.FC<BaseProfileProps> = ({ 
+  dimensions, 
+  showDimensions = true, 
+  size = 'medium', 
+  className = "" 
+}) => {
+  const dims = {
+    h: parseFloat(dimensions.h?.toString() || '300'),
+    b: parseFloat(dimensions.b?.toString() || '300'),
+    tw: parseFloat(dimensions.tw?.toString() || '15'),
+    tf: parseFloat(dimensions.tf?.toString() || '25'),
+    r: parseFloat(dimensions.r?.toString() || '27'),
+  }
+  
+  const config = getSizeConfig(size)
+  const centerX = size === 'large' ? 200 : size === 'small' ? 100 : 150
+  const centerY = size === 'large' ? 150 : size === 'small' ? 75 : 100
+  
+  const scale = (size === 'large' ? 280 : size === 'small' ? 120 : 160) / Math.max(dims.h, dims.b)
+  const scaledH = dims.h * scale
+  const scaledB = dims.b * scale
+  const scaledTw = dims.tw * scale
+  const scaledTf = dims.tf * scale
+  const scaledR = dims.r * scale
+
+  return (
+    <div className={`bg-gradient-to-br from-slate-50 to-orange-50 dark:from-slate-900 dark:to-orange-950 
+                     rounded-lg border border-border/30 p-4 ${config.containerClass} ${className}`}>
+      <svg viewBox={config.viewBox} className="w-full h-full">
+        <CommonSVGDefs />
+        
+        <g transform={`translate(${centerX - scaledB/2}, ${centerY - scaledH/2})`}>
+          {/* Top flange - thicker for HEC */}
+          <rect x="0" y="0" width={scaledB} height={scaledTf} 
+                fill="url(#steelCrosshatchDense)" stroke="#dc2626" strokeWidth={config.strokeWidth}/>
+          
+          {/* Web - thicker for HEC */}
+          <rect x={scaledB/2 - scaledTw/2} y={scaledTf} 
+                width={scaledTw} height={scaledH - 2*scaledTf} 
+                fill="url(#steelCrosshatchDense)" stroke="#dc2626" strokeWidth={config.strokeWidth}/>
+          
+          {/* Bottom flange - thicker for HEC */}
+          <rect x="0" y={scaledH - scaledTf} width={scaledB} height={scaledTf} 
+                fill="url(#steelCrosshatchDense)" stroke="#dc2626" strokeWidth={config.strokeWidth}/>
+          
+          {/* Root radius indicators */}
+          <circle cx={scaledB/2 - scaledTw/2} cy={scaledTf} r={scaledR/3} 
+                  fill="none" stroke="#dc2626" strokeWidth="1" opacity="0.5"/>
+          <circle cx={scaledB/2 + scaledTw/2} cy={scaledTf} r={scaledR/3} 
+                  fill="none" stroke="#dc2626" strokeWidth="1" opacity="0.5"/>
+          
+          {/* Dimension lines and labels */}
+          {showDimensions && (
+            <g stroke="#dc2626" strokeWidth="1" fill="#dc2626" fontSize={config.fontSize} fontWeight="600">
+              {/* Height dimension */}
+              <line x1={scaledB + config.dimOffset} y1="0" x2={scaledB + config.dimOffset} y2={scaledH} 
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledB + config.textOffset} y={scaledH/2} textAnchor="start" dominantBaseline="central">
+                h = {dims.h}
+              </text>
+              
+              {/* Width dimension */}
+              <line x1="0" y1={scaledH + config.dimOffset} x2={scaledB} y2={scaledH + config.dimOffset}
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledB/2} y={scaledH + config.textOffset} textAnchor="middle">
+                b = {dims.b}
+              </text>
+              
+              {/* Web thickness */}
+              <text x={scaledB/2} y={scaledH/2} textAnchor="middle" dominantBaseline="central" 
+                    className="fill-red-700 dark:fill-red-300" fontSize={config.fontSize - 1}>
+                tw = {dims.tw}
+              </text>
+              
+              {/* Flange thickness */}
+              <text x={scaledB/4} y={scaledTf/2} textAnchor="middle" dominantBaseline="central" 
+                    className="fill-red-700 dark:fill-red-300" fontSize={config.fontSize - 1}>
+                tf = {dims.tf}
+              </text>
+              
+              {/* Root radius */}
+              <text x={scaledB - 10} y={scaledTf + 10} textAnchor="end" 
+                    className="fill-red-600 dark:fill-red-400" fontSize={config.fontSize - 2}>
+                r = {dims.r}
+              </text>
+            </g>
+          )}
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+// W-Beam Profile Component (American Wide Flange) - Enhanced Professional Version
+export const WBeamProfile: React.FC<BaseProfileProps> = ({ 
+  dimensions, 
+  showDimensions = true, 
+  size = 'medium', 
+  className = "" 
+}) => {
+  const dims = {
+    h: parseFloat(dimensions.h?.toString() || dimensions.d?.toString() || '203'),
+    b: parseFloat(dimensions.b?.toString() || dimensions.bf?.toString() || '133'),
+    tw: parseFloat(dimensions.tw?.toString() || '6.5'),
+    tf: parseFloat(dimensions.tf?.toString() || '7.9'),
+  }
+  
+  const config = getSizeConfig(size)
+  const centerX = size === 'large' ? 200 : size === 'small' ? 100 : 150
+  const centerY = size === 'large' ? 150 : size === 'small' ? 75 : 100
+  
+  const scale = (size === 'large' ? 280 : size === 'small' ? 120 : 160) / Math.max(dims.h, dims.b)
+  const scaledH = dims.h * scale
+  const scaledB = dims.b * scale
+  const scaledTw = dims.tw * scale
+  const scaledTf = dims.tf * scale
+
+  return (
+    <div className={`bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-green-950 dark:via-emerald-950 dark:to-teal-950 
+                     rounded-xl border border-green-200/40 dark:border-green-800/40 p-4 shadow-lg backdrop-blur-sm 
+                     ${config.containerClass} ${className}`}>
+      <svg viewBox={config.viewBox} className="w-full h-full drop-shadow-sm">
+        <defs>
+          <CommonSVGDefs />
+          <linearGradient id="wbeamGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#065f46" />
+            <stop offset="30%" stopColor="#047857" />
+            <stop offset="70%" stopColor="#059669" />
+            <stop offset="100%" stopColor="#10b981" />
+          </linearGradient>
+          <pattern id="wbeamCrosshatch" patternUnits="userSpaceOnUse" width="8" height="8">
+            <rect width="8" height="8" fill="#047857" opacity="0.1"/>
+            <path d="M0,8 L8,0 M-2,2 L2,-2 M6,10 L10,6" stroke="#065f46" strokeWidth="0.8" opacity="0.6"/>
+          </pattern>
+        </defs>
+        
+        <g transform={`translate(${centerX - scaledB/2}, ${centerY - scaledH/2})`}>
+          {/* Top flange with tapered edges */}
+          <path d={`M0 0 L${scaledB} 0 L${scaledB} ${scaledTf} L${Number(scaledB*0.85)} ${scaledTf} L${Number(scaledB*0.15)} ${scaledTf} L0 ${scaledTf} Z`}
+                fill="url(#wbeamGradient)" stroke="#065f46" strokeWidth="2" className="drop-shadow-sm"/>
+          
+          {/* Web */}
+          <rect x={scaledB/2 - scaledTw/2} y={scaledTf} 
+                width={scaledTw} height={Number(scaledH - 2*scaledTf)}
+                fill="url(#wbeamCrosshatch)" stroke="#065f46" strokeWidth="1.5" className="drop-shadow-sm"/>
+          
+          {/* Bottom flange with tapered edges */}
+          <path d={`M0 ${Number(scaledH - scaledTf)} L${Number(scaledB*0.15)} ${Number(scaledH - scaledTf)} L${Number(scaledB*0.85)} ${Number(scaledH - scaledTf)} L${scaledB} ${Number(scaledH - scaledTf)} L${scaledB} ${scaledH} L0 ${scaledH} Z`}
+                fill="url(#wbeamGradient)" stroke="#065f46" strokeWidth="2" className="drop-shadow-sm"/>
+          
+          {/* Dimension lines and labels */}
+          {showDimensions && (
+            <g stroke="#dc2626" strokeWidth="1.2" fill="#dc2626" fontSize={config.fontSize} fontWeight="700">
+              {/* Height dimension */}
+              <line x1={scaledB + config.dimOffset} y1="0" x2={scaledB + config.dimOffset} y2={scaledH} 
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledB + config.textOffset} y={scaledH/2} textAnchor="start" dominantBaseline="central"
+                    className="fill-red-700 dark:fill-red-300 font-bold">
+                d = {dims.h}
+              </text>
+              
+              {/* Width dimension */}
+              <line x1="0" y1={scaledH + config.dimOffset} x2={scaledB} y2={scaledH + config.dimOffset}
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledB/2} y={scaledH + config.textOffset} textAnchor="middle"
+                    className="fill-red-700 dark:fill-red-300 font-bold">
+                bf = {dims.b}
+              </text>
+              
+              {/* Web thickness */}
+              <text x={scaledB/2} y={scaledH/2} textAnchor="middle" dominantBaseline="central" 
+                    className="fill-green-800 dark:fill-green-200 font-semibold" fontSize="10">
+                tw = {dims.tw}
+              </text>
+              
+              {/* Flange thickness */}
+              <text x={scaledB/4} y={scaledTf/2} textAnchor="middle" dominantBaseline="central" 
+                    className="fill-green-800 dark:fill-green-200 font-semibold" fontSize="10">
+                tf = {dims.tf}
+              </text>
+            </g>
+          )}
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+// C-Channel Profile Component (American Standard Channel) - Enhanced Professional Version
+export const CChannelProfile: React.FC<BaseProfileProps> = ({ 
+  dimensions, 
+  showDimensions = true, 
+  size = 'medium', 
+  className = "" 
+}) => {
+  const dims = {
+    h: parseFloat(dimensions.h?.toString() || dimensions.d?.toString() || '152'),
+    b: parseFloat(dimensions.b?.toString() || dimensions.bf?.toString() || '51'),
+    tw: parseFloat(dimensions.tw?.toString() || '6.4'),
+    tf: parseFloat(dimensions.tf?.toString() || '9.7'),
+  }
+  
+  const config = getSizeConfig(size)
+  const centerX = size === 'large' ? 200 : size === 'small' ? 100 : 150
+  const centerY = size === 'large' ? 150 : size === 'small' ? 75 : 100
+  
+  const scale = (size === 'large' ? 280 : size === 'small' ? 120 : 160) / Math.max(dims.h, dims.b * 2)
+  const scaledH = dims.h * scale
+  const scaledB = dims.b * scale
+  const scaledTw = dims.tw * scale
+  const scaledTf = dims.tf * scale
+
+  return (
+    <div className={`bg-gradient-to-br from-purple-50 via-violet-50 to-indigo-50 dark:from-purple-950 dark:via-violet-950 dark:to-indigo-950 
+                     rounded-xl border border-purple-200/40 dark:border-purple-800/40 p-4 shadow-lg backdrop-blur-sm 
+                     ${config.containerClass} ${className}`}>
+      <svg viewBox={config.viewBox} className="w-full h-full drop-shadow-sm">
+        <defs>
+          <CommonSVGDefs />
+          <linearGradient id="channelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#6b21a8" />
+            <stop offset="30%" stopColor="#7c3aed" />
+            <stop offset="70%" stopColor="#8b5cf6" />
+            <stop offset="100%" stopColor="#a855f7" />
+          </linearGradient>
+          <pattern id="channelCrosshatch" patternUnits="userSpaceOnUse" width="8" height="8">
+            <rect width="8" height="8" fill="#7c3aed" opacity="0.1"/>
+            <path d="M0,8 L8,0 M-2,2 L2,-2 M6,10 L10,6" stroke="#6b21a8" strokeWidth="0.8" opacity="0.6"/>
+          </pattern>
+        </defs>
+        
+        <g transform={`translate(${centerX - scaledB/2}, ${centerY - scaledH/2})`}>
+          {/* Web (vertical part) with rounded corners */}
+          <rect x="0" y="0" width={scaledTw} height={scaledH} rx="1"
+                fill="url(#channelCrosshatch)" stroke="#6b21a8" strokeWidth="1.5" className="drop-shadow-sm"/>
+          
+          {/* Top flange with rounded corners */}
+          <rect x="0" y="0" width={scaledB} height={scaledTf} rx="1"
+                fill="url(#channelGradient)" stroke="#6b21a8" strokeWidth="2" className="drop-shadow-sm"/>
+          
+          {/* Bottom flange with rounded corners */}
+          <rect x="0" y={scaledH - scaledTf} width={scaledB} height={scaledTf} rx="1"
+                fill="url(#channelGradient)" stroke="#6b21a8" strokeWidth="2" className="drop-shadow-sm"/>
+          
+          {/* Dimension lines and labels */}
+          {showDimensions && (
+            <g stroke="#dc2626" strokeWidth="1.2" fill="#dc2626" fontSize={config.fontSize} fontWeight="700">
+              {/* Height dimension */}
+              <line x1={-config.dimOffset} y1="0" x2={-config.dimOffset} y2={scaledH} 
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={-config.textOffset} y={scaledH/2} textAnchor="end" dominantBaseline="central"
+                    className="fill-red-700 dark:fill-red-300 font-bold">
+                d = {dims.h}
+              </text>
+              
+              {/* Flange width dimension */}
+              <line x1="0" y1={scaledH + config.dimOffset} x2={scaledB} y2={scaledH + config.dimOffset}
+                    markerStart="url(#arrowheadReverse)" markerEnd="url(#arrowhead)"/>
+              <text x={scaledB/2} y={scaledH + config.textOffset} textAnchor="middle"
+                    className="fill-red-700 dark:fill-red-300 font-bold">
+                bf = {dims.b}
+              </text>
+              
+              {/* Web thickness */}
+              <text x={scaledTw/2} y={scaledH/2} textAnchor="middle" dominantBaseline="central" 
+                    className="fill-purple-800 dark:fill-purple-200 font-semibold" fontSize="10">
+                tw = {dims.tw}
+              </text>
+              
+              {/* Flange thickness */}
+              <text x={scaledB/2} y={scaledTf/2} textAnchor="middle" dominantBaseline="central" 
+                    className="fill-purple-800 dark:fill-purple-200 font-semibold" fontSize="10">
+                tf = {dims.tf}
+              </text>
+            </g>
+          )}
+        </g>
+      </svg>
     </div>
   )
 } 

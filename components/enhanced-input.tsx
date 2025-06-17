@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useCallback, useMemo } from "react"
-import { Input } from "@/components/ui/input"
+import { Input, UnitInput } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -222,9 +222,9 @@ export function EnhancedInput({
       </div>
 
       <div className="relative">
-        <Input
+        <UnitInput
           id={label}
-          type={type}
+          unit={unit}
           value={value}
           onChange={handleChange}
           onBlur={handleBlur}
@@ -234,16 +234,8 @@ export function EnhancedInput({
           min={min}
           max={max}
           step={step}
-          autoComplete={autoComplete}
-          className={`${inputStateClasses} ${unit ? 'pr-12' : ''}`}
+          className={inputStateClasses}
         />
-        
-        {/* Unit display */}
-        {unit && (
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-            <span className="text-sm text-muted-foreground">{unit}</span>
-          </div>
-        )}
 
         {/* Loading overlay */}
         {isLoading && (

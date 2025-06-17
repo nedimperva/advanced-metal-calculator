@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { animations, safeAnimation } from "@/lib/animations"
 import { WEIGHT_UNITS, LENGTH_UNITS } from "@/lib/unit-conversions"
 import type { StructuralProperties, PricingModel } from "@/lib/types"
-import { Input } from "@/components/ui/input"
+import { Input, UnitInput } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import PricingModelSelector from "@/components/pricing-model-selector"
 import { 
@@ -207,29 +207,29 @@ export function MobileResults({
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div>
                 <Label htmlFor="mobile-quantity" className="text-xs">Quantity</Label>
-                <Input
+                <UnitInput
                   id="mobile-quantity"
-                  type="number"
+                  unit="pcs"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   placeholder="1"
-                  min="0.001"
-                  step="1"
+                  min={0.001}
+                  step={1}
                   className="h-8 text-xs"
                 />
               </div>
               <div>
                 <Label htmlFor="mobile-price" className="text-xs">
-                  Price ({currency} {PRICING_MODELS[pricingModel].unit})
+                  Price {PRICING_MODELS[pricingModel].name}
                 </Label>
-                <Input
+                <UnitInput
                   id="mobile-price"
-                  type="number"
+                  unit={`${currency}/${PRICING_MODELS[pricingModel].unit}`}
                   value={pricePerUnit}
                   onChange={(e) => setPricePerUnit(e.target.value)}
                   placeholder="0.00"
-                  min="0"
-                  step="0.01"
+                  min={0}
+                  step={0.01}
                   className="h-8 text-xs"
                 />
               </div>
