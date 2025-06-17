@@ -7,13 +7,15 @@ import { ChevronDown, ChevronRight, Calculator, FunctionSquare, Info, CheckCircl
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { ProfileData, MaterialData, StructuralProperties } from '@/lib/types'
-import { ProfileDiagram } from '@/components/profile-diagram'
+import { CrossSectionViewer } from '@/components/profile-diagrams'
 
 interface CalculationStep {
   id: string
   title: string
   description: string
   formula: string
+  detailedFormula?: string
+  stepByStep?: string[]
   variables: Record<string, { value: number | string, unit: string, description: string }>
   result: { value: number | string, unit: string }
   notes?: string[]
@@ -47,7 +49,95 @@ function getProfileTypeFromName(name: string): string {
   if (lowerName.includes('unequal angle')) return 'unequal_angle'
   if (lowerName.includes('round')) return 'round'
   if (lowerName.includes('flat')) return 'flat'
+  if (lowerName.includes('plate') || lowerName.includes('sheet')) return 'plate'
   return 'generic'
+}
+
+// Helper function to get specific area formula based on profile type
+function getAreaFormula(profileType: string): { formula: string, detailedFormula: string, stepByStep: string[] } {
+  const type = getProfileTypeFromName(profileType)
+  
+  switch (type) {
+    case 'ibeam':
+      return {
+        formula: 'A = 2×(b×tf) + (h-2×tf)×tw',
+        detailedFormula: 'A = Area of both flanges + Area of web',
+        stepByStep: [
+          '1. Calculate top flange area: b × tf',
+          '2. Calculate bottom flange area: b × tf', 
+          '3. Calculate web area: (h - 2×tf) × tw',
+          '4. Total area: 2×(flange area) + web area'
+        ]
+      }
+    case 'rhs':
+      return {
+        formula: 'A = h×b - (h-2×t)×(b-2×t)',
+        detailedFormula: 'A = Outer rectangle - Inner rectangle',
+        stepByStep: [
+          '1. Calculate outer rectangle area: h × b',
+          '2. Calculate inner rectangle area: (h-2×t) × (b-2×t)',
+          '3. Subtract inner from outer to get wall area'
+        ]
+      }
+    case 'shs':
+      return {
+        formula: 'A = a² - (a-2×t)²',
+        detailedFormula: 'A = Outer square - Inner square',
+        stepByStep: [
+          '1. Calculate outer square area: a²',
+          '2. Calculate inner square area: (a-2×t)²',
+          '3. Subtract inner from outer to get wall area'
+        ]
+      }
+    case 'round':
+      return {
+        formula: 'A = π × (d/2)²',
+        detailedFormula: 'A = π × r² where r = d/2',
+        stepByStep: [
+          '1. Calculate radius: r = d/2',
+          '2. Calculate area: π × r²',
+          '3. Result in mm², convert to cm²'
+        ]
+      }
+    case 'chs':
+      return {
+        formula: 'A = π × (od²/4 - id²/4)',
+        detailedFormula: 'A = π/4 × (od² - id²) where id = od - 2×wt',
+        stepByStep: [
+          '1. Calculate inner diameter: id = od - 2×wt',
+          '2. Calculate outer area: π × (od/2)²',
+          '3. Calculate inner area: π × (id/2)²',
+          '4. Subtract inner from outer'
+        ]
+      }
+    case 'equal_angle':
+      return {
+        formula: 'A = 2×a×t - t²',
+        detailedFormula: 'A = Two legs minus overlap corner',
+        stepByStep: [
+          '1. Calculate first leg area: a × t',
+          '2. Calculate second leg area: a × t',
+          '3. Subtract corner overlap: t²',
+          '4. Total: 2×(a×t) - t²'
+        ]
+      }
+    case 'plate':
+      return {
+        formula: 'A = L × W',
+        detailedFormula: 'A = Length × Width',
+        stepByStep: [
+          '1. Multiply length by width',
+          '2. For plates, area equals the face area',
+          '3. Result is the cross-sectional area'
+        ]
+      }
+    default:
+      return {
+        formula: 'A = f(dimensions)',
+        detailedFormula: 'Area calculated based on profile geometry',
+        stepByStep: ['Complex geometric calculation based on profile shape']
+      }
+  }
 }
 
 export function CalculationBreakdown({
@@ -83,13 +173,23 @@ export function CalculationBreakdown({
     }
   }
 
+  // Get specific area calculation details
+  const areaDetails = getAreaFormula(profileData.name)
+  
+  // Calculate intermediate values for step-by-step breakdown
+  const lengthInCm = parseFloat(length) / 10 // Convert mm to cm
+  const volume = structuralProperties.area * lengthInCm
+  const density = temperatureEffects ? temperatureEffects.adjustedDensity : materialData.density
+  
   // Generate calculation steps based on the current calculation
   const calculationSteps: CalculationStep[] = [
     {
       id: 'step1',
       title: 'Cross-Sectional Area Calculation',
       description: 'Calculate the cross-sectional area of the profile based on its dimensions',
-      formula: 'A = f(dimensions)',
+      formula: areaDetails.formula,
+      detailedFormula: areaDetails.detailedFormula,
+      stepByStep: areaDetails.stepByStep,
       variables: {
         ...Object.fromEntries(
           Object.entries(dimensions).map(([key, value]) => [
@@ -108,6 +208,7 @@ export function CalculationBreakdown({
       },
       notes: [
         'Area calculation varies by profile type',
+        'All dimensions converted from mm to cm for consistency',
         'Standard formulas based on structural engineering principles'
       ]
     },
@@ -116,6 +217,12 @@ export function CalculationBreakdown({
       title: 'Volume Calculation',
       description: 'Calculate the total volume by multiplying area by length',
       formula: 'V = A × L',
+      detailedFormula: 'Volume = Cross-sectional Area × Length',
+      stepByStep: [
+        '1. Convert length from mm to cm for consistency',
+        '2. Multiply area (cm²) by length (cm)',
+        '3. Result in cm³'
+      ],
       variables: {
         area: {
           value: structuralProperties.area.toFixed(4),
@@ -123,32 +230,59 @@ export function CalculationBreakdown({
           description: 'Cross-sectional area'
         },
         length: {
-          value: parseFloat(length) / 10, // Convert mm to cm
+          value: lengthInCm.toFixed(1),
           unit: 'cm',
           description: 'Profile length'
         }
       },
       result: {
-        value: (structuralProperties.area * parseFloat(length) / 10).toFixed(4),
+        value: volume.toFixed(4),
         unit: 'cm³'
-      }
+      },
+      notes: [
+        'Volume represents the total amount of material',
+        'Used directly in weight calculations'
+      ]
     },
     {
       id: 'step3',
       title: 'Weight Calculation',
       description: 'Calculate weight using material density and volume',
-      formula: temperatureEffects ? 'W = V × ρ_adjusted' : 'W = V × ρ',
+      formula: temperatureEffects ? 'W = V × ρ_adjusted × Unit_Factor' : 'W = V × ρ × Unit_Factor',
+      detailedFormula: temperatureEffects ? 
+        'Weight = Volume × Temperature-adjusted Density × Conversion Factor' :
+        'Weight = Volume × Material Density × Conversion Factor',
+      stepByStep: temperatureEffects ? [
+        '1. Apply temperature correction to density',
+        `2. Adjusted density = ${density.toFixed(3)} g/cm³`,
+        '3. Multiply volume × adjusted density',
+        '4. Apply unit conversion factor',
+        `5. Final weight in ${weightUnit}`
+      ] : [
+        '1. Use standard material density at 20°C',
+        `2. Density = ${density.toFixed(3)} g/cm³`,
+        '3. Multiply volume × density',
+        '4. Apply unit conversion factor',
+        `5. Final weight in ${weightUnit}`
+      ],
       variables: {
         volume: {
-          value: (structuralProperties.area * parseFloat(length) / 10).toFixed(4),
+          value: volume.toFixed(4),
           unit: 'cm³',
           description: 'Total volume'
         },
         density: {
-          value: temperatureEffects ? temperatureEffects.adjustedDensity.toFixed(3) : materialData.density.toFixed(3),
+          value: density.toFixed(3),
           unit: 'g/cm³',
           description: temperatureEffects ? 'Temperature-adjusted density' : 'Material density'
-        }
+        },
+        ...(temperatureEffects ? {
+          temperature: {
+            value: temperatureEffects.temperature,
+            unit: '°C',
+            description: 'Operating temperature'
+          }
+        } : {})
       },
       result: {
         value: weight.toFixed(4),
@@ -157,24 +291,37 @@ export function CalculationBreakdown({
       notes: temperatureEffects ? [
         `Original density: ${temperatureEffects.originalDensity.toFixed(3)} g/cm³`,
         `Adjusted for temperature: ${temperatureEffects.temperature}°C`,
-        `Density change: ${(((temperatureEffects.adjustedDensity - temperatureEffects.originalDensity) / temperatureEffects.originalDensity) * 100).toFixed(2)}%`
-      ] : undefined
+        `Density change: ${(((temperatureEffects.adjustedDensity - temperatureEffects.originalDensity) / temperatureEffects.originalDensity) * 100).toFixed(2)}%`,
+        'Temperature effects follow linear thermal expansion principles'
+      ] : [
+        'Standard conditions assumed (20°C)',
+        'Density values from material standards',
+        'Weight includes full cross-sectional material'
+      ]
     },
     {
       id: 'step4',
-      title: 'Moment of Inertia',
+      title: 'Second Moment of Area (Moment of Inertia)',
       description: 'Calculate second moment of area for bending analysis',
-      formula: 'I = ∫y²dA (numerical integration)',
+      formula: 'I = ∫y²dA',
+      detailedFormula: 'Second moment of area about neutral axis',
+      stepByStep: [
+        '1. Divide cross-section into simple shapes',
+        '2. Calculate centroid location',
+        '3. Apply parallel axis theorem: I = Ic + Ad²',
+        '4. Sum contributions from all parts',
+        '5. Calculate for both X and Y axes'
+      ],
       variables: {
         Ix: {
           value: structuralProperties.momentOfInertiaX.toFixed(2),
           unit: 'cm⁴',
-          description: 'Moment of inertia about X-axis'
+          description: 'Moment of inertia about X-axis (horizontal)'
         },
         Iy: {
           value: structuralProperties.momentOfInertiaY.toFixed(2),
           unit: 'cm⁴',
-          description: 'Moment of inertia about Y-axis'
+          description: 'Moment of inertia about Y-axis (vertical)'
         }
       },
       result: {
@@ -182,15 +329,25 @@ export function CalculationBreakdown({
         unit: 'cm⁴'
       },
       notes: [
-        'Critical for beam deflection calculations',
-        'Higher values indicate greater resistance to bending'
+        'Critical for beam deflection calculations: δ = (5wL⁴)/(384EI)',
+        'Higher values indicate greater resistance to bending',
+        'Used in buckling analysis and stress calculations',
+        'X-axis typically corresponds to major bending axis'
       ]
     },
     {
       id: 'step5',
       title: 'Section Modulus',
       description: 'Calculate section modulus for stress analysis',
-      formula: 'S = I / c (where c is distance to extreme fiber)',
+      formula: 'S = I / c',
+      detailedFormula: 'Section Modulus = Moment of Inertia / Distance to extreme fiber',
+      stepByStep: [
+        '1. Determine distance to extreme fiber (c)',
+        '2. For symmetric sections: c = height/2',
+        '3. Calculate Sx = Ix / cx',
+        '4. Calculate Sy = Iy / cy',
+        '5. Used in bending stress: σ = M/S'
+      ],
       variables: {
         Sx: {
           value: structuralProperties.sectionModulusX.toFixed(2),
@@ -209,7 +366,50 @@ export function CalculationBreakdown({
       },
       notes: [
         'Used in bending stress calculations: σ = M/S',
-        'Larger values indicate better bending capacity'
+        'Larger values indicate better bending capacity',
+        'Critical for allowable moment calculations',
+        'Directly relates to maximum bending stress'
+      ]
+    },
+    {
+      id: 'step6',
+      title: 'Radius of Gyration',
+      description: 'Calculate radius of gyration for buckling analysis',
+      formula: 'r = √(I/A)',
+      detailedFormula: 'Radius of Gyration = √(Moment of Inertia / Area)',
+      stepByStep: [
+        '1. Take square root of (I/A)',
+        '2. Calculate rx = √(Ix/A)',
+        '3. Calculate ry = √(Iy/A)',
+        '4. Represents distribution of area relative to axis',
+        '5. Used in column buckling calculations'
+      ],
+      variables: {
+        rx: {
+          value: structuralProperties.radiusOfGyrationX.toFixed(2),
+          unit: 'cm',
+          description: 'Radius of gyration about X-axis'
+        },
+        ry: {
+          value: structuralProperties.radiusOfGyrationY.toFixed(2),
+          unit: 'cm',
+          description: 'Radius of gyration about Y-axis'
+        },
+        area: {
+          value: structuralProperties.area.toFixed(4),
+          unit: 'cm²',
+          description: 'Cross-sectional area'
+        }
+      },
+      result: {
+        value: `rx: ${structuralProperties.radiusOfGyrationX.toFixed(2)}, ry: ${structuralProperties.radiusOfGyrationY.toFixed(2)}`,
+        unit: 'cm'
+      },
+      notes: [
+        'Essential for column buckling analysis',
+        'Slenderness ratio = L/r (where L is effective length)',
+        'Smaller radius indicates higher buckling risk',
+        'Minimum radius typically governs column design'
       ]
     }
   ]
@@ -233,33 +433,39 @@ export function CalculationBreakdown({
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <FunctionSquare className="h-4 w-4" />
-          <span>Step-by-step calculation details</span>
+          <span>Detailed step-by-step engineering calculations with formulas</span>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Profile and Material Summary with Visualization */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
-          <div>
-            <div className="text-xs text-muted-foreground">Profile</div>
-            <div className="font-medium">{profileData.name}</div>
-            <div className="text-xs text-green-600">Standard Engineering Profile</div>
+      <CardContent className="space-y-4">
+        {/* Enhanced Profile and Material Summary */}
+        <div className="grid gap-4 p-4 bg-muted/30 rounded-lg">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-muted-foreground">Profile</div>
+              <div className="font-medium">{profileData.name}</div>
+              <div className="text-xs text-green-600 dark:text-green-400">Standard Engineering Profile</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Material</div>
+              <div className="font-medium">{materialData.name}</div>
+              <div className="text-xs text-blue-600 dark:text-blue-400">
+                Yield: {materialData.yieldStrength} MPa | Density: {materialData.density} g/cm³
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Material</div>
-            <div className="font-medium">{materialData.name}</div>
-            <div className="text-xs text-blue-600">Yield: {materialData.yieldStrength} MPa</div>
-          </div>
-          <div className="lg:col-span-1">
-            <ProfileDiagram 
-              profileType={getProfileTypeFromName(profileData.name)}
-              dimensions={dimensions}
-              className="h-24"
-            />
-          </div>
+          
+          {/* Enhanced Cross-Section Diagram - Hidden by Default */}
+          <CrossSectionViewer
+            profileType={getProfileTypeFromName(profileData.name)}
+            dimensions={dimensions}
+            defaultVisible={false}
+            size="large"
+            className="mt-4"
+          />
         </div>
 
-        {/* Calculation Steps */}
-        <div className="space-y-2">
+        {/* Enhanced Calculation Steps */}
+        <div className="space-y-3">
           {calculationSteps.map((step, index) => (
             <Collapsible
               key={step.id}
@@ -269,16 +475,19 @@ export function CalculationBreakdown({
               <CollapsibleTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="w-full justify-between p-3 h-auto hover:bg-muted/50"
+                  className="w-full justify-between p-4 h-auto hover:bg-muted/50 border border-border/30 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="min-w-[2rem] justify-center">
+                    <Badge variant="outline" className="min-w-[2.5rem] justify-center font-semibold">
                       {index + 1}
                     </Badge>
                     <div className="text-left">
-                      <div className="font-medium">{step.title}</div>
+                      <div className="font-medium text-foreground">{step.title}</div>
                       <div className="text-xs text-muted-foreground">
                         {step.description}
+                      </div>
+                      <div className="text-xs font-mono text-primary mt-1">
+                        {step.formula}
                       </div>
                     </div>
                   </div>
@@ -289,90 +498,101 @@ export function CalculationBreakdown({
                   )}
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="px-3 pb-3">
-                <div className="space-y-3 mt-3 border-l-2 border-primary/20 pl-4">
-                                      {/* Enhanced Formula Display */}
-                    <div className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
-                      <div className="text-xs text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-1 font-medium">
-                        <FunctionSquare className="h-3 w-3" />
-                        Engineering Formula
-                      </div>
-                      <code className="text-lg font-mono font-semibold text-blue-900 dark:text-blue-100 block mb-2">
-                        {step.formula}
-                      </code>
-                      {step.id === 'step1' && (
-                        <div className="text-xs text-blue-600 dark:text-blue-400 bg-white/60 dark:bg-blue-950/20 p-2 rounded mt-2">
-                          <strong>Cross-sectional area</strong> is fundamental in structural analysis - it determines:
-                          <br />• Axial load capacity (compression/tension)
-                          <br />• Material weight per unit length
-                          <br />• Base value for other geometric properties
-                        </div>
-                      )}
-                      {step.id === 'step4' && (
-                        <div className="text-xs text-blue-600 dark:text-blue-400 bg-white/60 dark:bg-blue-950/20 p-2 rounded mt-2">
-                          <strong>Second moment of area</strong> measures how area is distributed relative to the neutral axis:
-                          <br />• Higher I = greater bending stiffness
-                          <br />• Used in beam deflection calculations: δ = (wL⁴)/(8EI)
-                          <br />• Critical for buckling analysis
-                        </div>
-                      )}
+              <CollapsibleContent className="px-4 pb-4">
+                <div className="space-y-4 mt-4 border-l-2 border-primary/20 pl-4">
+                  {/* Enhanced Formula Display */}
+                  <div className="bg-gradient-to-br from-blue-50/80 to-indigo-50/80 dark:from-blue-950/30 dark:to-indigo-950/30 p-4 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                    <div className="text-xs text-foreground mb-2 flex items-center gap-1 font-medium">
+                      <FunctionSquare className="h-3 w-3" />
+                      Engineering Formula
                     </div>
-
-                                      {/* Enhanced Variables Section */}
-                    <div className="space-y-3">
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
-                        <Calculator className="h-3 w-3" />
-                        Variables & Parameters
+                    <code className="text-lg font-mono font-semibold text-foreground block mb-2">
+                      {step.formula}
+                    </code>
+                    {step.detailedFormula && (
+                      <div className="text-sm text-muted-foreground mt-2 bg-background/60 p-2 rounded border border-border/50">
+                        <strong>Explanation:</strong> {step.detailedFormula}
                       </div>
-                      <div className="grid gap-2">
-                        {Object.entries(step.variables).map(([key, variable]) => (
-                          <div key={key} className="flex justify-between items-center text-sm bg-gradient-to-r from-background/60 to-background/30 p-3 rounded-lg border border-border/30 hover:border-border/60 transition-colors">
-                            <div className="flex items-center gap-2">
-                              <code className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded font-semibold">
-                                {key}
-                              </code>
-                              <span className="text-muted-foreground">{variable.description}</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="font-semibold text-foreground">{variable.value}</span>
-                              <span className="text-muted-foreground ml-1 text-xs">{variable.unit}</span>
-                            </div>
+                    )}
+                  </div>
+
+                  {/* Step-by-Step Calculation */}
+                  {step.stepByStep && (
+                    <div className="bg-gradient-to-br from-amber-50/80 to-orange-50/80 dark:from-amber-950/30 dark:to-orange-950/30 p-4 rounded-lg border border-amber-200/50 dark:border-amber-800/50">
+                      <div className="text-xs text-foreground mb-3 flex items-center gap-1 font-medium">
+                        <Calculator className="h-3 w-3" />
+                        Step-by-Step Calculation
+                      </div>
+                      <div className="space-y-2">
+                        {step.stepByStep.map((stepText, stepIndex) => (
+                          <div key={stepIndex} className="text-sm text-foreground bg-background/60 p-2 rounded border border-border/30">
+                            {stepText}
                           </div>
                         ))}
                       </div>
                     </div>
+                  )}
 
-                                      {/* Enhanced Result Display */}
-                    <div className="bg-gradient-to-br from-green-50/80 to-emerald-50/80 dark:from-green-950/30 dark:to-emerald-950/30 p-4 rounded-lg border border-green-200/50 dark:border-green-800/50">
-                      <div className="text-xs text-green-700 dark:text-green-300 mb-2 flex items-center gap-1 font-medium">
-                        <CheckCircle className="h-3 w-3" />
-                        Calculated Result
-                      </div>
-                      <div className="font-bold text-lg text-green-900 dark:text-green-100">
-                        {step.result.value} {step.result.unit}
-                      </div>
-                      {step.id === 'step1' && structuralProperties.area > 0 && (
-                        <div className="text-xs text-green-600 dark:text-green-400 mt-2">
-                          Weight per meter: ~{structuralProperties.weight.toFixed(2)} kg/m
-                        </div>
-                      )}
-                      {step.id === 'step3' && (
-                        <div className="text-xs text-green-600 dark:text-green-400 mt-2">
-                          Density factor: {temperatureEffects ? 'Temperature-adjusted' : 'Standard conditions (20°C)'}
-                        </div>
-                      )}
+                  {/* Enhanced Variables Section */}
+                  <div className="space-y-3">
+                    <div className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
+                      <Calculator className="h-3 w-3" />
+                      Input Variables & Parameters
                     </div>
+                    <div className="grid gap-2">
+                      {Object.entries(step.variables).map(([key, variable]) => (
+                        <div key={key} className="flex justify-between items-center text-sm bg-gradient-to-r from-background/80 to-background/40 p-3 rounded-lg border border-border/40 hover:border-border/60 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs font-mono bg-primary/15 text-primary px-2 py-1 rounded font-semibold border border-primary/20">
+                              {key}
+                            </code>
+                            <span className="text-muted-foreground">{variable.description}</span>
+                          </div>
+                          <div className="text-right font-mono">
+                            <span className="font-semibold text-foreground">{variable.value}</span>
+                            <span className="text-muted-foreground ml-1 text-xs">{variable.unit}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-                  {/* Notes */}
+                  {/* Enhanced Result Display */}
+                  <div className="bg-gradient-to-br from-green-50/80 to-emerald-50/80 dark:from-green-950/30 dark:to-emerald-950/30 p-4 rounded-lg border border-green-200/50 dark:border-green-800/50">
+                    <div className="text-xs text-foreground mb-2 flex items-center gap-1 font-medium">
+                      <CheckCircle className="h-3 w-3" />
+                      Final Calculated Result
+                    </div>
+                    <div className="font-bold text-xl text-foreground font-mono">
+                      {step.result.value} {step.result.unit}
+                    </div>
+                    {step.id === 'step1' && structuralProperties.area > 0 && (
+                      <div className="text-xs text-muted-foreground mt-2 bg-background/60 p-2 rounded border border-border/30">
+                        <strong>Engineering significance:</strong> Weight per meter ≈ {structuralProperties.weight.toFixed(2)} kg/m
+                        <br />This area value is used for all subsequent structural calculations.
+                      </div>
+                    )}
+                    {step.id === 'step3' && (
+                      <div className="text-xs text-muted-foreground mt-2 bg-background/60 p-2 rounded border border-border/30">
+                        <strong>Calculation basis:</strong> {temperatureEffects ? 'Temperature-adjusted density applied' : 'Standard conditions (20°C)'}
+                        <br />Total material volume: {volume.toFixed(4)} cm³
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Enhanced Notes */}
                   {step.notes && (
                     <Alert>
                       <Info className="h-4 w-4" />
                       <AlertDescription>
-                        <ul className="list-disc list-inside space-y-1">
-                          {step.notes.map((note, noteIndex) => (
-                            <li key={noteIndex} className="text-xs">{note}</li>
-                          ))}
-                        </ul>
+                        <div className="space-y-2">
+                          <strong>Engineering Notes:</strong>
+                          <ul className="list-disc list-inside space-y-1 mt-2">
+                            {step.notes.map((note, noteIndex) => (
+                              <li key={noteIndex} className="text-xs">{note}</li>
+                            ))}
+                          </ul>
+                        </div>
                       </AlertDescription>
                     </Alert>
                   )}

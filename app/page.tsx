@@ -58,6 +58,7 @@ import { useI18n } from "@/contexts/i18n-context"
 import { MobileEnhancedInput, useDimensionSuggestions } from "@/components/mobile-enhanced-input"
 import { MobileResults } from "@/components/mobile-results"
 import { SwipeTabs } from "@/components/swipe-tabs"
+import { CrossSectionViewer } from "@/components/profile-diagrams"
 import { useUserPreferences } from "@/hooks/use-user-preferences"
 import { 
   isProfileCompatible, 
@@ -73,6 +74,23 @@ import {
   getRecommendedPricingModel 
 } from "@/lib/pricing-models"
 import { getProfileTypeName } from "@/lib/i18n"
+
+// Helper function to map profile types for cross-section viewer
+function getProfileTypeForViewer(profileType: string): string {
+  const lowerType = profileType.toLowerCase()
+  if (lowerType.includes('hea') || lowerType.includes('heb') || lowerType.includes('hem') || 
+      lowerType.includes('ipe') || lowerType.includes('ipn')) return 'ibeam'
+  if (lowerType.includes('upn') || lowerType.includes('channel')) return 'channel'
+  if (lowerType.includes('rhs') || lowerType.includes('rectangular')) return 'rhs'
+  if (lowerType.includes('shs') || lowerType.includes('square')) return 'shs'
+  if (lowerType.includes('chs') || lowerType.includes('circular')) return 'chs'
+  if (lowerType.includes('unequal') && lowerType.includes('angle')) return 'unequal_angle'
+  if (lowerType.includes('equal') && lowerType.includes('angle')) return 'equal_angle'
+  if (lowerType.includes('round') || lowerType.includes('bar')) return 'round'
+  if (lowerType.includes('flat')) return 'flat'
+  if (lowerType.includes('plate') || lowerType.includes('sheet')) return 'plate'
+  return profileType
+}
 
 export default function MetalWeightCalculator() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
@@ -1133,7 +1151,7 @@ export default function MetalWeightCalculator() {
           )}>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
-                <CheckCircle className="h-5 w-5 text-foreground" />
+                <CheckCircle className="h-5 w-5 text-muted-foreground" />
                 {t('calculationResults')}
               </CardTitle>
             </CardHeader>
@@ -1182,7 +1200,8 @@ export default function MetalWeightCalculator() {
                 safeAnimation(animations.scaleIn)
               )}>
                 <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                  📦 {t('singleUnit')}
+                  <Calculator className="h-3 w-3" />
+                  {t('singleUnit')}
                   {pricingModel !== 'per_unit' && !(pricingModel === 'per_kg' && weightUnit === 'kg') && (
                     <span className="text-xs">
                       ({pricingModel === 'per_kg' ? 
@@ -1358,23 +1377,23 @@ export default function MetalWeightCalculator() {
               {useTemperatureEffects && structuralProperties.adjustedDensity && (
                 <div className={safeAnimation(`${animations.slideInFromBottom} delay-400`)}>
                   <Separator className="my-4" />
-                  <div className="p-3 bg-gradient-to-br from-blue-50/70 to-cyan-50/70 dark:from-blue-950/30 dark:to-cyan-950/30 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
-                    <h4 className="font-semibold text-xs mb-2 flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                  <div className="p-3 bg-gradient-to-br from-accent/20 to-accent/10 rounded-lg border border-accent/30">
+                    <h4 className="font-semibold text-xs mb-2 flex items-center gap-2 text-foreground">
                       <Layers className="h-3 w-3" />
                       {t('temperatureEffects')}
                     </h4>
                     <div className="grid grid-cols-3 gap-2 text-xs">
-                                              <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
+                                              <div className="p-2 bg-background/60 rounded-md border border-border/50">
                           <span className="text-muted-foreground block">{t('adjustedDensity')}</span>
-                          <div className="font-medium text-blue-700 dark:text-blue-300">{structuralProperties.adjustedDensity.toFixed(3)} g/cm³</div>
+                          <div className="font-medium text-foreground">{structuralProperties.adjustedDensity.toFixed(3)} g/cm³</div>
                         </div>
-                        <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
+                        <div className="p-2 bg-background/60 rounded-md border border-border/50">
                           <span className="text-muted-foreground block">{t('densityChange')}</span>
-                          <div className="font-medium text-blue-700 dark:text-blue-300">{((structuralProperties.adjustedDensity - (selectedMaterial?.density || 0)) / (selectedMaterial?.density || 1) * 100).toFixed(2)}%</div>
+                          <div className="font-medium text-foreground">{((structuralProperties.adjustedDensity - (selectedMaterial?.density || 0)) / (selectedMaterial?.density || 1) * 100).toFixed(2)}%</div>
                         </div>
-                        <div className="p-2 bg-white/60 dark:bg-blue-950/20 rounded-md">
+                        <div className="p-2 bg-background/60 rounded-md border border-border/50">
                           <span className="text-muted-foreground block">{t('originalDensity')}</span>
-                          <div className="font-medium text-blue-700 dark:text-blue-300">{selectedMaterial?.density.toFixed(3)} g/cm³</div>
+                          <div className="font-medium text-foreground">{selectedMaterial?.density.toFixed(3)} g/cm³</div>
                         </div>
                     </div>
                   </div>
@@ -1544,18 +1563,18 @@ export default function MetalWeightCalculator() {
 
                           {/* Toggle for custom dimensions */}
                           <div className="flex items-center justify-between">
-                                                      <span className="text-sm">{t('customDimensions')}</span>
-                          <Button
-                            variant={customInput ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setCustomInput(true)
-                              setStandardSize("")
-                            }}
-                            className={safeAnimation(animations.buttonPress)}
-                          >
-                            {customInput ? t('editingCustom') : t('useCustom')}
-                          </Button>
+                            <span className="text-sm">{t('customDimensions')}</span>
+                            <Button
+                              variant={customInput ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                setCustomInput(true)
+                                setStandardSize("")
+                              }}
+                              className={safeAnimation(animations.buttonPress)}
+                            >
+                              {customInput ? t('editingCustom') : t('useCustom')}
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -1787,6 +1806,20 @@ export default function MetalWeightCalculator() {
                               </div>
                             )}
                           </div>
+
+                          {/* Cross-Section Viewer - Hidden by Default */}
+                          {selectedProfile && (
+                            <>
+                              <Separator className="my-4" />
+                              <CrossSectionViewer
+                                profileType={getProfileTypeForViewer(profileType)}
+                                dimensions={dimensions}
+                                defaultVisible={false}
+                                size="medium"
+                                className="mt-4"
+                              />
+                            </>
+                          )}
                         </CardContent>
                       </Card>
                     </div>
@@ -1944,6 +1977,20 @@ export default function MetalWeightCalculator() {
                           </div>
                         )}
                       </div>
+
+                      {/* Cross-Section Viewer - Hidden by Default */}
+                      {selectedProfile && (
+                        <>
+                          <Separator className="my-4" />
+                          <CrossSectionViewer
+                            profileType={getProfileTypeForViewer(profileType)}
+                            dimensions={dimensions}
+                            defaultVisible={false}
+                            size="large"
+                            className="mt-4"
+                          />
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </div>

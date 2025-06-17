@@ -126,7 +126,7 @@ export function AdvancedStructuralAnalysis({
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium">Allowable Load</Label>
-            <div className="text-lg font-semibold text-green-600">{formatNumber(buckling.allowableLoad)} N</div>
+            <div className="text-lg font-semibold text-green-600 dark:text-green-400">{formatNumber(buckling.allowableLoad)} N</div>
           </div>
         </div>
 
@@ -184,7 +184,7 @@ export function AdvancedStructuralAnalysis({
 
         <div className="space-y-2">
           <Label className="text-sm font-medium">Design Capacity (Conservative)</Label>
-          <div className="text-xl font-bold text-blue-600">{formatNumber(capacity.designCapacity)} N</div>
+          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatNumber(capacity.designCapacity)} N</div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
@@ -236,19 +236,19 @@ export function AdvancedStructuralAnalysis({
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <Label className="text-sm font-medium">Safety Factor</Label>
-            <div className={`text-lg font-semibold ${stress.safetyFactor >= 1.5 ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`text-lg font-semibold ${stress.safetyFactor >= 1.5 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {stress.safetyFactor.toFixed(2)}
             </div>
           </div>
           <div className="flex items-center gap-2">
             {stress.isWithinLimits ? (
               <>
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <Badge variant="default" className="bg-green-100 text-green-800">Safe</Badge>
+                          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <Badge variant="default" className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Safe</Badge>
               </>
             ) : (
               <>
-                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
                 <Badge variant="destructive">Unsafe</Badge>
               </>
             )}
@@ -286,15 +286,15 @@ export function AdvancedStructuralAnalysis({
         <div className="flex items-center gap-2">
           {deflection.isAcceptable ? (
             <>
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <Badge variant="default" className="bg-green-100 text-green-800">Acceptable</Badge>
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <Badge variant="default" className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Acceptable</Badge>
             </>
-          ) : (
-            <>
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <Badge variant="destructive">Excessive Deflection</Badge>
-            </>
-          )}
+                      ) : (
+              <>
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <Badge variant="destructive">Excessive Deflection</Badge>
+              </>
+            )}
         </div>
       </CardContent>
     </Card>

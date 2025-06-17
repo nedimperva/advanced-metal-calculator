@@ -510,36 +510,97 @@ function ProfileVisualization({ profileType }: { profileType: string }) {
       </svg>
     ),
 
-    // Angles - Equal Angle
+    // Angles - Equal Angle (Enhanced Design)
     equalAngle: (
       <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <marker id="arrow-angle" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
             <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
           </marker>
+          {/* Steel cross-hatching pattern */}
+          <pattern id="steelCrosshatch-angle" patternUnits="userSpaceOnUse" width="6" height="6">
+            <path d="M 0,6 L 6,0 M 0,0 L 6,6" stroke="currentColor" strokeWidth="0.5" opacity="0.3"/>
+            <path d="M 3,9 L 9,3 M -3,3 L 3,-3" stroke="currentColor" strokeWidth="0.5" opacity="0.3"/>
+          </pattern>
         </defs>
-        {/* Equal angle profile */}
-        <path d="M35 15 L35 60 L75 60 L75 52 L43 52 L43 23 L75 23 L75 15 Z" 
-              stroke="currentColor" strokeWidth="3" fill="currentColor" fillOpacity="0.15" />
-        {/* Dimensions */}
-        <line x1="25" y1="15" x2="25" y2="60" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-angle)" markerStart="url(#arrow-angle)" />
-        <text x="18" y="40" textAnchor="middle" className="text-[8px] fill-current font-medium" transform="rotate(-90, 18, 40)">a</text>
-        <line x1="35" y1="70" x2="75" y2="70" stroke="currentColor" strokeWidth="1" markerEnd="url(#arrow-angle)" markerStart="url(#arrow-angle)" />
-        <text x="55" y="78" textAnchor="middle" className="text-[8px] fill-current font-medium">a</text>
-        <text x="55" y="10" textAnchor="middle" className="text-xs fill-current font-bold">L =</text>
-        {/* Thickness indicator */}
-        <text x="85" y="20" className="text-[7px] fill-current">t</text>
-        <text x="85" y="55" className="text-[7px] fill-current">r</text>
+        
+        {/* Equal angle L-profile with proper proportions */}
+        <g transform="translate(20, 10)">
+          {/* Main L-shape path with proper thickness */}
+          <path d="M 0 55 L 0 0 L 55 0 L 55 12 L 12 12 L 12 55 Z" 
+                stroke="currentColor" strokeWidth="2.5" fill="url(#steelCrosshatch-angle)" fillOpacity="0.4" />
+          
+          {/* Internal corner fillet */}
+          <path d="M 12 12 Q 8 8 12 4 Q 16 8 20 12" 
+                stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6" />
+          
+          {/* Dimensions with improved arrows */}
+          <line x1="-8" y1="0" x2="-8" y2="55" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-angle)" markerStart="url(#arrow-angle)" />
+          <text x="-12" y="28" textAnchor="middle" className="text-[8px] fill-current font-semibold" 
+                transform="rotate(-90, -12, 28)">a</text>
+          
+          <line x1="0" y1="65" x2="55" y2="65" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-angle)" markerStart="url(#arrow-angle)" />
+          <text x="27" y="72" textAnchor="middle" className="text-[8px] fill-current font-semibold">a</text>
+          
+          {/* Profile designation */}
+          <text x="27" y="-2" textAnchor="middle" className="text-xs fill-current font-bold">L</text>
+          
+          {/* Thickness indicators */}
+          <text x="65" y="8" className="text-[7px] fill-current font-medium">t</text>
+          <text x="8" y="63" className="text-[7px] fill-current font-medium">t</text>
+          <text x="65" y="18" className="text-[7px] fill-current opacity-70">r</text>
+        </g>
       </svg>
     ),
     unequalAngle: (
       <svg width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* Unequal angle */}
-        <path d="M30 15 L30 65 L70 65 L70 55 L40 55 L40 25 L90 25 L90 15 Z" 
-              stroke="currentColor" strokeWidth="3" fill="currentColor" fillOpacity="0.1" />
-        <text x="95" y="20" className="text-xs fill-current">a</text>
-        <text x="75" y="75" className="text-xs fill-current">b</text>
-        <text x="60" y="10" textAnchor="middle" className="text-xs fill-current font-bold">L≠</text>
+        <defs>
+          <marker id="arrow-unequal" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="currentColor" />
+          </marker>
+          {/* Steel cross-hatching pattern */}
+          <pattern id="steelCrosshatch-unequal" patternUnits="userSpaceOnUse" width="6" height="6">
+            <path d="M 0,6 L 6,0 M 0,0 L 6,6" stroke="currentColor" strokeWidth="0.5" opacity="0.3"/>
+            <path d="M 3,9 L 9,3 M -3,3 L 3,-3" stroke="currentColor" strokeWidth="0.5" opacity="0.3"/>
+          </pattern>
+        </defs>
+        
+        {/* Unequal angle L-profile with different leg lengths */}
+        <g transform="translate(15, 10)">
+          {/* Main L-shape path with unequal legs */}
+          <path d="M 0 50 L 0 0 L 70 0 L 70 10 L 10 10 L 10 50 Z" 
+                stroke="currentColor" strokeWidth="2.5" fill="url(#steelCrosshatch-unequal)" fillOpacity="0.4" />
+          
+          {/* Internal corner fillet */}
+          <path d="M 10 10 Q 6 6 10 3 Q 14 6 18 10" 
+                stroke="currentColor" strokeWidth="1" fill="none" opacity="0.6" />
+          
+          {/* Dimensions for longer leg (horizontal) */}
+          <line x1="0" y1="60" x2="70" y2="60" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-unequal)" markerStart="url(#arrow-unequal)" />
+          <text x="35" y="67" textAnchor="middle" className="text-[8px] fill-current font-semibold">a</text>
+          
+          {/* Dimensions for shorter leg (vertical) */}
+          <line x1="-8" y1="0" x2="-8" y2="50" stroke="currentColor" strokeWidth="1" 
+                markerEnd="url(#arrow-unequal)" markerStart="url(#arrow-unequal)" />
+          <text x="-12" y="25" textAnchor="middle" className="text-[8px] fill-current font-semibold" 
+                transform="rotate(-90, -12, 25)">b</text>
+          
+          {/* Profile designation */}
+          <text x="35" y="-2" textAnchor="middle" className="text-xs fill-current font-bold">L ≠</text>
+          
+          {/* Thickness indicators */}
+          <text x="78" y="6" className="text-[7px] fill-current font-medium">t</text>
+          <text x="6" y="58" className="text-[7px] fill-current font-medium">t</text>
+          <text x="78" y="16" className="text-[7px] fill-current opacity-70">r</text>
+          
+          {/* Additional notation for unequal legs */}
+          <text x="80" y="35" className="text-[6px] fill-current opacity-80" transform="rotate(-90, 80, 35)">
+            a ≠ b
+          </text>
+        </g>
       </svg>
     ),
 

@@ -18,9 +18,9 @@ export function LoadingSpinner({
   className = "" 
 }: LoadingSpinnerProps) {
   const sizeClasses = {
-    sm: "h-4 w-4",
-    md: "h-6 w-6", 
-    lg: "h-8 w-8"
+    sm: "h-4 w-4 animate-spin text-muted-foreground",
+    md: "h-6 w-6 animate-spin text-muted-foreground", 
+    lg: "h-8 w-8 animate-spin text-muted-foreground"
   }
 
   return (
@@ -175,10 +175,10 @@ export function MultiStageLoading({ stages, currentStage = 0 }: MultiStageLoadin
               <div key={index} className="flex items-center gap-3">
                 <div className="flex-shrink-0">
                   {stage.status === 'completed' && (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400" />
                   )}
                   {stage.status === 'active' && (
-                    <Loader2 className="h-5 w-5 text-primary" />
+                    <Loader2 className="h-5 w-5 text-primary animate-spin" />
                   )}
                   {stage.status === 'error' && (
                     <AlertCircle className="h-5 w-5 text-destructive" />
@@ -226,7 +226,7 @@ export function InlineLoading({
 }: InlineLoadingProps) {
   if (!isLoading) return <>{children}</>
   
-  const spinnerSize = size === "sm" ? "h-3 w-3" : "h-4 w-4"
+  const spinnerSize = size === "sm" ? "h-3 w-3 animate-spin text-muted-foreground" : "h-4 w-4 animate-spin text-muted-foreground"
   
   return (
     <div className="flex items-center gap-2">
@@ -276,7 +276,7 @@ export function PageLoading({ message = "Loading application...", isVisible }: P
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
       <Card className="p-8">
         <CardContent className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 text-primary" />
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
           <p className="text-lg font-medium">{message}</p>
           <p className="text-sm text-muted-foreground">Please wait...</p>
         </CardContent>

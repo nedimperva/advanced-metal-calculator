@@ -187,10 +187,10 @@ export function EnhancedInput({
       return <AlertCircle className="h-4 w-4 text-destructive" />
     }
     if (validation.warnings.length > 0) {
-      return <AlertTriangle className="h-4 w-4 text-yellow-500" />
+      return <AlertTriangle className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />
     }
     if (value.trim() && validation.isValid) {
-      return <CheckCircle className="h-4 w-4 text-green-500" />
+      return <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
     }
     return null
   }, [showValidationIcons, hasBeenTouched, isLoading, validation, value])
@@ -274,7 +274,7 @@ export function EnhancedInput({
           ))}
           
           {validation.warnings.map((warning, index) => (
-            <Alert key={`warning-${index}`} className="py-2 border-yellow-500 text-yellow-700">
+            <Alert key={`warning-${index}`} className="py-2 border-yellow-500 dark:border-yellow-400 text-yellow-700 dark:text-yellow-300">
               <AlertTriangle className="h-3 w-3" />
               <AlertDescription className="text-xs">{warning}</AlertDescription>
             </Alert>
@@ -411,14 +411,14 @@ export function ValidationSummary({
       )}
 
       {warnings.length > 0 && (
-        <Alert className="border-yellow-500">
-          <AlertTriangle className="h-4 w-4 text-yellow-500" />
+        <Alert className="border-yellow-500 dark:border-yellow-400">
+          <AlertTriangle className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />
           <AlertDescription>
             <div className="space-y-1">
-              <div className="font-medium text-yellow-700">
+              <div className="font-medium text-yellow-700 dark:text-yellow-300">
                 {warnings.length} warning{warnings.length > 1 ? 's' : ''}:
               </div>
-              <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
+              <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
                 {warnings.map((warning, index) => (
                   <li key={index}>{warning}</li>
                 ))}

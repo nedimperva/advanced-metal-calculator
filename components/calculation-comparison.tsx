@@ -133,8 +133,8 @@ export function CalculationComparison({
   const getComparisonIcon = (value: number, baseline: number) => {
     const diff = ((value - baseline) / baseline) * 100
     if (Math.abs(diff) < 1) return <Equal className="h-3 w-3 text-muted-foreground" />
-    if (diff > 0) return <TrendingUp className="h-3 w-3 text-green-500" />
-    return <TrendingDown className="h-3 w-3 text-red-500" />
+    if (diff > 0) return <TrendingUp className="h-3 w-3 text-green-500 dark:text-green-400" />
+    return <TrendingDown className="h-3 w-3 text-red-500 dark:text-red-400" />
   }
 
   const getPercentageDiff = (value: number, baseline: number) => {
