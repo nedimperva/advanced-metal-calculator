@@ -33,7 +33,8 @@ import {
   TrendingDown,
   Equal,
   Eye,
-  FolderOpen
+  FolderOpen,
+  Trash2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
@@ -45,6 +46,7 @@ interface CalculationHistoryProps {
   onLoadCalculation?: (calculation: Calculation) => void
   onMoveToProject?: (calculationId: string, projectId: string) => void
   onAddToComparison?: (calculationId: string) => void
+  onDeleteCalculation?: (calculationId: string) => void
 }
 
 interface CalculationComparisonProps {
@@ -124,7 +126,8 @@ export function CalculationHistory({
   calculations, 
   onLoadCalculation,
   onMoveToProject,
-  onAddToComparison
+  onAddToComparison,
+  onDeleteCalculation
 }: CalculationHistoryProps) {
   const [historyFilters, setHistoryFilters] = useState<HistoryFilters>({
     projectId: 'all',
@@ -348,6 +351,22 @@ export function CalculationHistory({
               </div>
               
               <div className="flex items-center gap-2">
+                {onDeleteCalculation && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (window.confirm(`Are you sure you want to delete "${calculation.name || 'this calculation'}"?`)) {
+                        onDeleteCalculation(calculation.id)
+                      }
+                    }}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                )}
+
                 {onAddToComparison && (
                   <Button
                     variant="outline"

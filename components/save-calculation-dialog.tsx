@@ -42,6 +42,8 @@ interface SaveCalculationDialogProps {
   onSave: (calculation: Calculation, projectId?: string) => Promise<void>
   children: React.ReactNode
   disabled?: boolean
+  isEditMode?: boolean
+  editingCalculationId?: string
 }
 
 interface QuickProjectForm {
@@ -55,7 +57,9 @@ export function SaveCalculationDialog({
   calculation, 
   onSave, 
   children, 
-  disabled = false 
+  disabled = false,
+  isEditMode = false,
+  editingCalculationId
 }: SaveCalculationDialogProps) {
   const [open, setOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -228,10 +232,13 @@ export function SaveCalculationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Save className="h-5 w-5" />
-            Save Calculation
+            {isEditMode ? "Update Calculation" : "Save Calculation"}
           </DialogTitle>
           <DialogDescription>
-            Save your calculation to history and optionally assign it to a project.
+            {isEditMode 
+              ? "Update your calculation and optionally change its project assignment."
+              : "Save your calculation to history and optionally assign it to a project."
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -443,7 +450,7 @@ export function SaveCalculationDialog({
             ) : (
               <Save className="h-4 w-4 mr-1" />
             )}
-            Save Calculation
+            {isEditMode ? "Update Calculation" : "Save Calculation"}
           </Button>
         </DialogFooter>
       </DialogContent>

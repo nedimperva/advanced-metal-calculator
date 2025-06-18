@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+// Navigation is now handled within the tab system - no router needed
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -60,19 +60,19 @@ export function ProjectNavigation({
   activeTab,
   onTabChange
 }: ProjectNavigationProps) {
-  const router = useRouter()
-  const pathname = usePathname()
+  // Router and pathname no longer needed - navigation handled by parent
   const { deleteProject } = useProjects()
 
   // Handle navigation actions
   const handleBack = () => {
-    router.push('/projects')
+    // Navigation will be handled by parent component within tab system
+    console.log('Navigate back to projects')
   }
 
   const handleEdit = () => {
-    if (project) {
-      router.push(`/projects/${project.id}/edit`)
-    }
+    // Edit functionality will be handled in-place within the tab system
+    console.log('Edit project:', project?.id)
+    // TODO: Implement inline editing or edit modal
   }
 
   const handleShare = async () => {
@@ -100,7 +100,8 @@ export function ProjectNavigation({
     if (project && confirm(`Are you sure you want to delete "${project.name}"?`)) {
       try {
         await deleteProject(project.id)
-        router.push('/projects')
+        // Navigation will be handled by parent component
+        console.log('Project deleted, navigate back to projects')
       } catch (error) {
         console.error('Failed to delete project:', error)
       }
@@ -109,7 +110,8 @@ export function ProjectNavigation({
 
   const handleAddCalculation = () => {
     if (project) {
-      router.push(`/?project=${project.id}`)
+      // Calculator navigation will be handled by parent component
+      console.log('Navigate to calculator with project:', project.id)
     }
   }
 
@@ -256,11 +258,8 @@ export function ProjectHeader({ project, className }: ProjectHeaderProps) {
           >
             {PROJECT_STATUS_LABELS[project.status]}
           </Badge>
-          {project.materials?.length && (
-            <span>{project.materials.length} materials</span>
-          )}
           {project.calculationIds?.length && (
-            <span>• {project.calculationIds.length} calculations</span>
+            <span>{project.calculationIds.length} calculations</span>
           )}
         </div>
       </div>
@@ -275,11 +274,12 @@ interface ProjectSelectorProps {
 }
 
 export function ProjectSelector({ currentProject, className }: ProjectSelectorProps) {
-  const router = useRouter()
+  // Router no longer needed - navigation handled by parent
   const { projects } = useProjects()
 
   const handleProjectSelect = (projectId: string) => {
-    router.push(`/projects/${projectId}`)
+    // Project navigation will be handled by parent component
+    console.log('Select project:', projectId)
   }
 
   const recentProjects = projects.slice(0, 5)
@@ -317,14 +317,14 @@ export function ProjectSelector({ currentProject, className }: ProjectSelectorPr
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push('/projects')}>
+        <DropdownMenuItem onClick={() => console.log('View all projects')}>
           <Eye className="h-4 w-4 mr-2" />
           View All Projects
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push('/projects/new')}>
+        {/* <DropdownMenuItem onClick={() => router.push('/projects/new')}>
           <Plus className="h-4 w-4 mr-2" />
           New Project
-        </DropdownMenuItem>
+        </DropdownMenuItem> */}
       </DropdownMenuContent>
     </DropdownMenu>
   )

@@ -293,8 +293,16 @@ export async function saveCalculation(calculation: Omit<Calculation, 'id' | 'tim
 }
 
 export async function saveCalculationToProject(calculation: Calculation, projectId: string): Promise<void> {
-  // Save calculation to database
-  await createRecord(STORES.CALCULATIONS, calculation)
+  // Check if calculation already exists
+  const existingCalc = await getRecord(STORES.CALCULATIONS, calculation.id)
+  
+  if (existingCalc) {
+    // Update existing calculation
+    await updateRecord(STORES.CALCULATIONS, calculation)
+  } else {
+    // Create new calculation
+    await createRecord(STORES.CALCULATIONS, calculation)
+  }
   
   // Update project to include this calculation
   const project = await getProject(projectId)

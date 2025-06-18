@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+// Router no longer needed - navigation handled by parent
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -95,7 +95,7 @@ export default function ProjectDetails({
   onUpdate,
   className
 }: ProjectDetailsProps) {
-  const router = useRouter()
+  // Router no longer needed - navigation handled by parent
   const { updateProject, deleteProject } = useProjects()
   
   // Local state
@@ -167,8 +167,8 @@ export default function ProjectDetails({
         description: `Successfully deleted project "${project.name}"`,
       })
       
-      // Navigate back to projects list
-      router.push('/projects')
+      // Navigation will be handled by parent component
+      console.log('Project deleted, navigate back to projects')
     } catch (error) {
       console.error('Failed to delete project:', error)
       toast({

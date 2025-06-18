@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+// Router no longer needed - navigation handled by parent
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,14 +55,18 @@ interface MobileProjectDashboardProps {
   className?: string
   maxProjects?: number
   onProjectSelect?: (project: Project) => void
+  onCreateProject?: () => void
+  onEditProject?: (project: Project) => void
 }
 
 export default function MobileProjectDashboard({ 
   className,
   maxProjects,
-  onProjectSelect 
+  onProjectSelect,
+  onCreateProject,
+  onEditProject 
 }: MobileProjectDashboardProps) {
-  const router = useRouter()
+  // Router no longer needed - navigation handled by parent
   const isMobile = !useMediaQuery("(min-width: 768px)")
   
   // Project context
@@ -207,11 +211,18 @@ export default function MobileProjectDashboard({
 
   // Navigation handlers
   const handleCreateProject = () => {
-    router.push('/projects/new')
+    if (onCreateProject) {
+      onCreateProject()
+    } else {
+      // Emit event to parent to show create dialog
+      const event = new CustomEvent('showCreateProjectDialog')
+      window.dispatchEvent(event)
+    }
   }
 
   const handleViewTemplates = () => {
-    router.push('/projects/templates')
+    // Template viewing will be handled within the tab system
+    console.log('View templates')
   }
 
   const handleViewProject = (projectId: string) => {
@@ -221,12 +232,20 @@ export default function MobileProjectDashboard({
         onProjectSelect(project)
       }
     } else {
-      router.push(`/projects/${projectId}`)
+      // Project viewing will be handled within the tab system
+      console.log('View project:', projectId)
     }
   }
 
   const handleEditProject = (projectId: string) => {
-    router.push(`/projects/${projectId}/edit`)
+    if (onEditProject) {
+      const project = projects.find(p => p.id === projectId)
+      if (project) {
+        onEditProject(project)
+      }
+    } else {
+      console.log('Edit project:', projectId)
+    }
   }
 
   // Sort options
@@ -504,10 +523,10 @@ export default function MobileProjectDashboard({
                         <Plus className="h-4 w-4 mr-2" />
                         Create First Project
                       </Button>
-                      <Button variant="outline" onClick={handleViewTemplates} className="w-full">
+                      {/* <Button variant="outline" onClick={handleViewTemplates} className="w-full">
                         <Layers className="h-4 w-4 mr-2" />
                         Browse Templates
-                      </Button>
+                      </Button> */}
                     </div>
                   )}
                 </CardContent>

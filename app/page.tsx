@@ -14,6 +14,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock, FolderOpen, Plus, Archive } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { useRouter, useSearchParams } from "next/navigation"
+import ProjectCreationModal from "@/components/project-creation-modal"
 
 import { cn, formatCalculationName, getShortMaterialTag } from "@/lib/utils"
 import { animations, animationPresets, safeAnimation, createStaggeredAnimation } from "@/lib/animations"
@@ -67,7 +69,6 @@ import {
 } from "@/lib/material-profile-compatibility"
 import { useProjects } from "@/contexts/project-context"
 import { saveCalculationToProject } from "@/lib/database"
-import { useRouter, useSearchParams } from "next/navigation"
 import PricingModelSelector from "@/components/pricing-model-selector"
 import ProjectDashboard from "@/components/project-dashboard"
 import MobileProjectDashboard from "@/components/mobile-project-dashboard"
@@ -87,10 +88,27 @@ function ProjectsTabContent() {
   const isDesktop = useMediaQuery("(min-width: 1024px)")
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [showProjectDetails, setShowProjectDetails] = useState(false)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+
+  // Listen for mobile create project events
+  useEffect(() => {
+    const handleShowCreateDialog = () => {
+      setShowCreateDialog(true)
+    }
+
+    window.addEventListener('showCreateProjectDialog', handleShowCreateDialog)
+    return () => {
+      window.removeEventListener('showCreateProjectDialog', handleShowCreateDialog)
+    }
+  }, [])
 
   const handleProjectSelect = (project: Project) => {
     setSelectedProject(project)
     setShowProjectDetails(true)
+    // Clear any pending edit modal state when navigating to project details
+    setShowCreateDialog(false)
+    setEditingProject(null)
   }
 
   const handleBackToProjects = () => {
@@ -99,34 +117,81 @@ function ProjectsTabContent() {
   }
 
   const handleEditProject = (project: Project) => {
-    // Handle project editing - could open a modal or navigate to edit page
-    console.log('Edit project:', project)
+    // If we're currently viewing project details, stay in project details
+    // and let the unified project details handle the edit
+    if (showProjectDetails && selectedProject?.id === project.id) {
+      return
+    }
+    
+    // Otherwise, close project details and show edit modal
+    setShowProjectDetails(false)
+    setSelectedProject(null)
+    setEditingProject(project)
+    setShowCreateDialog(true)
   }
+
+  const handleCreateProject = () => {
+    setEditingProject(null) // Clear any editing project
+    setShowCreateDialog(true)
+  }
+
+  const handleProjectCreated = (projectId: string) => {
+    // Optionally handle project selection after creation
+    console.log('Project created:', projectId)
+  }
+
+
 
   if (showProjectDetails && selectedProject) {
     return (
       <UnifiedProjectDetails
         project={selectedProject}
         onBack={handleBackToProjects}
-        onEdit={handleEditProject}
+        onEdit={() => {
+          // When editing from project details, open edit modal while staying in project details
+          if (selectedProject) {
+            setEditingProject(selectedProject || null)
+            setShowCreateDialog(true)
+          }
+        }}
+
       />
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       {isDesktop ? (
         <ProjectDashboard 
-          showHeader={false} 
+          showHeader={true} 
           maxProjects={6} 
           onProjectSelect={handleProjectSelect}
+          onCreateProject={handleCreateProject}
+          onEditProject={handleEditProject}
         />
       ) : (
         <MobileProjectDashboard 
           maxProjects={6}
           onProjectSelect={handleProjectSelect}
+          onCreateProject={handleCreateProject}
+          onEditProject={handleEditProject}
         />
       )}
+
+
+
+      {/* Create/Edit Project Modal */}
+      <ProjectCreationModal
+        open={showCreateDialog}
+        onOpenChange={(open) => {
+          setShowCreateDialog(open)
+          if (!open) {
+            setEditingProject(null) // Clear editing project when modal closes
+          }
+        }}
+        onProjectCreated={handleProjectCreated}
+        editProject={editingProject}
+      />
     </div>
   )
 }
@@ -312,6 +377,10 @@ export default function MetalWeightCalculator() {
   const [showNotesInput, setShowNotesInput] = useState(false)
   const [calculationNotes, setCalculationNotes] = useState("")
 
+  // Edit mode state
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editingCalculationId, setEditingCalculationId] = useState<string | null>(null)
+
   // Load saved calculations from both localStorage and IndexedDB
   useEffect(() => {
     const loadSavedCalculations = async () => {
@@ -344,6 +413,31 @@ export default function MetalWeightCalculator() {
         allCalcs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
         
         setCalculations(allCalcs)
+
+        // Check for edit parameter in URL
+        const urlParams = new URLSearchParams(window.location.search)
+        const editId = urlParams.get('edit')
+        const projectId = urlParams.get('project')
+        
+        if (editId) {
+          const calcToEdit = allCalcs.find(calc => calc.id === editId)
+          if (calcToEdit) {
+            // Set project context if provided
+            if (projectId) {
+              setActiveProjectId(projectId)
+              selectProject(projectId)
+            }
+            
+            // Load calculation in edit mode
+            loadCalculation(calcToEdit, true)
+            
+            // Clean up URL parameters
+            const newUrl = new URL(window.location.href)
+            newUrl.searchParams.delete('edit')
+            newUrl.searchParams.delete('project')
+            window.history.replaceState({}, '', newUrl.toString())
+          }
+        }
       } catch (error) {
         console.error("Error loading saved calculations:", error)
         toast({
@@ -690,73 +784,238 @@ export default function MetalWeightCalculator() {
 
       // Create calculation object for naming
       const tempCalc = {
+        id: isEditMode ? editingCalculationId! : Date.now().toString(),
+        profileCategory,
         profileType,
         standardSize: standardSize || "Custom",
         dimensions: { ...dimensions, length },
         materialName: selectedMaterial.name,
-        profileName: getProfileTypeName(language, profileType)
-      }
+        profileName: getProfileTypeName(language, profileType),
+        material,
+        grade,
+        weight,
+        weightUnit,
+        crossSectionalArea: structuralProperties.area,
+        timestamp: new Date()
+      } as Calculation
 
       // Use established naming convention
       const { mainName, materialTag } = formatCalculationName(tempCalc)
 
-      const newCalculation: Calculation = {
-        id: Date.now().toString(),
-        name: mainName, // Use formatted name based on established convention
-        profileCategory,
-        profileType,
-        profileName: getProfileTypeName(language, profileType),
-        standardSize: standardSize || "Custom",
-        material,
-        grade,
-        materialName: selectedMaterial.name,
-        dimensions: { ...dimensions, length },
-        weight,
-        weightUnit,
-        lengthUnit,
-        crossSectionalArea: structuralProperties.area,
-        // Enhanced structural properties
-        momentOfInertiaX: structuralProperties.momentOfInertiaX,
-        momentOfInertiaY: structuralProperties.momentOfInertiaY,
-        sectionModulusX: structuralProperties.sectionModulusX,
-        sectionModulusY: structuralProperties.sectionModulusY,
-        radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
-        radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
-        perimeter: structuralProperties.perimeter,
-        // Pricing information
-        quantity: parseFloat(quantity),
-        priceValue: pricePerUnit ? parseFloat(pricePerUnit) : undefined,
-        pricingModel,
-        currency,
-        totalCost,
-        unitCost,
-        totalWeight,
-        // Project assignment - automatically assign to active project
-        projectId: activeProjectId || undefined,
-        notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`, // User notes or default context
-        timestamp: new Date(),
+      let updatedCalculation: Calculation
+
+      if (isEditMode && editingCalculationId) {
+        // Update existing calculation
+        const existingCalc = calculations.find(calc => calc.id === editingCalculationId)
+        updatedCalculation = {
+          ...existingCalc!,
+          name: mainName,
+          profileCategory,
+          profileType,
+          profileName: getProfileTypeName(language, profileType),
+          standardSize: standardSize || "Custom",
+          material,
+          grade,
+          materialName: selectedMaterial.name,
+          dimensions: { ...dimensions, length },
+          weight,
+          weightUnit,
+          lengthUnit,
+          crossSectionalArea: structuralProperties.area,
+          // Enhanced structural properties
+          momentOfInertiaX: structuralProperties.momentOfInertiaX,
+          momentOfInertiaY: structuralProperties.momentOfInertiaY,
+          sectionModulusX: structuralProperties.sectionModulusX,
+          sectionModulusY: structuralProperties.sectionModulusY,
+          radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
+          radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
+          perimeter: structuralProperties.perimeter,
+          // Pricing information
+          quantity: parseFloat(quantity),
+          priceValue: pricePerUnit ? parseFloat(pricePerUnit) : undefined,
+          pricingModel,
+          currency,
+          totalCost,
+          unitCost,
+          totalWeight,
+          // Project assignment - automatically assign to active project
+          projectId: activeProjectId || undefined,
+          notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`,
+          // Keep original timestamp
+          timestamp: existingCalc?.timestamp || new Date(),
+        }
+
+        // Update the calculation in the list
+        const updated = calculations.map(calc => 
+          calc.id === editingCalculationId ? updatedCalculation : calc
+        )
+        setCalculations(updated)
+        localStorage.setItem("metal-calculations", JSON.stringify(updated))
+      } else {
+        // Create new calculation
+        updatedCalculation = {
+          id: Date.now().toString(),
+          name: mainName,
+          profileCategory,
+          profileType,
+          profileName: getProfileTypeName(language, profileType),
+          standardSize: standardSize || "Custom",
+          material,
+          grade,
+          materialName: selectedMaterial.name,
+          dimensions: { ...dimensions, length },
+          weight,
+          weightUnit,
+          lengthUnit,
+          crossSectionalArea: structuralProperties.area,
+          // Enhanced structural properties
+          momentOfInertiaX: structuralProperties.momentOfInertiaX,
+          momentOfInertiaY: structuralProperties.momentOfInertiaY,
+          sectionModulusX: structuralProperties.sectionModulusX,
+          sectionModulusY: structuralProperties.sectionModulusY,
+          radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
+          radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
+          perimeter: structuralProperties.perimeter,
+          // Pricing information
+          quantity: parseFloat(quantity),
+          priceValue: pricePerUnit ? parseFloat(pricePerUnit) : undefined,
+          pricingModel,
+          currency,
+          totalCost,
+          unitCost,
+          totalWeight,
+          // Project assignment - automatically assign to active project
+          projectId: activeProjectId || undefined,
+          notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`,
+          timestamp: new Date(),
+        }
+
+        const updated = [updatedCalculation, ...calculations.slice(0, 19)] // Keep last 20
+        setCalculations(updated)
+        localStorage.setItem("metal-calculations", JSON.stringify(updated))
       }
 
-      const updated = [newCalculation, ...calculations.slice(0, 19)] // Keep last 20
-      setCalculations(updated)
-      localStorage.setItem("metal-calculations", JSON.stringify(updated))
+      if (isEditMode && editingCalculationId) {
+        // Update existing calculation
+        const existingCalc = calculations.find(calc => calc.id === editingCalculationId)
+        updatedCalculation = {
+          ...existingCalc!,
+          name: mainName, // Use formatted name based on established convention
+          profileCategory,
+          profileType,
+          profileName: getProfileTypeName(language, profileType),
+          standardSize: standardSize || "Custom",
+          material,
+          grade,
+          materialName: selectedMaterial.name,
+          dimensions: { ...dimensions, length },
+          weight,
+          weightUnit,
+          lengthUnit,
+          crossSectionalArea: structuralProperties.area,
+          // Enhanced structural properties
+          momentOfInertiaX: structuralProperties.momentOfInertiaX,
+          momentOfInertiaY: structuralProperties.momentOfInertiaY,
+          sectionModulusX: structuralProperties.sectionModulusX,
+          sectionModulusY: structuralProperties.sectionModulusY,
+          radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
+          radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
+          perimeter: structuralProperties.perimeter,
+          // Pricing information
+          quantity: parseFloat(quantity),
+          priceValue: pricePerUnit ? parseFloat(pricePerUnit) : undefined,
+          pricingModel,
+          currency,
+          totalCost,
+          unitCost,
+          totalWeight,
+          // Project assignment - automatically assign to active project
+          projectId: activeProjectId || undefined,
+          notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`, // User notes or default context
+          // Keep original timestamp, but update if needed
+          timestamp: existingCalc?.timestamp || new Date(),
+        }
+
+        // Update the calculation in the list
+        const updated = calculations.map(calc => 
+          calc.id === editingCalculationId ? updatedCalculation : calc
+        )
+        setCalculations(updated)
+        localStorage.setItem("metal-calculations", JSON.stringify(updated))
+      } else {
+        // Create new calculation
+        updatedCalculation = {
+          id: Date.now().toString(),
+          name: mainName, // Use formatted name based on established convention
+          profileCategory,
+          profileType,
+          profileName: getProfileTypeName(language, profileType),
+          standardSize: standardSize || "Custom",
+          material,
+          grade,
+          materialName: selectedMaterial.name,
+          dimensions: { ...dimensions, length },
+          weight,
+          weightUnit,
+          lengthUnit,
+          crossSectionalArea: structuralProperties.area,
+          // Enhanced structural properties
+          momentOfInertiaX: structuralProperties.momentOfInertiaX,
+          momentOfInertiaY: structuralProperties.momentOfInertiaY,
+          sectionModulusX: structuralProperties.sectionModulusX,
+          sectionModulusY: structuralProperties.sectionModulusY,
+          radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
+          radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
+          perimeter: structuralProperties.perimeter,
+          // Pricing information
+          quantity: parseFloat(quantity),
+          priceValue: pricePerUnit ? parseFloat(pricePerUnit) : undefined,
+          pricingModel,
+          currency,
+          totalCost,
+          unitCost,
+          totalWeight,
+          // Project assignment - automatically assign to active project
+          projectId: activeProjectId || undefined,
+          notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`, // User notes or default context
+          timestamp: new Date(),
+        }
+
+        const updated = [updatedCalculation, ...calculations.slice(0, 19)] // Keep last 20
+        setCalculations(updated)
+        localStorage.setItem("metal-calculations", JSON.stringify(updated))
+      }
 
       // Save to IndexedDB for project management
       if (activeProjectId) {
-        await saveCalculationToProject(newCalculation, activeProjectId)
+        await saveCalculationToProject(updatedCalculation, activeProjectId)
         // Refresh project context to show the new calculation
         await refreshProjects()
+      } else if (isEditMode) {
+        // If we're editing but no project is selected, still update in IndexedDB if it exists there
+        try {
+          const { updateCalculation } = await import('../lib/database')
+          await updateCalculation(updatedCalculation)
+        } catch (error) {
+          console.warn("Failed to update calculation in IndexedDB:", error)
+        }
       }
 
       const projectName = activeProjectId ? projects.find(p => p.id === activeProjectId)?.name : 'General History'
       
-      // Clear notes after saving
+      // Clear edit mode and notes after saving
+      if (isEditMode) {
+        setIsEditMode(false)
+        setEditingCalculationId(null)
+      }
       setCalculationNotes("")
       setShowNotesInput(false)
 
       toast({
-        title: t('calculationSaved'),
-        description: `Saved "${mainName}" to ${projectName}`,
+        title: isEditMode ? "Calculation Updated" : t('calculationSaved'),
+        description: isEditMode 
+          ? `Updated "${mainName}" in ${projectName}`
+          : `Saved "${mainName}" to ${projectName}`,
       })
     } catch (error) {
       console.error("Error saving calculation:", error)
@@ -936,7 +1195,56 @@ export default function MetalWeightCalculator() {
     }
   }
 
-  const loadCalculation = (calc: Calculation) => {
+  // Function to delete a calculation
+  const deleteCalculation = async (calculationId: string) => {
+    try {
+      // Remove from state
+      const updatedCalculations = calculations.filter(calc => calc.id !== calculationId)
+      setCalculations(updatedCalculations)
+      
+      // Update localStorage
+      localStorage.setItem("metal-calculations", JSON.stringify(updatedCalculations))
+      
+      // Remove from IndexedDB if it exists there
+      try {
+        const { deleteCalculation: dbDeleteCalculation } = await import('../lib/database')
+        await dbDeleteCalculation(calculationId)
+      } catch (dbError) {
+        console.warn("Failed to delete from IndexedDB:", dbError)
+      }
+      
+      // If we're currently editing this calculation, exit edit mode
+      if (editingCalculationId === calculationId) {
+        cancelEditMode()
+      }
+      
+      toast({
+        title: "Calculation Deleted",
+        description: "The calculation has been removed from history.",
+      })
+    } catch (error) {
+      console.error("Error deleting calculation:", error)
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete calculation. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Function to cancel edit mode
+  const cancelEditMode = () => {
+    setIsEditMode(false)
+    setEditingCalculationId(null)
+    setCalculationNotes("")
+    setShowNotesInput(false)
+    toast({
+      title: "Edit Cancelled",
+      description: "Returned to normal mode.",
+    })
+  }
+
+  const loadCalculation = (calc: Calculation, editMode: boolean = false) => {
     setProfileCategory(calc.profileCategory)
     setProfileType(calc.profileType)
     setMaterial(calc.material)
@@ -973,6 +1281,25 @@ export default function MetalWeightCalculator() {
     }
     if (calc.currency) {
       setCurrency(calc.currency)
+    }
+
+    // Load notes if available
+    if (calc.notes) {
+      setCalculationNotes(calc.notes)
+      setShowNotesInput(true)
+    }
+
+    // Set edit mode
+    if (editMode) {
+      setIsEditMode(true)
+      setEditingCalculationId(calc.id)
+      toast({
+        title: "Edit Mode",
+        description: `Editing: ${calc.name || 'Calculation'}. Click Update to save changes.`,
+      })
+    } else {
+      setIsEditMode(false)
+      setEditingCalculationId(null)
     }
 
     // Switch to calculator tab
@@ -1605,13 +1932,23 @@ export default function MetalWeightCalculator() {
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
                   )}
-                  {t('save')}
+                  {isEditMode ? "Update" : t('save')}
                   {activeProjectId && (
                     <span className="ml-1 text-xs opacity-80">
                       to {projects.find(p => p.id === activeProjectId)?.name}
                     </span>
                   )}
                 </Button>
+                {isEditMode && (
+                  <Button 
+                    onClick={cancelEditMode}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={isSaving}
+                  >
+                    Cancel Edit
+                  </Button>
+                )}
                 <Button 
                   onClick={() => setActiveTab("advanced")} 
                   variant="outline" 
@@ -2306,6 +2643,7 @@ export default function MetalWeightCalculator() {
                 <CalculationHistory
                   calculations={calculations}
                   onLoadCalculation={loadCalculation}
+                  onDeleteCalculation={deleteCalculation}
                   onMoveToProject={async (calculationId, projectId) => {
                     // Update calculation with project ID
                     const updatedCalculations = calculations.map(calc => 

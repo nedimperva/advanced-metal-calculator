@@ -68,7 +68,12 @@ import {
   Users,
   MapPin,
   Tag,
-  Loader2
+  Loader2,
+  ShoppingCart,
+  CheckCircle,
+  AlertCircle,
+  Download,
+  Eye
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
@@ -838,7 +843,7 @@ export default function ProjectMaterials({
         updatedAt: new Date()
       }
       
-      await updateProject(project.id, updatedProject)
+      await updateProject(updatedProject)
       onUpdate?.()
       
       toast({
@@ -915,6 +920,63 @@ export default function ProjectMaterials({
                           {calculation.notes}
                         </div>
                       )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Update URL parameters to load calculation for editing
+                          const url = new URL(window.location.href)
+                          url.searchParams.set('edit', calcId)
+                          url.searchParams.set('project', project.id)
+                          
+                          // Use pushState to avoid navigation - this will trigger the URL parameter handling
+                          window.history.pushState({}, '', url.toString())
+                          
+                          // Reload the page to trigger the URL parameter processing
+                          window.location.reload()
+                        }}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to remove "${calculation.name || 'this calculation'}" from this project?`)) {
+                            try {
+                              // Remove from project
+                              const updatedProject = {
+                                ...project,
+                                calculationIds: project.calculationIds.filter(id => id !== calcId),
+                                updatedAt: new Date()
+                              }
+                              await updateProject(updatedProject)
+                              onUpdate?.()
+                              
+                              toast({
+                                title: "Calculation Removed",
+                                description: "Calculation has been removed from the project.",
+                              })
+                            } catch (error) {
+                              console.error('Failed to remove calculation:', error)
+                              toast({
+                                title: "Remove Failed",
+                                description: "Failed to remove calculation from project",
+                                variant: "destructive"
+                              })
+                            }
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remove
+                      </Button>
                     </div>
                     
                     <div className="text-xs text-muted-foreground">

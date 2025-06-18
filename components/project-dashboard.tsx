@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+// Router no longer needed - navigation handled by parent
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -79,15 +79,19 @@ interface ProjectDashboardProps {
   showHeader?: boolean
   maxProjects?: number
   onProjectSelect?: (project: Project) => void
+  onCreateProject?: () => void
+  onEditProject?: (project: Project) => void
 }
 
 export default function ProjectDashboard({ 
   className, 
   showHeader = true,
   maxProjects,
-  onProjectSelect 
+  onProjectSelect,
+  onCreateProject,
+  onEditProject 
 }: ProjectDashboardProps) {
-  const router = useRouter()
+  // Router no longer needed - navigation handled by parent
   const isDesktop = useMediaQuery("(min-width: 1024px)")
   
   // Project context
@@ -153,11 +157,21 @@ export default function ProjectDashboard({
 
   // Navigation handlers
   const handleCreateProject = () => {
-    router.push('/projects/new')
+    if (onCreateProject) {
+      onCreateProject()
+    } else {
+      // Project creation will be handled within the tab system
+      console.log('Create new project')
+    }
   }
 
   const handleViewTemplates = () => {
-    router.push('/projects/templates')
+    if (onCreateProject) {
+      onCreateProject()
+    } else {
+      // Template viewing will be handled within the tab system
+      console.log('View templates')
+    }
   }
 
   const handleViewProject = (projectId: string) => {
@@ -167,12 +181,20 @@ export default function ProjectDashboard({
         onProjectSelect(project)
       }
     } else {
-      router.push(`/projects/${projectId}`)
+      // Project viewing will be handled within the tab system
+      console.log('View project:', projectId)
     }
   }
 
   const handleEditProject = (projectId: string) => {
-    router.push(`/projects/${projectId}/edit`)
+    if (onEditProject) {
+      const project = projects.find(p => p.id === projectId)
+      if (project) {
+        onEditProject(project)
+      }
+    } else {
+      console.log('Edit project:', projectId)
+    }
   }
 
   // Bulk actions
@@ -272,10 +294,10 @@ export default function ProjectDashboard({
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleViewTemplates}>
+            {/* <Button variant="outline" onClick={handleViewTemplates}>
               <Layers className="h-4 w-4 mr-2" />
               Templates
-            </Button>
+            </Button> */}
             <Button onClick={handleCreateProject}>
               <Plus className="h-4 w-4 mr-2" />
               New Project

@@ -30,57 +30,8 @@ function generateBreadcrumbsFromPath(pathname: string): BreadcrumbItem[] {
     icon: <Home className="h-4 w-4" />
   })
 
-  // Handle project routes
-  if (segments[0] === 'projects') {
-    breadcrumbs.push({
-      label: 'Projects',
-      href: '/projects',
-      icon: <FolderOpen className="h-4 w-4" />
-    })
-
-    if (segments.length > 1) {
-      if (segments[1] === 'new') {
-        breadcrumbs.push({
-          label: 'New Project',
-          icon: <Plus className="h-4 w-4" />,
-          current: true
-        })
-      } else if (segments[1] === 'templates') {
-        breadcrumbs.push({
-          label: 'Templates',
-          icon: <FileText className="h-4 w-4" />,
-          current: true
-        })
-      } else {
-        // Project ID route
-        const projectId = segments[1]
-        breadcrumbs.push({
-          label: `Project #${projectId.slice(-8)}`,
-          href: `/projects/${projectId}`,
-          icon: <FolderOpen className="h-4 w-4" />
-        })
-
-        if (segments[2] === 'edit') {
-          breadcrumbs.push({
-            label: 'Edit',
-            icon: <Edit className="h-4 w-4" />,
-            current: true
-          })
-        } else if (segments[2]) {
-          breadcrumbs.push({
-            label: segments[2].charAt(0).toUpperCase() + segments[2].slice(1),
-            current: true
-          })
-        } else {
-          // Mark project details as current
-          breadcrumbs[breadcrumbs.length - 1].current = true
-        }
-      }
-    } else {
-      // Mark projects overview as current
-      breadcrumbs[breadcrumbs.length - 1].current = true
-    }
-  }
+  // Handle project routes - projects are now handled within the main tab system
+  // No separate project routes exist
 
   return breadcrumbs
 }

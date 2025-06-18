@@ -84,12 +84,14 @@ export default function ProjectCard({
   React.useEffect(() => {
     const loadAnalytics = async () => {
       try {
-        const [progressData, costsData] = await Promise.all([
+        // TODO: Progress calculation currently depends on materials which were removed
+        // Will need to implement task-based progress calculation
+        /* const [progressData, costsData] = await Promise.all([
           calculateProjectProgress(project),
           calculateProjectCosts(project)
         ])
         setProgress(progressData)
-        setCosts(costsData)
+        setCosts(costsData) */
       } catch (error) {
         console.error('Failed to load project analytics:', error)
       }
@@ -123,7 +125,11 @@ export default function ProjectCard({
     // Don't trigger view if clicking on interactive elements
     if (
       e.target instanceof HTMLElement && 
-      (e.target.closest('button') || e.target.closest('[role="checkbox"]'))
+      (e.target.closest('button') || 
+       e.target.closest('[role="checkbox"]') ||
+       e.target.closest('[role="menu"]') ||
+       e.target.closest('[role="menuitem"]') ||
+       e.target.closest('[data-radix-collection-item]'))
     ) {
       return
     }
@@ -131,7 +137,6 @@ export default function ProjectCard({
   }
 
   // Calculate derived data
-  const materialsCount = project.materials?.length || 0
   const calculationsCount = project.calculationIds?.length || 0
   const isOverdue = project.deadline && new Date(project.deadline) < new Date()
   const daysUntilDeadline = project.deadline 
@@ -205,15 +210,16 @@ export default function ProjectCard({
                 
                 <div className="flex items-center gap-1">
                   <BarChart3 className="h-4 w-4" />
-                  {materialsCount} materials
+                  {calculationsCount} calculations
                 </div>
 
-                {progress && (
+                {/* Progress temporarily disabled - needs task-based calculation */}
+                {/* {progress && (
                   <div className="flex items-center gap-1">
                     <CheckCircle2 className="h-4 w-4" />
                     {progress.completionPercentage.toFixed(0)}% complete
                   </div>
-                )}
+                )} */}
               </div>
             </div>
 
@@ -227,11 +233,17 @@ export default function ProjectCard({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onView}>
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation()
+                  onView?.()
+                }}>
                   <Eye className="h-4 w-4 mr-2" />
                   View Details
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onEdit}>
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit?.()
+                }}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
@@ -335,11 +347,17 @@ export default function ProjectCard({
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onView}>
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation()
+                onView?.()
+              }}>
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onEdit}>
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation()
+                onEdit?.()
+              }}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>
@@ -379,8 +397,9 @@ export default function ProjectCard({
       </CardHeader>
       
       <CardContent className="pt-0 space-y-4">
-        {/* Progress Indicator */}
-        {progress && (
+        {/* Progress Indicator - temporarily disabled */}
+        {/* TODO: Implement task-based progress calculation */}
+        {/* {progress && (
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium">Progress</span>
@@ -390,23 +409,23 @@ export default function ProjectCard({
             </div>
             <Progress value={progress.completionPercentage} className="h-2" />
           </div>
-        )}
+        )} */}
 
         {/* Project Metrics */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
             <div>
-              <p className="text-muted-foreground">Materials</p>
-              <p className="font-medium">{materialsCount}</p>
+              <p className="text-muted-foreground">Calculations</p>
+              <p className="font-medium">{calculationsCount}</p>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <div>
-              <p className="text-muted-foreground">Calculations</p>
-              <p className="font-medium">{calculationsCount}</p>
+              <p className="text-muted-foreground">Created</p>
+              <p className="font-medium">{new Date(project.createdAt).toLocaleDateString()}</p>
             </div>
           </div>
           
@@ -479,8 +498,9 @@ export default function ProjectCard({
           </div>
         )}
 
-        {/* Budget Utilization */}
-        {costs && project.totalBudget && (
+        {/* Budget Utilization - temporarily disabled */}
+        {/* TODO: Budget tracking will need to be recalculated without materials */}
+        {/* {costs && project.totalBudget && (
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium">Budget Used</span>
@@ -500,7 +520,7 @@ export default function ProjectCard({
               )}
             />
           </div>
-        )}
+        )} */}
       </CardContent>
     </Card>
   )
