@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock } from "lucide-react"
+import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock, FolderOpen, Plus, Archive } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
@@ -21,7 +21,7 @@ import ProfileSelector from "@/components/profile-selector"
 import MaterialSelector from "@/components/material-selector"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { CalculationBreakdown } from "@/components/calculation-breakdown"
-import { CalculationComparison } from "@/components/calculation-comparison"
+
 import { AdvancedStructuralAnalysis } from "@/components/advanced-structural-analysis"
 import { 
   LoadingSpinner, 
@@ -50,7 +50,7 @@ import {
   calculateStructuralProperties,
   calculateStructuralPropertiesWithTemperature 
 } from "@/lib/calculations"
-import type { Calculation, ProfileData, MaterialData, StructuralProperties } from "@/lib/types"
+import type { Calculation, ProfileData, MaterialData, StructuralProperties, Project } from "@/lib/types"
 import type { MaterialGrade } from "@/lib/metal-data"
 import BackgroundElements from "@/components/background-elements"
 import { SettingsButton } from "@/components/settings-button"
@@ -65,7 +65,13 @@ import {
   getCompatibleProfileCategories, 
   getCompatibleProfileTypesInCategory 
 } from "@/lib/material-profile-compatibility"
+import { useProjects } from "@/contexts/project-context"
+import { saveCalculationToProject } from "@/lib/database"
+import { useRouter, useSearchParams } from "next/navigation"
 import PricingModelSelector from "@/components/pricing-model-selector"
+import ProjectDashboard from "@/components/project-dashboard"
+import MobileProjectDashboard from "@/components/mobile-project-dashboard"
+import { UnifiedProjectDetails } from "@/components/unified-project-details"
 import { 
   type PricingModel,
   PRICING_MODELS,
@@ -74,6 +80,56 @@ import {
   getRecommendedPricingModel 
 } from "@/lib/pricing-models"
 import { getProfileTypeName } from "@/lib/i18n"
+import { CalculationHistory, CalculationComparison } from "@/components/calculation-comparison"
+
+// Projects Tab Content Component
+function ProjectsTabContent() {
+  const isDesktop = useMediaQuery("(min-width: 1024px)")
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [showProjectDetails, setShowProjectDetails] = useState(false)
+
+  const handleProjectSelect = (project: Project) => {
+    setSelectedProject(project)
+    setShowProjectDetails(true)
+  }
+
+  const handleBackToProjects = () => {
+    setShowProjectDetails(false)
+    setSelectedProject(null)
+  }
+
+  const handleEditProject = (project: Project) => {
+    // Handle project editing - could open a modal or navigate to edit page
+    console.log('Edit project:', project)
+  }
+
+  if (showProjectDetails && selectedProject) {
+    return (
+      <UnifiedProjectDetails
+        project={selectedProject}
+        onBack={handleBackToProjects}
+        onEdit={handleEditProject}
+      />
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {isDesktop ? (
+        <ProjectDashboard 
+          showHeader={false} 
+          maxProjects={6} 
+          onProjectSelect={handleProjectSelect}
+        />
+      ) : (
+        <MobileProjectDashboard 
+          maxProjects={6}
+          onProjectSelect={handleProjectSelect}
+        />
+      )}
+    </div>
+  )
+}
 
 // Helper function to map profile types for cross-section viewer
 function getProfileTypeForViewer(profileType: string, dimensions: Record<string, string> = {}): string {
@@ -150,6 +206,10 @@ export default function MetalWeightCalculator() {
   const [lengthInput, setLengthInput] = useState(suggestions.defaults.length) // Separate input state
   const [lengthUnit, setLengthUnit] = useState(suggestions.defaults.lengthUnit)
   const [weightUnit, setWeightUnit] = useState(suggestions.defaults.weightUnit)
+
+  // Project context for calculator
+  const { currentProject, selectProject, projects, refreshProjects } = useProjects()
+  const [activeProjectId, setActiveProjectId] = useState<string>('')
 
   // Use refs to store timeout IDs for debouncing
   const lengthUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -233,6 +293,7 @@ export default function MetalWeightCalculator() {
 
   // Comparison state
   const [comparisonCalculations, setComparisonCalculations] = useState<Set<string>>(new Set())
+  const [historyCompareView, setHistoryCompareView] = useState<'history' | 'compare'>('history')
 
   // Error handling and validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([])
@@ -247,18 +308,42 @@ export default function MetalWeightCalculator() {
     warnings: []
   })
 
-  // Load saved calculations on mount
+  // Notes state for saving calculations
+  const [showNotesInput, setShowNotesInput] = useState(false)
+  const [calculationNotes, setCalculationNotes] = useState("")
+
+  // Load saved calculations from both localStorage and IndexedDB
   useEffect(() => {
     const loadSavedCalculations = async () => {
       try {
+        // Load from localStorage
         const saved = localStorage.getItem("metal-calculations")
+        let localCalculations: Calculation[] = []
         if (saved) {
-          const parsed = JSON.parse(saved).map((calc: any) => ({
+          localCalculations = JSON.parse(saved).map((calc: any) => ({
             ...calc,
             timestamp: new Date(calc.timestamp),
           }))
-          setCalculations(parsed)
         }
+
+        // Load from IndexedDB
+        const { getAllCalculations } = await import('../lib/database')
+        const dbCalculations = await getAllCalculations()
+
+        // Combine and deduplicate calculations (localStorage takes priority for duplicates)
+        const allCalcs = [...localCalculations]
+        const localIds = new Set(localCalculations.map(c => c.id))
+        
+        dbCalculations.forEach(calc => {
+          if (!localIds.has(calc.id)) {
+            allCalcs.push(calc)
+          }
+        })
+
+        // Sort by timestamp (newest first)
+        allCalcs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+        
+        setCalculations(allCalcs)
       } catch (error) {
         console.error("Error loading saved calculations:", error)
         toast({
@@ -573,8 +658,8 @@ export default function MetalWeightCalculator() {
   const saveCalculation = async () => {
     if (weight <= 0 || !selectedProfile || !selectedMaterial || !structuralProperties) {
       toast({
-              title: t('cannotSave'),
-      description: "Please ensure all inputs are valid and calculation is complete.",
+        title: t('cannotSave'),
+        description: "Please ensure all inputs are valid and calculation is complete.",
         variant: "destructive",
       })
       return
@@ -603,8 +688,21 @@ export default function MetalWeightCalculator() {
 
       const totalWeight = weight * parseFloat(quantity)
 
+      // Create calculation object for naming
+      const tempCalc = {
+        profileType,
+        standardSize: standardSize || "Custom",
+        dimensions: { ...dimensions, length },
+        materialName: selectedMaterial.name,
+        profileName: getProfileTypeName(language, profileType)
+      }
+
+      // Use established naming convention
+      const { mainName, materialTag } = formatCalculationName(tempCalc)
+
       const newCalculation: Calculation = {
         id: Date.now().toString(),
+        name: mainName, // Use formatted name based on established convention
         profileCategory,
         profileType,
         profileName: getProfileTypeName(language, profileType),
@@ -633,6 +731,9 @@ export default function MetalWeightCalculator() {
         totalCost,
         unitCost,
         totalWeight,
+        // Project assignment - automatically assign to active project
+        projectId: activeProjectId || undefined,
+        notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`, // User notes or default context
         timestamp: new Date(),
       }
 
@@ -640,9 +741,22 @@ export default function MetalWeightCalculator() {
       setCalculations(updated)
       localStorage.setItem("metal-calculations", JSON.stringify(updated))
 
+      // Save to IndexedDB for project management
+      if (activeProjectId) {
+        await saveCalculationToProject(newCalculation, activeProjectId)
+        // Refresh project context to show the new calculation
+        await refreshProjects()
+      }
+
+      const projectName = activeProjectId ? projects.find(p => p.id === activeProjectId)?.name : 'General History'
+      
+      // Clear notes after saving
+      setCalculationNotes("")
+      setShowNotesInput(false)
+
       toast({
         title: t('calculationSaved'),
-        description: "Your calculation has been saved to history.",
+        description: `Saved "${mainName}" to ${projectName}`,
       })
     } catch (error) {
       console.error("Error saving calculation:", error)
@@ -1448,19 +1562,55 @@ export default function MetalWeightCalculator() {
                 </div>
               )}
 
+              {/* Notes Toggle */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notes-toggle" className="text-sm font-medium">
+                    Add notes (optional)
+                  </Label>
+                  <Switch
+                    id="notes-toggle"
+                    checked={showNotesInput}
+                    onCheckedChange={setShowNotesInput}
+                  />
+                </div>
+                
+                {showNotesInput && (
+                  <div className={cn(
+                    "space-y-2",
+                    safeAnimation(animations.slideInFromBottom)
+                  )}>
+                    <Input
+                      placeholder="Add notes about this calculation..."
+                      value={calculationNotes}
+                      onChange={(e) => setCalculationNotes(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* Action Buttons with enhanced styling */}
               <div className={cn(
                 "flex flex-col sm:flex-row gap-2 pt-2",
                 safeAnimation(`${animations.slideInFromBottom} delay-600`)
               )}>
                 <Button 
-                  onClick={saveCalculation} 
+                  onClick={saveCalculation}
                   className="flex-1" 
                   disabled={isSaving}
-                  loading={isSaving}
                 >
-                  <Save className="mr-2 h-4 w-4" />
+                  {isSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
                   {t('save')}
+                  {activeProjectId && (
+                    <span className="ml-1 text-xs opacity-80">
+                      to {projects.find(p => p.id === activeProjectId)?.name}
+                    </span>
+                  )}
                 </Button>
                 <Button 
                   onClick={() => setActiveTab("advanced")} 
@@ -1516,6 +1666,45 @@ export default function MetalWeightCalculator() {
             <h1 className="text-xl font-bold text-foreground hover:text-primary transition-colors duration-150">{t('appTitle')}</h1>
           </div>
           <p className="text-xs text-muted-foreground">{t('appSubtitle')}</p>
+          
+          {/* Project Context Indicator */}
+          {activeTab === 'calculator' && (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <Select value={activeProjectId || "none"} onValueChange={(value) => {
+                if (value === "none") {
+                  setActiveProjectId("")
+                } else {
+                  setActiveProjectId(value)
+                  selectProject(value)
+                }
+              }}>
+                <SelectTrigger className="w-64 h-8 text-xs">
+                  <SelectValue placeholder="Select project (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Project</SelectItem>
+                  {projects.map(project => (
+                    <SelectItem key={project.id} value={project.id}>
+                      <div className="flex items-center gap-2">
+                        <FolderOpen className="h-3 w-3" />
+                        {project.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeProjectId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveTab('projects')}
+                  className="h-8 text-xs"
+                >
+                  View Project
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <SwipeTabs 
@@ -1531,15 +1720,15 @@ export default function MetalWeightCalculator() {
             },
             {
               value: "comparison",
-              label: t('compare'),
+              label: "History & Compare",
               icon: <BarChart3 className="h-3 w-3" />,
-              shortLabel: t('compare').slice(0, 4)
+              shortLabel: "Hist"
             },
             {
-              value: "history", 
-              label: t('history'),
-              icon: <History className="h-3 w-3" />,
-              shortLabel: t('history').slice(0, 4)
+              value: "projects", 
+              label: "Projects",
+              icon: <FolderOpen className="h-3 w-3" />,
+              shortLabel: "Proj"
             }
           ]}
         >
@@ -2087,162 +2276,87 @@ export default function MetalWeightCalculator() {
             )}
           </SwipeTabs.Content>
 
-          {/* New: Calculation Comparison Tab */}
+          {/* History & Compare Tab - View all calculations (including general history when no project selected) and compare them */}
           <SwipeTabs.Content value="comparison" className="space-y-4">
-            <CalculationComparison
-              calculations={calculations}
-              onAddToComparison={(id) => {
-                setComparisonCalculations(prev => new Set([...prev, id]))
-              }}
-              onRemoveFromComparison={(id) => {
-                setComparisonCalculations(prev => {
-                  const newSet = new Set(prev)
-                  newSet.delete(id)
-                  return newSet
-                })
-              }}
-            />
+            <div className="space-y-4">
+              {/* Sub-tabs for History and Compare */}
+              <div className="flex bg-muted rounded-lg p-1 sticky top-0 z-10 backdrop-blur-sm bg-muted/95 border border-border/50">
+                <Button
+                  variant={historyCompareView === 'history' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setHistoryCompareView('history')}
+                  className="flex-1"
+                >
+                  <Archive className="h-4 w-4 mr-2" />
+                  History
+                </Button>
+                <Button
+                  variant={historyCompareView === 'compare' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setHistoryCompareView('compare')}
+                  className="flex-1"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Compare ({comparisonCalculations.size})
+                </Button>
+              </div>
+
+              {/* Content based on selected view */}
+              {historyCompareView === 'history' ? (
+                <CalculationHistory
+                  calculations={calculations}
+                  onLoadCalculation={loadCalculation}
+                  onMoveToProject={async (calculationId, projectId) => {
+                    // Update calculation with project ID
+                    const updatedCalculations = calculations.map(calc => 
+                      calc.id === calculationId ? { ...calc, projectId } : calc
+                    )
+                    setCalculations(updatedCalculations)
+                    
+                    // Save to localStorage
+                    localStorage.setItem("metal-calculations", JSON.stringify(updatedCalculations))
+                    
+                    // Show success message
+                    toast({
+                      title: "Calculation Updated",
+                      description: "Calculation has been assigned to the project.",
+                    })
+                  }}
+                  onAddToComparison={(id) => {
+                    if (comparisonCalculations.size < 5) {
+                      setComparisonCalculations(prev => new Set([...prev, id]))
+                      toast({
+                        title: "Added to Comparison",
+                        description: "Calculation added to comparison list.",
+                      })
+                    } else {
+                      toast({
+                        title: "Comparison Limit",
+                        description: "You can compare up to 5 calculations at once.",
+                        variant: "destructive"
+                      })
+                    }
+                  }}
+                />
+              ) : (
+                <CalculationComparison
+                  calculations={calculations}
+                  selectedCalculations={comparisonCalculations}
+                  onRemoveFromComparison={(id) => {
+                    setComparisonCalculations(prev => {
+                      const newSet = new Set(prev)
+                      newSet.delete(id)
+                      return newSet
+                    })
+                  }}
+                  onLoadCalculation={loadCalculation}
+                />
+              )}
+            </div>
           </SwipeTabs.Content>
 
-          <SwipeTabs.Content value="history" className="space-y-4">
-            <Card className="backdrop-blur-sm bg-card/90 border-accent/20 shadow-lg">
-              <CardHeader className="pb-3">
-                                        <CardTitle className="text-lg flex items-center gap-2 hover:text-primary transition-colors duration-150">
-                          <History className="h-5 w-5" />
-                          {t('calculationHistory')}
-                        </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {calculations.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p className="text-lg">{t('noCalculations')}</p>
-                    <p className="text-sm mt-1">{t('noCalculationsDesc')}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {calculations.map((calc) => {
-                      // Fix calculation logic
-                      const quantity = calc.quantity || 1
-                      const totalWeight = calc.totalWeight || (calc.weight * quantity)
-                      const hasPrice = calc.priceValue !== undefined && calc.priceValue > 0
-                      const pricingModel = calc.pricingModel || 'per_kg'
-                      const pricingInfo = PRICING_MODELS[pricingModel]
-                      
-                      // Calculate correct pricing quantities
-                      const lengthValue = parseFloat(calc.dimensions?.length || '1000')
-                      const storedLengthUnit = calc.lengthUnit || 'mm'
-                      
-                      // Convert weight to kg for pricing
-                      const weightUnitData = WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS]
-                      const singleWeightInKg = weightUnitData ? 
-                        (calc.weight * weightUnitData.factor) / 1000 : 
-                        calc.weight
-                      
-                      // Convert length to meters for pricing
-                      const lengthUnitData = LENGTH_UNITS[storedLengthUnit as keyof typeof LENGTH_UNITS]
-                      const lengthInMeters = lengthUnitData ? 
-                        (lengthValue * lengthUnitData.factor) / 100 : 
-                        lengthValue / 1000
-                      
-                      // Calculate billing quantities
-                      let billingQuantity = quantity
-                      let billingUnit = 'pieces'
-                      
-                      if (pricingModel === 'per_kg') {
-                        billingQuantity = singleWeightInKg * quantity
-                        billingUnit = 'kg'
-                      } else if (pricingModel === 'per_meter') {
-                        billingQuantity = lengthInMeters * quantity
-                        billingUnit = 'm'
-                      }
-                      
-                      // Format name according to new convention
-                      const { mainName, materialTag } = formatCalculationName(calc)
-                      const shortMaterialTag = getShortMaterialTag(materialTag)
-                      
-                      return (
-                        <div
-                          key={calc.id}
-                          className="border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors group"
-                          onClick={() => loadCalculation(calc)}
-                        >
-                          {/* Header Row */}
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-medium text-sm text-foreground truncate">
-                                  {mainName}
-                                </h3>
-                                                <span className="text-xs bg-accent/50 text-foreground px-2 py-0.5 rounded-full border border-accent font-medium flex-shrink-0">
-                  {calc.materialName}
-                </span>
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {calc.timestamp.toLocaleDateString()} • {calc.timestamp.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                              </div>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 ml-2" />
-                          </div>
-
-                          {/* Key Metrics Row */}
-                          <div className="grid grid-cols-3 gap-4 py-2 text-xs">
-                            {/* Quantity */}
-                            <div className="text-center">
-                              <div className="text-muted-foreground mb-1">Quantity</div>
-                              <div className="font-semibold text-foreground">
-                                {quantity} {quantity === 1 ? 'piece' : 'pieces'}
-                              </div>
-                            </div>
-                            
-                            {/* Weight */}
-                            <div className="text-center">
-                              <div className="text-muted-foreground mb-1">Total Weight</div>
-                              <div className="font-semibold text-foreground">
-                                {totalWeight.toFixed(2)} {WEIGHT_UNITS[calc.weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}
-                              </div>
-                            </div>
-                            
-                            {/* Cost or Area */}
-                            <div className="text-center">
-                              {hasPrice ? (
-                                <>
-                                  <div className="text-muted-foreground mb-1">Total Cost</div>
-                                  <div className="font-semibold text-foreground">
-                                    {calc.currency || 'USD'} {calc.totalCost ? calc.totalCost.toFixed(2) : '0.00'}
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="text-muted-foreground mb-1">Area</div>
-                                  <div className="font-semibold text-foreground">
-                                    {calc.crossSectionalArea.toFixed(2)} cm²
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Pricing Details (if available) */}
-                          {hasPrice && (
-                            <div className="mt-2 pt-2 border-t border-border/50">
-                              <div className="flex items-center justify-between text-xs">
-                                <div className="text-muted-foreground">
-                                  {pricingInfo?.name || 'Pricing'}: {calc.currency || 'USD'} {calc.priceValue!.toFixed(2)}{pricingInfo?.unit || '/piece'}
-                                </div>
-                                <div className="text-muted-foreground">
-                                  {billingQuantity.toFixed(pricingModel === 'per_kg' ? 3 : 2)} {billingUnit}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <SwipeTabs.Content value="projects" className="space-y-4">
+            <ProjectsTabContent />
           </SwipeTabs.Content>
         </SwipeTabs>
 

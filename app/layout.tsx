@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/error-boundary"
 import { Toaster } from "@/components/ui/toaster"
 import { I18nProvider } from "@/contexts/i18n-context"
 import { ColorThemeProvider } from "@/contexts/color-theme-context"
+import { ProjectProvider } from "@/contexts/project-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -36,12 +37,14 @@ export default function RootLayout({
         <I18nProvider>
           <ThemeProvider>
             <ColorThemeProvider>
-              <div className="min-h-screen bg-background text-foreground antialiased">
-                <ErrorBoundary>
-                  {children}
-                  <Toaster />
-                </ErrorBoundary>
-              </div>
+              <ProjectProvider>
+                <div className="min-h-screen bg-background text-foreground antialiased">
+                  <ErrorBoundary>
+                    {children}
+                    <Toaster />
+                  </ErrorBoundary>
+                </div>
+              </ProjectProvider>
             </ColorThemeProvider>
           </ThemeProvider>
         </I18nProvider>

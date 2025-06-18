@@ -12,6 +12,58 @@ export type { PricingModel } from './pricing-models'
 // Import PricingModel for use in interfaces
 import type { PricingModel } from './pricing-models'
 
+// Project Management Enums
+export enum ProjectStatus {
+  PLANNING = 'planning',
+  ACTIVE = 'active',
+  ON_HOLD = 'on_hold',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled'
+}
+
+export enum MaterialStatus {
+  PENDING = 'pending',
+  ORDERED = 'ordered',
+  SHIPPED = 'shipped',
+  ARRIVED = 'arrived',
+  INSTALLED = 'installed',
+  CANCELLED = 'cancelled'
+}
+
+// Project Management Interfaces
+export interface Project {
+  id: string
+  name: string
+  description: string
+  status: ProjectStatus
+  createdAt: Date
+  updatedAt: Date
+  materials: ProjectMaterial[]
+  calculationIds: string[]
+  totalBudget?: number
+  currency: string
+  notes: string
+  tags: string[]
+  client?: string
+  location?: string
+  deadline?: Date
+}
+
+export interface ProjectMaterial {
+  id: string
+  calculationId: string
+  projectId: string
+  quantity: number
+  status: MaterialStatus
+  orderDate?: Date
+  arrivalDate?: Date
+  installationDate?: Date
+  supplier?: string
+  cost?: number
+  notes: string
+  trackingNumber?: string
+}
+
 // Updated MaterialData interface for enhanced properties
 export interface MaterialData {
   name: string
@@ -47,6 +99,7 @@ export type { StructuralProperties } from './calculations'
 
 export interface Calculation {
   id: string
+  name?: string // Formatted name using naming convention
   profileCategory: string
   profileType: string
   profileName: string
@@ -76,4 +129,7 @@ export interface Calculation {
   unitCost?: number
   totalWeight?: number
   timestamp: Date
+  // Project Management Integration
+  projectId?: string
+  notes?: string // Additional notes or context
 }
