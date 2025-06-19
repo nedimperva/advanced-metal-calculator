@@ -134,7 +134,7 @@ export default function ProjectDashboard({
   const filteredProjects = useMemo(() => {
     const filtered = getFilteredProjects()
     return maxProjects ? filtered.slice(0, maxProjects) : filtered
-  }, [getFilteredProjects, maxProjects])
+  }, [getFilteredProjects, maxProjects, projects, searchTerm, filters, sortField, sortDirection])
 
   // Selection handlers
   const handleSelectAll = (checked: boolean) => {

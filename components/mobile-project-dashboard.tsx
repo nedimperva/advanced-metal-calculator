@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 // Router no longer needed - navigation handled by parent
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -110,8 +110,10 @@ export default function MobileProjectDashboard({
     return () => clearTimeout(timer)
   }, [searchInput, setSearchTerm])
 
-  // Get filtered projects
-  const filteredProjects = getFilteredProjects()
+  // Get filtered projects with memoization
+  const filteredProjects = useMemo(() => {
+    return getFilteredProjects()
+  }, [getFilteredProjects, projects, searchTerm, filters, sortField, sortDirection])
 
   // Update displayed projects when filters change
   useEffect(() => {
@@ -152,14 +154,17 @@ export default function MobileProjectDashboard({
 
     setLoadingMore(true)
     setTimeout(() => {
-      const currentCount = displayedProjects.length
-      const nextBatch = filteredProjects.slice(currentCount, currentCount + ITEMS_PER_PAGE)
-      
-      setDisplayedProjects(prev => [...prev, ...nextBatch])
-      setHasMore(currentCount + nextBatch.length < filteredProjects.length)
+      setDisplayedProjects(prev => {
+        const currentCount = prev.length
+        const nextBatch = filteredProjects.slice(currentCount, currentCount + ITEMS_PER_PAGE)
+        const newProjects = [...prev, ...nextBatch]
+        
+        setHasMore(newProjects.length < filteredProjects.length)
+        return newProjects
+      })
       setLoadingMore(false)
     }, 500) // Simulate loading delay
-  }, [loadingMore, hasMore, maxProjects, displayedProjects.length, filteredProjects])
+  }, [loadingMore, hasMore, maxProjects, filteredProjects])
 
   // Intersection Observer for infinite scroll
   useEffect(() => {

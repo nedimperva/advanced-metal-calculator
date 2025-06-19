@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Settings } from 'lucide-react'
 import { useProjects } from '@/contexts/project-context'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { cn } from '@/lib/utils'
 import ProjectDetails from './project-details'
 import ProjectMaterials from './project-materials'
 import ProjectTimeline from './project-timeline'
@@ -24,6 +25,7 @@ export function UnifiedProjectDetails({
   const [activeTab, setActiveTab] = useState('overview')
   const [refreshKey, setRefreshKey] = useState(0)
   const isDesktop = useMediaQuery("(min-width: 768px)")
+  const isMobile = useMediaQuery("(max-width: 767px)")
 
   const handleUpdate = () => {
     setRefreshKey(prev => prev + 1)
@@ -36,50 +38,108 @@ export function UnifiedProjectDetails({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onBack}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Projects
-          </Button>
-          <div>
-            <h2 className="text-lg font-semibold">{project.name}</h2>
-            <p className="text-sm text-muted-foreground">{project.description}</p>
+    <div className={cn("space-y-4", isMobile && "space-y-2")}>
+      {/* Mobile Header */}
+      {isMobile ? (
+        <div className="space-y-3">
+          {/* Navigation */}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onBack}
+              className="h-9 px-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-semibold truncate">{project.name}</h2>
+            </div>
+            {onEdit && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleEdit}
+                className="h-9 px-3"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            )}
           </div>
+          
+          {/* Description */}
+          {project.description && (
+            <p className="text-sm text-muted-foreground px-1">
+              {project.description}
+            </p>
+          )}
         </div>
-        {onEdit && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleEdit}
-            className="flex items-center gap-2"
-          >
-            <Settings className="h-4 w-4" />
-            Edit Project
-          </Button>
-        )}
-      </div>
+      ) : (
+        /* Desktop Header */
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Projects
+            </Button>
+            <div>
+              <h2 className="text-lg font-semibold">{project.name}</h2>
+              <p className="text-sm text-muted-foreground">{project.description}</p>
+            </div>
+          </div>
+          {onEdit && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleEdit}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Edit Project
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
-      <Card>
-        <CardContent className="p-0">
+      <Card className={cn(isMobile && "border-0 shadow-none")}>
+        <CardContent className={cn("p-0", isMobile && "bg-transparent")}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <CardHeader className="pb-0 sticky top-0 z-30 backdrop-blur-sm bg-card/95 border-b border-border/50">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="materials">Materials</TabsTrigger>
-                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            <CardHeader className={cn(
+              "pb-0 sticky top-0 z-30 backdrop-blur-sm bg-card/95 border-b border-border/50",
+              isMobile && "px-0 pt-2 bg-background/95"
+            )}>
+              <TabsList className={cn(
+                "grid w-full grid-cols-3",
+                isMobile && "h-10 bg-muted/50"
+              )}>
+                <TabsTrigger 
+                  value="overview" 
+                  className={cn(isMobile && "text-xs py-2")}
+                >
+                  {isMobile ? 'Overview' : 'Overview'}
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="materials" 
+                  className={cn(isMobile && "text-xs py-2")}
+                >
+                  {isMobile ? 'Materials' : 'Materials'}
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="timeline" 
+                  className={cn(isMobile && "text-xs py-2")}
+                >
+                  {isMobile ? 'Timeline' : 'Timeline'}
+                </TabsTrigger>
               </TabsList>
             </CardHeader>
 
-            <div className="p-6">
+            <div className={cn("p-6", isMobile && "p-3 pt-4")}>
               <TabsContent value="overview" className="mt-0">
                 <ProjectDetails
                   key={`overview-${refreshKey}`}

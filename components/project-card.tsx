@@ -98,7 +98,7 @@ export default function ProjectCard({
     }
 
     loadAnalytics()
-  }, [project])
+  }, [project.id])
 
   const handleDelete = async () => {
     setIsLoading(true)

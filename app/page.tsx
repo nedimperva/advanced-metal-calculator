@@ -86,7 +86,7 @@ import { CalculationHistory, CalculationComparison } from "@/components/calculat
 // Projects Tab Content Component
 function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject?: Project }) {
   const isDesktop = useMediaQuery("(min-width: 1024px)")
-  const [selectedProject, setSelectedProject] = useState<Project | null>(initialSelectedProject ?? null)
+  const [selectedProject, setSelectedProject] = useState<Project | undefined>(initialSelectedProject ?? undefined)
   const [showProjectDetails, setShowProjectDetails] = useState(!!initialSelectedProject)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
@@ -113,7 +113,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
 
   const handleBackToProjects = () => {
     setShowProjectDetails(false)
-    setSelectedProject(null)
+    setSelectedProject(undefined)
   }
 
   const handleEditProject = (project: Project) => {
@@ -125,7 +125,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
     
     // Otherwise, close project details and show edit modal
     setShowProjectDetails(false)
-    setSelectedProject(null)
+    setSelectedProject(undefined)
     setEditingProject(project)
     setShowCreateDialog(true)
   }
@@ -2631,11 +2631,14 @@ export default function MetalWeightCalculator() {
             )}
           </SwipeTabs.Content>
 
-          {/* History & Compare Tab - View all calculations (including general history when no project selected) and compare them */}
+          {/* History & Compare Tab - Mobile optimized versions */}
           <SwipeTabs.Content value="comparison" className="space-y-4">
             <div className="space-y-4">
-              {/* Sub-tabs for History and Compare */}
-              <div className="flex bg-muted rounded-lg p-1 sticky top-0 z-10 backdrop-blur-sm bg-muted/95 border border-border/50">
+              {/* Sub-tabs for History and Compare - Simplified for mobile */}
+              <div className={cn(
+                "flex bg-muted rounded-lg p-1 sticky top-0 z-10 backdrop-blur-sm bg-muted/95 border border-border/50",
+                !isDesktop && "mx-2"
+              )}>
                 <Button
                   variant={historyCompareView === 'history' ? 'default' : 'ghost'}
                   size="sm"
@@ -2643,7 +2646,7 @@ export default function MetalWeightCalculator() {
                   className="flex-1"
                 >
                   <Archive className="h-4 w-4 mr-2" />
-                  History
+                  {isDesktop ? 'History' : 'History'}
                 </Button>
                 <Button
                   variant={historyCompareView === 'compare' ? 'default' : 'ghost'}
@@ -2652,67 +2655,72 @@ export default function MetalWeightCalculator() {
                   className="flex-1"
                 >
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  Compare ({comparisonCalculations.size})
+                  {isDesktop ? `Compare (${comparisonCalculations.size})` : `Compare (${comparisonCalculations.size})`}
                 </Button>
               </div>
 
-              {/* Content based on selected view */}
-              {historyCompareView === 'history' ? (
-                <CalculationHistory
-                  calculations={calculations}
-                  onLoadCalculation={loadCalculation}
-                  onDeleteCalculation={deleteCalculation}
-                  onMoveToProject={async (calculationId, projectId) => {
-                    // Update calculation with project ID
-                    const updatedCalculations = calculations.map(calc => 
-                      calc.id === calculationId ? { ...calc, projectId } : calc
-                    )
-                    setCalculations(updatedCalculations)
-                    
-                    // Save to localStorage
-                    localStorage.setItem("metal-calculations", JSON.stringify(updatedCalculations))
-                    
-                    // Show success message
-                    toast({
-                      title: "Calculation Updated",
-                      description: "Calculation has been assigned to the project.",
-                    })
-                  }}
-                  onAddToComparison={(id) => {
-                    if (comparisonCalculations.size < 5) {
-                      setComparisonCalculations(prev => new Set([...prev, id]))
+              {/* Content based on selected view - Mobile optimized */}
+              <div className={cn(!isDesktop && "px-2")}>
+                {historyCompareView === 'history' ? (
+                  <CalculationHistory
+                    calculations={calculations}
+                    onLoadCalculation={loadCalculation}
+                    onDeleteCalculation={deleteCalculation}
+                    onMoveToProject={async (calculationId, projectId) => {
+                      // Update calculation with project ID
+                      const updatedCalculations = calculations.map(calc => 
+                        calc.id === calculationId ? { ...calc, projectId } : calc
+                      )
+                      setCalculations(updatedCalculations)
+                      
+                      // Save to localStorage
+                      localStorage.setItem("metal-calculations", JSON.stringify(updatedCalculations))
+                      
+                      // Show success message
                       toast({
-                        title: "Added to Comparison",
-                        description: "Calculation added to comparison list.",
+                        title: "Calculation Updated",
+                        description: "Calculation has been assigned to the project.",
                       })
-                    } else {
-                      toast({
-                        title: "Comparison Limit",
-                        description: "You can compare up to 5 calculations at once.",
-                        variant: "destructive"
+                    }}
+                    onAddToComparison={(id) => {
+                      if (comparisonCalculations.size < 5) {
+                        setComparisonCalculations(prev => new Set([...prev, id]))
+                        toast({
+                          title: "Added to Comparison",
+                          description: "Calculation added to comparison list.",
+                        })
+                      } else {
+                        toast({
+                          title: "Comparison Limit",
+                          description: "You can compare up to 5 calculations at once.",
+                          variant: "destructive"
+                        })
+                      }
+                    }}
+                  />
+                ) : (
+                  <CalculationComparison
+                    calculations={calculations}
+                    selectedCalculations={comparisonCalculations}
+                    onRemoveFromComparison={(id: string) => {
+                      setComparisonCalculations(prev => {
+                        const newSet = new Set(prev)
+                        newSet.delete(id)
+                        return newSet
                       })
-                    }
-                  }}
-                />
-              ) : (
-                <CalculationComparison
-                  calculations={calculations}
-                  selectedCalculations={comparisonCalculations}
-                  onRemoveFromComparison={(id) => {
-                    setComparisonCalculations(prev => {
-                      const newSet = new Set(prev)
-                      newSet.delete(id)
-                      return newSet
-                    })
-                  }}
-                  onLoadCalculation={loadCalculation}
-                />
-              )}
+                    }}
+                    onLoadCalculation={loadCalculation}
+                  />
+                )}
+              </div>
             </div>
           </SwipeTabs.Content>
 
           <SwipeTabs.Content value="projects" className="">
-            <div className="h-[calc(100vh-120px)] overflow-y-auto space-y-4 p-4">
+            <div className={cn(
+              "overflow-y-auto space-y-4",
+              isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
+            )}>
               <ProjectsTabContent initialSelectedProject={initialSelectedProject} />
             </div>
           </SwipeTabs.Content>

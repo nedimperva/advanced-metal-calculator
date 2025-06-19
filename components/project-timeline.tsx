@@ -48,6 +48,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { 
   PROJECT_STATUS_LABELS, 
   PROJECT_STATUS_COLORS,
@@ -82,13 +83,14 @@ interface AddEventModalProps {
   onAdd: (event: Omit<TimelineEvent, 'id' | 'timestamp'>) => void
 }
 
-// Add Event Modal Component
+// Add Event Modal Component - Mobile Optimized
 function AddEventModal({ 
   project, 
   isOpen, 
   onClose, 
   onAdd 
 }: AddEventModalProps) {
+  const isMobile = useMediaQuery("(max-width: 767px)")
   const [eventType, setEventType] = useState<TimelineEvent['type']>('note')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -143,7 +145,11 @@ function AddEventModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className={cn(
+        isMobile 
+          ? "max-w-[95vw] max-h-[90vh] w-full" 
+          : "max-w-lg"
+      )}>
         <DialogHeader>
           <DialogTitle>Add Timeline Event</DialogTitle>
           <DialogDescription>
@@ -151,11 +157,14 @@ function AddEventModal({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className={cn(
+          "space-y-4",
+          isMobile && "space-y-3"
+        )}>
           <div>
             <Label>Event Type</Label>
             <Select value={eventType} onValueChange={(value) => setEventType(value as TimelineEvent['type'])}>
-              <SelectTrigger>
+              <SelectTrigger className={cn(isMobile && "h-12")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -177,6 +186,9 @@ function AddEventModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter event title"
+              className={cn(
+                isMobile && "text-base h-12" // Prevent zoom on iOS
+              )}
             />
           </div>
 
@@ -187,6 +199,10 @@ function AddEventModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter event description"
               rows={3}
+              className={cn(
+                "resize-none",
+                isMobile && "text-base" // Prevent zoom on iOS
+              )}
             />
           </div>
 
@@ -196,22 +212,38 @@ function AddEventModal({
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="Who performed this action?"
+              className={cn(
+                isMobile && "text-base h-12" // Prevent zoom on iOS
+              )}
             />
           </div>
         </div>
         
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className={cn(
+          isMobile ? "flex-col gap-2" : "flex-row gap-2"
+        )}>
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            className={cn(isMobile && "w-full")}
+          >
             Cancel
           </Button>
-          <Button onClick={handleAdd} disabled={isLoading || !title.trim()}>
+          <Button 
+            onClick={handleAdd}
+            disabled={!title.trim() || isLoading}
+            className={cn(isMobile && "w-full")}
+          >
             {isLoading ? (
               <>
                 <LoadingSpinner size="sm" className="mr-2" />
                 Adding...
               </>
             ) : (
-              'Add Event'
+              <>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Event
+              </>
             )}
           </Button>
         </DialogFooter>
@@ -220,13 +252,15 @@ function AddEventModal({
   )
 }
 
-// Timeline Event Component
+// Timeline Event Component - Mobile Optimized
 function TimelineEventItem({ 
   event, 
-  isLast = false 
+  isLast = false,
+  isMobile = false
 }: { 
   event: TimelineEvent
-  isLast?: boolean 
+  isLast?: boolean
+  isMobile?: boolean
 }) {
   const getEventIcon = (type: TimelineEvent['type']) => {
     switch (type) {
@@ -263,46 +297,86 @@ function TimelineEventItem({
   }
 
   return (
-    <div className="flex gap-4">
-      {/* Timeline Line */}
-      <div className="flex flex-col items-center">
+    <div className={cn(
+      "flex gap-3",
+      isMobile && "gap-2"
+    )}>
+      {/* Timeline Line - Mobile Optimized */}
+      <div className="flex flex-col items-center shrink-0">
         <div className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center text-white",
+          "rounded-full flex items-center justify-center text-white",
+          isMobile ? "w-6 h-6" : "w-8 h-8",
           getEventColor(event.type)
         )}>
           {getEventIcon(event.type)}
         </div>
         {!isLast && (
-          <div className="w-0.5 h-8 bg-border mt-2" />
+          <div className={cn(
+            "bg-border mt-2",
+            isMobile ? "w-px h-6" : "w-0.5 h-8"
+          )} />
         )}
       </div>
 
-      {/* Event Content */}
-      <div className="flex-1 pb-8">
-        <div className="bg-card border rounded-lg p-4">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h3 className="font-semibold text-sm">{event.title}</h3>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                <Calendar className="h-3 w-3" />
-                {new Date(event.timestamp).toLocaleString()}
+      {/* Event Content - Mobile Optimized */}
+      <div className={cn(
+        "flex-1 min-w-0",
+        isMobile ? "pb-4" : "pb-8"
+      )}>
+        <div className={cn(
+          "bg-card border rounded-lg",
+          isMobile ? "p-3" : "p-4"
+        )}>
+          <div className={cn(
+            "flex justify-between mb-2",
+            isMobile ? "flex-col gap-2" : "items-start"
+          )}>
+            <div className="flex-1 min-w-0">
+              <h3 className={cn(
+                "font-semibold leading-tight",
+                isMobile ? "text-sm break-words" : "text-base"
+              )}>
+                {event.title}
+              </h3>
+              <div className={cn(
+                "flex items-center gap-2 text-muted-foreground mt-1",
+                isMobile ? "text-xs flex-wrap" : "text-xs"
+              )}>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3 shrink-0" />
+                  <span className={cn(isMobile && "break-all")}>
+                    {isMobile 
+                      ? new Date(event.timestamp).toLocaleDateString()
+                      : new Date(event.timestamp).toLocaleString()
+                    }
+                  </span>
+                </div>
                 {event.author && (
-                  <>
+                  <div className="flex items-center gap-1">
                     <Separator orientation="vertical" className="h-3" />
-                    <User className="h-3 w-3" />
-                    {event.author}
-                  </>
+                    <User className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{event.author}</span>
+                  </div>
                 )}
               </div>
             </div>
             
-            <Badge variant="outline" className="text-xs">
+            <Badge 
+              variant="outline" 
+              className={cn(
+                "text-xs shrink-0",
+                isMobile && "self-start"
+              )}
+            >
               {event.type.replace('_', ' ')}
             </Badge>
           </div>
           
           {event.description && (
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className={cn(
+              "text-muted-foreground mt-2 leading-relaxed",
+              isMobile ? "text-xs break-words" : "text-sm"
+            )}>
               {event.description}
             </p>
           )}
@@ -310,9 +384,20 @@ function TimelineEventItem({
           {event.attachments && event.attachments.length > 0 && (
             <div className="mt-3">
               <p className="text-xs text-muted-foreground mb-2">Attachments:</p>
-              <div className="flex flex-wrap gap-2">
+              <div className={cn(
+                "flex gap-2",
+                isMobile ? "flex-col" : "flex-wrap"
+              )}>
                 {event.attachments.map((attachment, index) => (
-                  <Button key={index} variant="outline" size="sm" className="h-8 text-xs">
+                  <Button 
+                    key={index} 
+                    variant="outline" 
+                    size="sm" 
+                    className={cn(
+                      "text-xs",
+                      isMobile ? "h-10 w-full justify-start" : "h-8"
+                    )}
+                  >
                     <Download className="h-3 w-3 mr-1" />
                     File {index + 1}
                   </Button>
@@ -333,6 +418,7 @@ export default function ProjectTimeline({
   className
 }: ProjectTimelineProps) {
   const { updateProject } = useProjects()
+  const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Local state
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
@@ -350,7 +436,7 @@ export default function ProjectTimeline({
         type: 'milestone',
         title: 'Project Created',
         description: `Project "${project.name}" was created`,
-        timestamp: project.createdAt,
+        timestamp: new Date(project.createdAt).toISOString(),
         author: 'System'
       })
 
@@ -361,7 +447,7 @@ export default function ProjectTimeline({
           type: 'status_change',
           title: `Status Changed to ${PROJECT_STATUS_LABELS[project.status]}`,
           description: `Project status updated to ${PROJECT_STATUS_LABELS[project.status]}`,
-          timestamp: project.updatedAt,
+          timestamp: new Date(project.updatedAt).toISOString(),
           author: 'System'
         })
       }
@@ -373,9 +459,9 @@ export default function ProjectTimeline({
             events.push({
               id: `material-delivery-${material.id}`,
               type: 'material_delivery',
-              title: `Material Delivered: ${material.name}`,
-              description: `${material.quantity} ${material.unit} of ${material.name} delivered`,
-              timestamp: material.expectedDelivery || material.updatedAt || new Date().toISOString(),
+              title: `Material Delivered`,
+              description: `${material.quantity} units delivered`,
+              timestamp: material.arrivalDate ? new Date(material.arrivalDate).toISOString() : new Date().toISOString(),
               author: material.supplier || 'Supplier'
             })
           }
@@ -390,7 +476,7 @@ export default function ProjectTimeline({
           type: 'milestone',
           title: isOverdue ? 'Deadline Passed' : 'Project Deadline',
           description: `Project deadline: ${new Date(project.deadline).toLocaleDateString()}`,
-          timestamp: project.deadline,
+          timestamp: new Date(project.deadline).toISOString(),
           author: 'System'
         })
       }
@@ -458,21 +544,26 @@ export default function ProjectTimeline({
       })
     }
 
-    // Material deliveries
+    // Material deliveries (simplified - using orderDate as estimate)
     if (project.materials) {
       project.materials.forEach(material => {
-        if (material.expectedDelivery && 
-            new Date(material.expectedDelivery) > new Date() &&
-            material.status !== MaterialStatus.ARRIVED &&
-            material.status !== MaterialStatus.INSTALLED) {
-          const daysUntil = Math.ceil((new Date(material.expectedDelivery).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-          upcoming.push({
-            type: 'delivery',
-            title: `${material.name} Delivery`,
-            date: material.expectedDelivery,
-            daysUntil,
-            urgent: daysUntil <= 3
-          })
+        if (material.orderDate && 
+            (material.status === MaterialStatus.ORDERED ||
+            material.status === MaterialStatus.SHIPPED)) {
+          // Estimate delivery date as 7 days from order date
+          const estimatedDelivery = new Date(material.orderDate)
+          estimatedDelivery.setDate(estimatedDelivery.getDate() + 7)
+          
+          if (estimatedDelivery > new Date()) {
+            const daysUntil = Math.ceil((estimatedDelivery.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+            upcoming.push({
+              type: 'delivery',
+              title: `Material Delivery`,
+              date: estimatedDelivery.toISOString(),
+              daysUntil,
+              urgent: daysUntil <= 3
+            })
+          }
         }
       })
     }
@@ -481,72 +572,170 @@ export default function ProjectTimeline({
   }, [project])
 
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Header and Statistics */}
+    <div className={cn("space-y-4 md:space-y-6", className)}>
+      {/* Header and Statistics - Mobile Optimized */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Project Timeline</h2>
-          <div className="flex gap-2">
-            <Button onClick={() => setShowAddEventModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Event
-            </Button>
-          </div>
+        <div className={cn(
+          "flex gap-4",
+          isMobile ? "flex-col" : "items-center justify-between"
+        )}>
+          <h2 className={cn(
+            "font-bold",
+            isMobile ? "text-xl" : "text-2xl"
+          )}>
+            Project Timeline
+          </h2>
+          <Button 
+            onClick={() => setShowAddEventModal(true)}
+            className={cn(
+              isMobile ? "w-full h-12" : ""
+            )}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Event
+          </Button>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Statistics Cards - Mobile Optimized Grid */}
+        <div className={cn(
+          "grid gap-3",
+          isMobile ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-4"
+        )}>
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <BarChart3 className="h-5 w-5 text-blue-600" />
+            <CardContent className={cn(
+              isMobile ? "p-3" : "p-4"
+            )}>
+              <div className={cn(
+                "flex items-center gap-2",
+                isMobile && "gap-2"
+              )}>
+                <div className={cn(
+                  "p-2 bg-blue-100 rounded-lg shrink-0",
+                  isMobile && "p-1.5"
+                )}>
+                  <BarChart3 className={cn(
+                    "text-blue-600",
+                    isMobile ? "h-4 w-4" : "h-5 w-5"
+                  )} />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Events</p>
-                  <p className="text-2xl font-bold">{timelineStats.totalEvents}</p>
+                <div className="min-w-0">
+                  <p className={cn(
+                    "text-muted-foreground",
+                    isMobile ? "text-xs" : "text-sm"
+                  )}>
+                    Total Events
+                  </p>
+                  <p className={cn(
+                    "font-bold",
+                    isMobile ? "text-lg" : "text-2xl"
+                  )}>
+                    {timelineStats.totalEvents}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Flag className="h-5 w-5 text-purple-600" />
+            <CardContent className={cn(
+              isMobile ? "p-3" : "p-4"
+            )}>
+              <div className={cn(
+                "flex items-center gap-2",
+                isMobile && "gap-2"
+              )}>
+                <div className={cn(
+                  "p-2 bg-purple-100 rounded-lg shrink-0",
+                  isMobile && "p-1.5"
+                )}>
+                  <Flag className={cn(
+                    "text-purple-600",
+                    isMobile ? "h-4 w-4" : "h-5 w-5"
+                  )} />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Milestones</p>
-                  <p className="text-2xl font-bold">{timelineStats.milestones}</p>
+                <div className="min-w-0">
+                  <p className={cn(
+                    "text-muted-foreground",
+                    isMobile ? "text-xs" : "text-sm"
+                  )}>
+                    Milestones
+                  </p>
+                  <p className={cn(
+                    "font-bold",
+                    isMobile ? "text-lg" : "text-2xl"
+                  )}>
+                    {timelineStats.milestones}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Truck className="h-5 w-5 text-green-600" />
+            <CardContent className={cn(
+              isMobile ? "p-3" : "p-4"
+            )}>
+              <div className={cn(
+                "flex items-center gap-2",
+                isMobile && "gap-2"
+              )}>
+                <div className={cn(
+                  "p-2 bg-green-100 rounded-lg shrink-0",
+                  isMobile && "p-1.5"
+                )}>
+                  <Truck className={cn(
+                    "text-green-600",
+                    isMobile ? "h-4 w-4" : "h-5 w-5"
+                  )} />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Deliveries</p>
-                  <p className="text-2xl font-bold">{timelineStats.deliveries}</p>
+                <div className="min-w-0">
+                  <p className={cn(
+                    "text-muted-foreground",
+                    isMobile ? "text-xs" : "text-sm"
+                  )}>
+                    Deliveries
+                  </p>
+                  <p className={cn(
+                    "font-bold",
+                    isMobile ? "text-lg" : "text-2xl"
+                  )}>
+                    {timelineStats.deliveries}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-orange-600" />
+            <CardContent className={cn(
+              isMobile ? "p-3" : "p-4"
+            )}>
+              <div className={cn(
+                "flex items-center gap-2",
+                isMobile && "gap-2"
+              )}>
+                <div className={cn(
+                  "p-2 bg-orange-100 rounded-lg shrink-0",
+                  isMobile && "p-1.5"
+                )}>
+                  <TrendingUp className={cn(
+                    "text-orange-600",
+                    isMobile ? "h-4 w-4" : "h-5 w-5"
+                  )} />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Recent (7 days)</p>
-                  <p className="text-2xl font-bold">{timelineStats.recentEvents}</p>
+                <div className="min-w-0">
+                  <p className={cn(
+                    "text-muted-foreground",
+                    isMobile ? "text-xs" : "text-sm"
+                  )}>
+                    Recent (7d)
+                  </p>
+                  <p className={cn(
+                    "font-bold",
+                    isMobile ? "text-lg" : "text-2xl"
+                  )}>
+                    {timelineStats.recentEvents}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -554,49 +743,77 @@ export default function ProjectTimeline({
         </div>
       </div>
 
-      {/* Upcoming Items */}
+      {/* Upcoming Items - Mobile Optimized */}
       {upcomingItems.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <CardTitle className={cn(
+              "flex items-center gap-2",
+              isMobile ? "text-lg" : "text-xl"
+            )}>
               <Clock className="h-5 w-5" />
               Upcoming Deadlines & Deliveries
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className={cn(
+            isMobile ? "p-3" : "p-6"
+          )}>
+            <div className={cn(
+              "space-y-3",
+              isMobile && "space-y-2"
+            )}>
               {upcomingItems.map((item, index) => (
                 <div
                   key={index}
                   className={cn(
-                    "flex items-center justify-between p-3 rounded-lg border",
+                    "flex items-center justify-between rounded-lg border",
+                    isMobile ? "p-2" : "p-3",
                     item.urgent ? "border-destructive/20 bg-destructive/5" : "border-border"
                   )}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "flex items-center gap-2",
+                    isMobile && "gap-2 min-w-0 flex-1"
+                  )}>
                     {item.type === 'deadline' ? (
                       <Flag className={cn(
-                        "h-4 w-4",
+                        "shrink-0",
+                        isMobile ? "h-3 w-3" : "h-4 w-4",
                         item.urgent ? "text-destructive" : "text-muted-foreground"
                       )} />
                     ) : (
                       <Truck className={cn(
-                        "h-4 w-4",
+                        "shrink-0",
+                        isMobile ? "h-3 w-3" : "h-4 w-4",
                         item.urgent ? "text-destructive" : "text-muted-foreground"
                       )} />
                     )}
-                    <div>
-                      <p className="font-medium text-sm">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">
+                    <div className="min-w-0 flex-1">
+                      <p className={cn(
+                        "font-medium",
+                        isMobile ? "text-xs truncate" : "text-sm"
+                      )}>
+                        {item.title}
+                      </p>
+                      <p className={cn(
+                        "text-muted-foreground",
+                        isMobile ? "text-xs" : "text-xs"
+                      )}>
                         {new Date(item.date).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   
-                  <Badge variant={item.urgent ? "destructive" : "secondary"} className="text-xs">
+                  <Badge 
+                    variant={item.urgent ? "destructive" : "secondary"} 
+                    className={cn(
+                      "shrink-0",
+                      isMobile ? "text-xs ml-2" : "text-xs"
+                    )}
+                  >
                     {item.daysUntil === 0 ? 'Today' : 
                      item.daysUntil === 1 ? 'Tomorrow' : 
-                     `${item.daysUntil} days`}
+                     `${item.daysUntil}d`}
                   </Badge>
                 </div>
               ))}
@@ -605,23 +822,47 @@ export default function ProjectTimeline({
         </Card>
       )}
 
-      {/* Timeline */}
+      {/* Timeline - Mobile Optimized */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className={cn(
+            "flex items-center gap-2",
+            isMobile ? "text-lg" : "text-xl"
+          )}>
             <Calendar className="h-5 w-5" />
             Timeline Events
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className={cn(
+          isMobile ? "p-3" : "p-6"
+        )}>
           {timelineEvents.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-30" />
-              <h3 className="text-lg font-semibold mb-2">No Timeline Events</h3>
-              <p className="text-muted-foreground mb-4">
+            <div className={cn(
+              "text-center",
+              isMobile ? "py-8" : "py-12"
+            )}>
+              <Calendar className={cn(
+                "mx-auto mb-4 opacity-30",
+                isMobile ? "h-10 w-10" : "h-12 w-12"
+              )} />
+              <h3 className={cn(
+                "font-semibold mb-2",
+                isMobile ? "text-base" : "text-lg"
+              )}>
+                No Timeline Events
+              </h3>
+              <p className={cn(
+                "text-muted-foreground mb-4",
+                isMobile ? "text-sm" : "text-base"
+              )}>
                 Start adding events to track project progress and milestones.
               </p>
-              <Button onClick={() => setShowAddEventModal(true)}>
+              <Button 
+                onClick={() => setShowAddEventModal(true)}
+                className={cn(
+                  isMobile ? "w-full h-12" : ""
+                )}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Event
               </Button>
@@ -633,6 +874,7 @@ export default function ProjectTimeline({
                   key={event.id}
                   event={event}
                   isLast={index === timelineEvents.length - 1}
+                  isMobile={isMobile}
                 />
               ))}
             </div>

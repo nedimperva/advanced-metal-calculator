@@ -77,6 +77,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { 
   MATERIAL_STATUS_LABELS, 
   MATERIAL_STATUS_COLORS 
@@ -113,6 +114,115 @@ interface AddMaterialModalProps {
   onAdd: (material: Omit<PhysicalMaterial, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>) => void
 }
 
+// Mobile-optimized Calculation Card Component
+interface CalculationCardProps {
+  calculation: Calculation
+  project: Project
+  onEdit: () => void
+  onRemove: () => void
+  isMobile: boolean
+}
+
+function CalculationCard({ calculation, project, onEdit, onRemove, isMobile }: CalculationCardProps) {
+  return (
+    <Card className="hover:bg-muted/30 transition-colors">
+      <CardContent className={cn(
+        "p-4",
+        isMobile && "p-3"
+      )}>
+        <div className={cn(
+          "flex gap-3",
+          isMobile ? "flex-col space-y-3" : "items-center"
+        )}>
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <Calculator className={cn(
+              "text-muted-foreground shrink-0 mt-1",
+              isMobile ? "h-4 w-4" : "h-5 w-5"
+            )} />
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col gap-2 mb-2">
+                <h4 className={cn(
+                  "font-medium leading-tight",
+                  isMobile ? "text-sm break-words" : "text-base truncate"
+                )}>
+                  {calculation.name || `${calculation.materialName} ${calculation.profileName}`}
+                </h4>
+                
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant="secondary" className="text-xs">
+                    {calculation.totalWeight ? `${calculation.totalWeight.toFixed(2)} kg total` : `${calculation.weight?.toFixed(2)} kg`}
+                  </Badge>
+                  {calculation.totalCost && calculation.totalCost > 0 && (
+                    <Badge variant="outline" className="text-xs text-green-600">
+                      ${calculation.totalCost.toFixed(2)}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              
+              <div className={cn(
+                "text-muted-foreground",
+                isMobile ? "text-xs" : "text-sm"
+              )}>
+                {calculation.materialName} • {calculation.profileName} • {calculation.dimensions?.length || '?'}m
+                {calculation.quantity && calculation.quantity > 1 && ` • Qty: ${calculation.quantity}`}
+              </div>
+              
+              {calculation.notes && (
+                <div className={cn(
+                  "text-muted-foreground mt-1",
+                  isMobile ? "text-xs break-words" : "text-xs truncate"
+                )}>
+                  {calculation.notes}
+                </div>
+              )}
+              
+              <div className={cn(
+                "text-muted-foreground mt-2",
+                isMobile ? "text-xs" : "text-xs"
+              )}>
+                {new Date(calculation.timestamp).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+          
+          {/* Action Buttons - Mobile Optimized */}
+          <div className={cn(
+            "flex gap-2 shrink-0",
+            isMobile ? "w-full" : "items-center"
+          )}>
+            <Button
+              variant="outline"
+              size={isMobile ? "default" : "sm"}
+              onClick={onEdit}
+              className={cn(
+                isMobile ? "flex-1 h-10" : ""
+              )}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+            
+            <Button
+              variant="outline"
+              size={isMobile ? "default" : "sm"}
+              onClick={onRemove}
+              className={cn(
+                "text-red-600 hover:text-red-700 hover:bg-red-50",
+                isMobile ? "flex-1 h-10" : ""
+              )}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Remove
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 // Material Details Modal Component
 function MaterialDetailsModal({ 
   material, 
@@ -121,6 +231,7 @@ function MaterialDetailsModal({
   onSave, 
   onDelete 
 }: MaterialDetailsModalProps) {
+  const isMobile = useMediaQuery("(max-width: 767px)")
   const [formData, setFormData] = useState<Partial<ProjectMaterial>>({})
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -196,36 +307,43 @@ function MaterialDetailsModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className={cn(
+          isMobile 
+            ? "max-w-[95vw] max-h-[90vh] w-full overflow-y-auto" 
+            : "max-w-2xl max-h-[90vh] overflow-y-auto"
+        )}>
           <DialogHeader>
             <DialogTitle>Material Details</DialogTitle>
             <DialogDescription>
-              View and edit material information, supplier details, and delivery tracking.
+              Update material information and status.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Basic Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
+          {material && (
+            <div className={cn(
+              "space-y-4",
+              isMobile && "space-y-3"
+            )}>
+              {/* Basic Information */}
+              <div className="space-y-4">
                 <div>
-                  <Label>Material Name</Label>
+                  <Label htmlFor="name">Name</Label>
                   <Input
+                    id="name"
                     value={formData.name || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter material name"
+                    placeholder="Material name"
+                    className={cn(isMobile && "text-base")}
                   />
                 </div>
                 
                 <div>
-                  <Label>Status</Label>
-                  <Select 
-                    value={formData.status || MaterialStatus.PENDING}
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status || material.status}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as MaterialStatus }))}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={cn(isMobile && "h-12")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -237,146 +355,51 @@ function MaterialDetailsModal({
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Quantity</Label>
-                  <Input
-                    type="number"
-                    value={formData.quantity || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 0 }))}
-                    placeholder="0"
-                  />
-                </div>
                 
                 <div>
-                  <Label>Unit</Label>
-                  <Input
-                    value={formData.unit || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                    placeholder="kg, m, pcs, etc."
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Additional notes..."
+                    className={cn(
+                      "min-h-[100px] resize-none",
+                      isMobile && "text-base"
+                    )}
                   />
                 </div>
               </div>
             </div>
-
-            {/* Cost Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Cost Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Unit Cost</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.unitCost || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unitCost: parseFloat(e.target.value) || 0 }))}
-                    placeholder="0.00"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Total Cost</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.totalCost || (formData.quantity && formData.unitCost ? formData.quantity * formData.unitCost : '')}
-                    onChange={(e) => setFormData(prev => ({ ...prev, totalCost: parseFloat(e.target.value) || 0 }))}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Supplier Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Supplier Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Supplier Name</Label>
-                  <Input
-                    value={formData.supplier || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
-                    placeholder="Enter supplier name"
-                  />
-                </div>
-                
-                <div>
-                  <Label>Contact Person</Label>
-                  <Input
-                    value={formData.supplierContact || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, supplierContact: e.target.value }))}
-                    placeholder="Contact person"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Delivery Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Delivery Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Order Date</Label>
-                  <Input
-                    type="date"
-                    value={formData.orderDate ? formData.orderDate.split('T')[0] : ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, orderDate: e.target.value ? new Date(e.target.value).toISOString() : undefined }))}
-                  />
-                </div>
-                
-                <div>
-                  <Label>Expected Delivery</Label>
-                  <Input
-                    type="date"
-                    value={formData.expectedDelivery ? formData.expectedDelivery.split('T')[0] : ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, expectedDelivery: e.target.value ? new Date(e.target.value).toISOString() : undefined }))}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label>Delivery Address</Label>
-                <Textarea
-                  value={formData.deliveryAddress || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, deliveryAddress: e.target.value }))}
-                  placeholder="Enter delivery address"
-                  rows={2}
-                />
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <Label>Notes</Label>
-              <Textarea
-                value={formData.notes || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Additional notes about this material"
-                rows={3}
-              />
-            </div>
-          </div>
+          )}
           
-          <DialogFooter className="flex justify-between">
-            <Button 
-              variant="destructive" 
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={isLoading}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
-            
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onClose}>
+          <DialogFooter className={cn(
+            isMobile ? "flex-col gap-2" : "flex-row gap-2"
+          )}>
+            <div className={cn(
+              "flex gap-2",
+              isMobile ? "flex-col w-full" : "flex-row"
+            )}>
+              <Button 
+                variant="outline" 
+                onClick={onClose}
+                className={cn(isMobile && "w-full")}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={isLoading || !formData.name}>
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteDialog(true)}
+                className={cn(isMobile && "w-full")}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+              <Button 
+                onClick={handleSave}
+                disabled={isLoading}
+                className={cn(isMobile && "w-full")}
+              >
                 {isLoading ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-2" />
@@ -390,24 +413,38 @@ function MaterialDetailsModal({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      
       {/* Delete Confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className={cn(isMobile && "max-w-[95vw] w-full")}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Material</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove this material from the project? This action cannot be undone.
+              Are you sure you want to delete this material? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className={cn(
+            isMobile ? "flex-col gap-2" : "flex-row gap-2"
+          )}>
+            <AlertDialogCancel className={cn(isMobile && "w-full")}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={cn(
+                "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                isMobile && "w-full"
+              )}
               disabled={isLoading}
             >
-              Delete
+              {isLoading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Material'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -424,11 +461,11 @@ function AddCalculationModal({
   onAdd 
 }: AddCalculationModalProps) {
   const { allCalculations } = useProjects()
-  const [searchTerm, setSearchTerm] = useState('')
+  const isMobile = useMediaQuery("(max-width: 767px)")
   const [selectedCalculations, setSelectedCalculations] = useState<Set<string>>(new Set())
-  const [isLoading, setIsLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
-  // Load calculations on open
+  // Reset selections when modal opens
   useEffect(() => {
     if (isOpen) {
       setSelectedCalculations(new Set())
@@ -436,45 +473,45 @@ function AddCalculationModal({
     }
   }, [isOpen])
 
-  // Filter available calculations (not already in project)
-  const availableCalculations = useMemo(() => {
-    const projectCalculationIds = new Set(project.calculationIds || [])
-    return allCalculations.filter(calc => 
-      !projectCalculationIds.has(calc.id) &&
-      (calc.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       calc.materialName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       calc.profileName?.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-  }, [allCalculations, project.calculationIds, searchTerm])
-
   const handleAdd = () => {
-    if (selectedCalculations.size === 0) return
-    setIsLoading(true)
     onAdd(Array.from(selectedCalculations))
-    setSelectedCalculations(new Set())
+    onClose()
   }
 
   const handleToggleCalculation = (calculationId: string) => {
-    const newSelected = new Set(selectedCalculations)
-    if (newSelected.has(calculationId)) {
-      newSelected.delete(calculationId)
+    const newSelection = new Set(selectedCalculations)
+    if (newSelection.has(calculationId)) {
+      newSelection.delete(calculationId)
     } else {
-      newSelected.add(calculationId)
+      newSelection.add(calculationId)
     }
-    setSelectedCalculations(newSelected)
+    setSelectedCalculations(newSelection)
   }
+
+  // Filter available calculations (not already in project)
+  const availableCalculations = allCalculations.filter(calc => 
+    !project.calculationIds?.includes(calc.id) &&
+    (searchTerm === '' || 
+     calc.materialName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+     calc.profileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+     (calc.name && calc.name.toLowerCase().includes(searchTerm.toLowerCase())))
+  )
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className={cn(
+        isMobile 
+          ? "max-w-[95vw] max-h-[90vh] w-full" 
+          : "max-w-4xl max-h-[90vh]"
+      )}>
         <DialogHeader>
-          <DialogTitle>Add Calculations to Project</DialogTitle>
+          <DialogTitle>Add Calculations</DialogTitle>
           <DialogDescription>
             Select calculations from your history to add to this project.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+        <div className="space-y-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -482,337 +519,112 @@ function AddCalculationModal({
               placeholder="Search calculations..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className={cn(
+                "pl-10",
+                isMobile && "text-base h-12"
+              )}
             />
           </div>
-
+          
           {/* Calculations List */}
-          <div className="flex-1 overflow-y-auto space-y-2">
+          <div className={cn(
+            "border rounded-lg max-h-[50vh] overflow-y-auto",
+            isMobile && "max-h-[60vh]"
+          )}>
             {availableCalculations.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="p-8 text-center">
                 <Calculator className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <h3 className="text-lg font-semibold mb-2">No Calculations Available</h3>
                 <p className="text-muted-foreground">
-                  {searchTerm ? 'No calculations match your search.' : 'No available calculations to add.'}
+                  {searchTerm ? "No calculations match your search." : "No calculations available to add."}
                 </p>
               </div>
             ) : (
-              availableCalculations.map((calculation) => (
-                <div
-                  key={calculation.id}
-                  className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <Checkbox
-                    checked={selectedCalculations.has(calculation.id)}
-                    onCheckedChange={() => handleToggleCalculation(calculation.id)}
-                  />
-                  
-                  <Calculator className="h-4 w-4 text-muted-foreground" />
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium truncate">
-                        {calculation.name || `${calculation.materialName} ${calculation.profileName}`}
-                      </h4>
-                      <Badge variant="secondary" className="text-xs">
-                        {calculation.totalWeight ? `${calculation.totalWeight.toFixed(2)} kg total` : `${calculation.weight?.toFixed(2)} kg`}
-                      </Badge>
-                      {calculation.totalCost && calculation.totalCost > 0 && (
-                        <Badge variant="outline" className="text-xs text-green-600">
-                          ${calculation.totalCost.toFixed(2)}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {calculation.materialName} • {calculation.profileName} • {calculation.dimensions?.length || '?'}m
-                      {calculation.quantity && calculation.quantity > 1 && ` • Qty: ${calculation.quantity}`}
-                    </div>
-                    {calculation.notes && (
-                      <div className="text-xs text-muted-foreground mt-1 truncate">
-                        {calculation.notes}
-                      </div>
+              <div className="space-y-1 p-4">
+                {availableCalculations.map((calculation) => (
+                  <div
+                    key={calculation.id}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors",
+                      selectedCalculations.has(calculation.id) && "bg-primary/10 border-primary/20"
                     )}
+                    onClick={() => handleToggleCalculation(calculation.id)}
+                  >
+                    <Checkbox
+                      checked={selectedCalculations.has(calculation.id)}
+                      onChange={() => handleToggleCalculation(calculation.id)}
+                      className="shrink-0"
+                    />
+                    
+                    <Calculator className="h-4 w-4 text-muted-foreground shrink-0" />
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col gap-1">
+                        <h4 className={cn(
+                          "font-medium",
+                          isMobile ? "text-sm break-words" : "text-base truncate"
+                        )}>
+                          {calculation.name || `${calculation.materialName} ${calculation.profileName}`}
+                        </h4>
+                        
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {calculation.totalWeight ? `${calculation.totalWeight.toFixed(2)} kg` : `${calculation.weight?.toFixed(2)} kg`}
+                          </Badge>
+                          {calculation.totalCost && calculation.totalCost > 0 && (
+                            <Badge variant="outline" className="text-xs text-green-600">
+                              ${calculation.totalCost.toFixed(2)}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className={cn(
+                          "text-muted-foreground",
+                          isMobile ? "text-xs" : "text-sm"
+                        )}>
+                          {calculation.materialName} • {calculation.profileName}
+                          {calculation.quantity && calculation.quantity > 1 && ` • Qty: ${calculation.quantity}`}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(calculation.timestamp).toLocaleDateString()}
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>
-
-        <div className="flex justify-between items-center pt-4 border-t">
-          <p className="text-sm text-muted-foreground">
-            {selectedCalculations.size} calculation{selectedCalculations.size !== 1 ? 's' : ''} selected
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
+        
+        <DialogFooter className={cn(
+          isMobile ? "flex-col gap-2" : "flex-row gap-2"
+        )}>
+          <div className={cn(
+            "flex justify-between items-center",
+            isMobile ? "w-full" : ""
+          )}>
+            <span className="text-sm text-muted-foreground">
+              {selectedCalculations.size} calculation{selectedCalculations.size !== 1 ? 's' : ''} selected
+            </span>
+          </div>
+          <div className={cn(
+            "flex gap-2",
+            isMobile ? "w-full flex-col" : ""
+          )}>
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+              className={cn(isMobile && "w-full")}
+            >
               Cancel
             </Button>
             <Button 
-              onClick={handleAdd} 
-              disabled={selectedCalculations.size === 0 || isLoading}
+              onClick={handleAdd}
+              disabled={selectedCalculations.size === 0}
+              className={cn(isMobile && "w-full")}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add {selectedCalculations.size} Calculation{selectedCalculations.size !== 1 ? 's' : ''}
-                </>
-              )}
+              Add Selected ({selectedCalculations.size})
             </Button>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// Add Material Modal Component
-function AddMaterialModal({ 
-  project, 
-  isOpen, 
-  onClose, 
-  onAdd 
-}: AddMaterialModalProps) {
-  const [formData, setFormData] = useState({
-    name: '',
-    quantity: 0,
-    unit: 'kg',
-    unitCost: 0,
-    totalCost: 0,
-    supplier: '',
-    supplierContact: '',
-    status: MaterialStatus.PENDING as MaterialStatus,
-    notes: '',
-    expectedDelivery: ''
-  })
-  const [isLoading, setIsLoading] = useState(false)
-
-  const handleSubmit = async () => {
-    if (!formData.name.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Material name is required",
-        variant: "destructive"
-      })
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      await onAdd({
-        ...formData,
-        expectedDelivery: formData.expectedDelivery ? new Date(formData.expectedDelivery).toISOString() : undefined
-      })
-      
-      // Reset form
-      setFormData({
-        name: '',
-        quantity: 0,
-        unit: 'kg',
-        unitCost: 0,
-        totalCost: 0,
-        supplier: '',
-        supplierContact: '',
-        status: MaterialStatus.PENDING,
-        notes: '',
-        expectedDelivery: ''
-      })
-      
-      onClose()
-      
-      toast({
-        title: "Material Added",
-        description: "New material has been added to the project",
-      })
-    } catch (error) {
-      console.error('Failed to add material:', error)
-      toast({
-        title: "Add Failed",
-        description: "Failed to add material",
-        variant: "destructive"
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const statusOptions = Object.values(MaterialStatus).map(status => ({
-    value: status,
-    label: MATERIAL_STATUS_LABELS[status],
-    color: MATERIAL_STATUS_COLORS[status]
-  }))
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Add New Material</DialogTitle>
-          <DialogDescription>
-            Add a physical material to track for this project - suppliers, delivery, installation, etc.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Basic Information</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Material Name *</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g. Steel Beams HEA120"
-                />
-              </div>
-              
-              <div>
-                <Label>Status</Label>
-                <Select 
-                  value={formData.status}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as MaterialStatus }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((status) => (
-                      <SelectItem key={status.value} value={status.value}>
-                        {status.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Quantity</Label>
-                <Input
-                  type="number"
-                  value={formData.quantity || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 0 }))}
-                  placeholder="0"
-                />
-              </div>
-              
-              <div>
-                <Label>Unit</Label>
-                <Input
-                  value={formData.unit}
-                  onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                  placeholder="kg, m, pcs, etc."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Cost Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Cost Information</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Unit Cost</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.unitCost || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, unitCost: parseFloat(e.target.value) || 0 }))}
-                  placeholder="0.00"
-                />
-              </div>
-              
-              <div>
-                <Label>Total Cost</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.totalCost || (formData.quantity && formData.unitCost ? formData.quantity * formData.unitCost : '')}
-                  onChange={(e) => setFormData(prev => ({ ...prev, totalCost: parseFloat(e.target.value) || 0 }))}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Supplier Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Supplier Information</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Supplier Name</Label>
-                <Input
-                  value={formData.supplier}
-                  onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
-                  placeholder="Enter supplier name"
-                />
-              </div>
-              
-              <div>
-                <Label>Contact Person</Label>
-                <Input
-                  value={formData.supplierContact}
-                  onChange={(e) => setFormData(prev => ({ ...prev, supplierContact: e.target.value }))}
-                  placeholder="Contact person"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Delivery & Notes */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Delivery & Notes</h3>
-            
-            <div>
-              <Label>Expected Delivery Date</Label>
-              <Input
-                type="date"
-                value={formData.expectedDelivery}
-                onChange={(e) => setFormData(prev => ({ ...prev, expectedDelivery: e.target.value }))}
-              />
-            </div>
-            
-            <div>
-              <Label>Notes</Label>
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Additional notes about this material..."
-                rows={3}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2 pt-4">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isLoading || !formData.name.trim()}>
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Material
-              </>
-            )}
-          </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
@@ -825,6 +637,7 @@ export default function ProjectMaterials({
   className
 }: ProjectMaterialsProps) {
   const { updateProject, allCalculations } = useProjects()
+  const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Local state
   const [showCalculationModal, setShowCalculationModal] = useState(false)
@@ -862,13 +675,70 @@ export default function ProjectMaterials({
     }
   }
 
+  // Handle edit calculation
+  const handleEditCalculation = (calcId: string) => {
+    // Update URL parameters to load calculation for editing
+    const url = new URL(window.location.href)
+    url.searchParams.set('edit', calcId)
+    url.searchParams.set('project', project.id)
+    
+    // Use pushState to avoid navigation - this will trigger the URL parameter handling
+    window.history.pushState({}, '', url.toString())
+    
+    // Reload the page to trigger the URL parameter processing
+    window.location.reload()
+  }
+
+  // Handle remove calculation
+  const handleRemoveCalculation = async (calcId: string) => {
+    const calculation = allCalculations.find(c => c.id === calcId)
+    
+    if (window.confirm(`Are you sure you want to remove "${calculation?.name || 'this calculation'}" from this project?`)) {
+      try {
+        // Remove from project
+        const updatedProject = {
+          ...project,
+          calculationIds: project.calculationIds?.filter(id => id !== calcId) || [],
+          updatedAt: new Date()
+        }
+        await updateProject(updatedProject)
+        onUpdate?.()
+        
+        toast({
+          title: "Calculation Removed",
+          description: "Calculation has been removed from the project.",
+        })
+      } catch (error) {
+        console.error('Failed to remove calculation:', error)
+        toast({
+          title: "Remove Failed",
+          description: "Failed to remove calculation from project",
+          variant: "destructive"
+        })
+      }
+    }
+  }
+
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Header */}
+    <div className={cn("space-y-4 md:space-y-6", className)}>
+      {/* Header - Mobile Optimized */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Project Calculations</h2>
-          <Button onClick={() => setShowCalculationModal(true)}>
+        <div className={cn(
+          "flex gap-4",
+          isMobile ? "flex-col" : "items-center justify-between"
+        )}>
+          <h2 className={cn(
+            "font-bold",
+            isMobile ? "text-xl" : "text-2xl"
+          )}>
+            Project Calculations
+          </h2>
+          <Button 
+            onClick={() => setShowCalculationModal(true)}
+            className={cn(
+              isMobile ? "w-full h-12" : ""
+            )}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Calculations
           </Button>
@@ -878,111 +748,35 @@ export default function ProjectMaterials({
       {/* Project Calculations */}
       {project.calculationIds && project.calculationIds.length > 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <CardTitle className={cn(
+              "flex items-center gap-2",
+              isMobile ? "text-lg" : "text-xl"
+            )}>
               <Calculator className="h-5 w-5" />
               Calculations ({project.calculationIds.length})
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className={cn(
+            isMobile ? "p-3" : "p-6"
+          )}>
+            <div className={cn(
+              "space-y-3",
+              isMobile && "space-y-2"
+            )}>
               {project.calculationIds.map((calcId) => {
                 const calculation = allCalculations.find(c => c.id === calcId)
                 if (!calculation) return null
                 
                 return (
-                  <div
+                  <CalculationCard
                     key={calcId}
-                    className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <Calculator className="h-4 w-4 text-muted-foreground" />
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium truncate">
-                          {calculation.name || `${calculation.materialName} ${calculation.profileName}`}
-                        </h4>
-                        <Badge variant="secondary" className="text-xs">
-                          {calculation.totalWeight ? `${calculation.totalWeight.toFixed(2)} kg total` : `${calculation.weight?.toFixed(2)} kg`}
-                        </Badge>
-                        {calculation.totalCost && calculation.totalCost > 0 && (
-                          <Badge variant="outline" className="text-xs text-green-600">
-                            ${calculation.totalCost.toFixed(2)}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {calculation.materialName} • {calculation.profileName} • {calculation.dimensions?.length || '?'}m
-                        {calculation.quantity && calculation.quantity > 1 && ` • Qty: ${calculation.quantity}`}
-                      </div>
-                      {calculation.notes && (
-                        <div className="text-xs text-muted-foreground mt-1 truncate">
-                          {calculation.notes}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // Update URL parameters to load calculation for editing
-                          const url = new URL(window.location.href)
-                          url.searchParams.set('edit', calcId)
-                          url.searchParams.set('project', project.id)
-                          
-                          // Use pushState to avoid navigation - this will trigger the URL parameter handling
-                          window.history.pushState({}, '', url.toString())
-                          
-                          // Reload the page to trigger the URL parameter processing
-                          window.location.reload()
-                        }}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          if (window.confirm(`Are you sure you want to remove "${calculation.name || 'this calculation'}" from this project?`)) {
-                            try {
-                              // Remove from project
-                              const updatedProject = {
-                                ...project,
-                                calculationIds: project.calculationIds.filter(id => id !== calcId),
-                                updatedAt: new Date()
-                              }
-                              await updateProject(updatedProject)
-                              onUpdate?.()
-                              
-                              toast({
-                                title: "Calculation Removed",
-                                description: "Calculation has been removed from the project.",
-                              })
-                            } catch (error) {
-                              console.error('Failed to remove calculation:', error)
-                              toast({
-                                title: "Remove Failed",
-                                description: "Failed to remove calculation from project",
-                                variant: "destructive"
-                              })
-                            }
-                          }
-                        }}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Remove
-                      </Button>
-                    </div>
-                    
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(calculation.timestamp).toLocaleDateString()}
-                    </div>
-                  </div>
+                    calculation={calculation}
+                    project={project}
+                    onEdit={() => handleEditCalculation(calcId)}
+                    onRemove={() => handleRemoveCalculation(calcId)}
+                    isMobile={isMobile}
+                  />
                 )
               })}
             </div>
@@ -990,13 +784,32 @@ export default function ProjectMaterials({
         </Card>
       ) : (
         <Card>
-          <CardContent className="text-center py-12">
-            <Calculator className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <h3 className="text-lg font-semibold mb-2">No Calculations</h3>
-            <p className="text-muted-foreground mb-4">
+          <CardContent className={cn(
+            "text-center",
+            isMobile ? "py-8 px-4" : "py-12"
+          )}>
+            <Calculator className={cn(
+              "mx-auto mb-4 opacity-30",
+              isMobile ? "h-10 w-10" : "h-12 w-12"
+            )} />
+            <h3 className={cn(
+              "font-semibold mb-2",
+              isMobile ? "text-base" : "text-lg"
+            )}>
+              No Calculations
+            </h3>
+            <p className={cn(
+              "text-muted-foreground mb-4",
+              isMobile ? "text-sm" : "text-base"
+            )}>
               Add calculations from your history to track them in this project.
             </p>
-            <Button onClick={() => setShowCalculationModal(true)}>
+            <Button 
+              onClick={() => setShowCalculationModal(true)}
+              className={cn(
+                isMobile ? "w-full h-12" : ""
+              )}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Calculations
             </Button>

@@ -68,6 +68,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { 
   PROJECT_STATUS_LABELS, 
   PROJECT_STATUS_COLORS,
@@ -97,6 +98,7 @@ export default function ProjectDetails({
 }: ProjectDetailsProps) {
   // Router no longer needed - navigation handled by parent
   const { updateProject, deleteProject } = useProjects()
+  const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Local state
   const [isLoading, setIsLoading] = useState(false)
@@ -213,24 +215,20 @@ export default function ProjectDetails({
   // Handle share
   const handleShare = async () => {
     try {
-      const shareData = {
-        title: `Project: ${project.name}`,
-        text: `Check out this project: ${project.name}\n${project.description || ''}`,
-        url: window.location.href
-      }
-
       if (navigator.share) {
-        await navigator.share(shareData)
+        await navigator.share({
+          title: `Project: ${project.name}`,
+          text: `Check out this construction project: ${project.name}`,
+          url: window.location.href
+        })
       } else {
         // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`)
+        await navigator.clipboard.writeText(window.location.href)
         toast({
           title: "Link Copied",
-          description: "Project link copied to clipboard",
+          description: "Project link has been copied to clipboard",
         })
       }
-      
-      setShowShareDialog(false)
     } catch (error) {
       console.error('Failed to share project:', error)
       toast({
@@ -245,8 +243,8 @@ export default function ProjectDetails({
   const handleExport = () => {
     try {
       const exportData = {
-        project: {
-          ...project,
+        project,
+        analytics: {
           progress,
           costs
         },
@@ -295,48 +293,64 @@ export default function ProjectDetails({
   }))
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4 md:space-y-6", className)}>
       {/* Project Header */}
       <Card>
-        <CardHeader>
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-4">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-2">
-                <CardTitle className="text-2xl lg:text-3xl truncate">
-                  {project.name}
-                </CardTitle>
-                <Badge 
-                  variant="outline" 
-                  className={cn(
-                    "text-sm",
-                    `bg-${PROJECT_STATUS_COLORS[project.status]}-50 border-${PROJECT_STATUS_COLORS[project.status]}-200 text-${PROJECT_STATUS_COLORS[project.status]}-700`
-                  )}
-                >
-                  {PROJECT_STATUS_LABELS[project.status]}
-                </Badge>
-                {isOverdue && (
-                  <Badge variant="destructive">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    Overdue
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3 mb-3">
+                <div className="flex-1 min-w-0">
+                  <CardTitle className={cn(
+                    "text-xl md:text-2xl lg:text-3xl leading-tight",
+                    isMobile ? "break-words" : "truncate"
+                  )}>
+                    {project.name}
+                  </CardTitle>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "text-sm shrink-0",
+                      `bg-${PROJECT_STATUS_COLORS[project.status]}-50 border-${PROJECT_STATUS_COLORS[project.status]}-200 text-${PROJECT_STATUS_COLORS[project.status]}-700`
+                    )}
+                  >
+                    {PROJECT_STATUS_LABELS[project.status]}
                   </Badge>
-                )}
+                  {isOverdue && (
+                    <Badge variant="destructive" className="shrink-0">
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      Overdue
+                    </Badge>
+                  )}
+                </div>
               </div>
               
               {project.description && (
-                <p className="text-muted-foreground text-lg">
+                <p className={cn(
+                  "text-muted-foreground leading-relaxed",
+                  isMobile ? "text-sm" : "text-lg"
+                )}>
                   {project.description}
                 </p>
               )}
             </div>
             
-            <div className="flex items-center gap-2">
+            {/* Action Buttons - Mobile Optimized */}
+            <div className={cn(
+              "flex gap-2",
+              isMobile ? "flex-col" : "flex-row items-center justify-end"
+            )}>
               {/* Status Change Dropdown */}
               <Select 
                 value={project.status} 
                 onValueChange={handleStatusChange}
                 disabled={isLoading}
               >
-                <SelectTrigger className="w-40">
+                <SelectTrigger className={cn(
+                  isMobile ? "w-full h-12" : "w-40"
+                )}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -348,40 +362,59 @@ export default function ProjectDetails({
                 </SelectContent>
               </Select>
               
-              {/* Edit Button */}
-              <Button onClick={onEdit} disabled={isLoading}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-              
-              {/* More Actions Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" disabled={isLoading}>
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Share Project
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExport}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Data
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Project
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className={cn(
+                "flex gap-2",
+                isMobile ? "w-full" : ""
+              )}>
+                {/* Edit Button */}
+                <Button 
+                  onClick={onEdit} 
+                  disabled={isLoading}
+                  className={cn(
+                    isMobile ? "flex-1 h-12" : ""
+                  )}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                
+                {/* More Actions Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size={isMobile ? "default" : "icon"}
+                      disabled={isLoading}
+                      className={cn(
+                        isMobile ? "h-12 px-4" : "h-10 w-10"
+                      )}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                      {isMobile && <span className="ml-2">More</span>}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Share Project
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExport}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export Data
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Project
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -390,8 +423,8 @@ export default function ProjectDetails({
       {/* Progress Overview */}
       {progress && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <BarChart3 className="h-5 w-5" />
               Progress Overview
             </CardTitle>
@@ -407,7 +440,10 @@ export default function ProjectDetails({
               <Progress value={progress.completionPercentage} className="h-3" />
             </div>
             
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className={cn(
+              "grid gap-3",
+              isMobile ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-4"
+            )}>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="text-lg font-bold text-green-600">
                   {progress.materialsCompleted}
@@ -437,39 +473,48 @@ export default function ProjectDetails({
         </Card>
       )}
 
-      {/* Project Information */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Project Information - Mobile Optimized Grid */}
+      <div className={cn(
+        "grid gap-4",
+        isMobile ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2"
+      )}>
         {/* Basic Information */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <FileText className="h-5 w-5" />
               Project Information
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {project.client && (
-              <div className="flex items-center gap-3">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <div>
+              <div className="flex items-start gap-3">
+                <Users className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                <div className="min-w-0 flex-1">
                   <Label className="text-sm text-muted-foreground">Client</Label>
-                  <p className="font-medium">{project.client}</p>
+                  <p className={cn(
+                    "font-medium",
+                    isMobile ? "break-words" : ""
+                  )}>{project.client}</p>
                 </div>
               </div>
             )}
             
             {project.location && (
-              <div className="flex items-center gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <div>
+              <div className="flex items-start gap-3">
+                <MapPin className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                <div className="min-w-0 flex-1">
                   <Label className="text-sm text-muted-foreground">Location</Label>
-                  <p className="font-medium">{project.location}</p>
+                  <p className={cn(
+                    "font-medium",
+                    isMobile ? "break-words" : ""
+                  )}>{project.location}</p>
                 </div>
               </div>
             )}
             
-            <div className="flex items-center gap-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-start gap-3">
+              <Calendar className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
               <div>
                 <Label className="text-sm text-muted-foreground">Created</Label>
                 <p className="font-medium">
@@ -479,12 +524,12 @@ export default function ProjectDetails({
             </div>
             
             {project.deadline && (
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <Clock className={cn(
-                  "h-4 w-4",
+                  "h-4 w-4 mt-1 shrink-0",
                   isOverdue ? "text-destructive" : "text-muted-foreground"
                 )} />
-                <div>
+                <div className="min-w-0 flex-1">
                   <Label className="text-sm text-muted-foreground">Deadline</Label>
                   <p className={cn(
                     "font-medium",
@@ -492,7 +537,7 @@ export default function ProjectDetails({
                   )}>
                     {new Date(project.deadline).toLocaleDateString()}
                     {daysUntilDeadline !== null && (
-                      <span className="ml-2 text-sm">
+                      <span className="block text-sm">
                         ({daysUntilDeadline > 0 ? `${daysUntilDeadline} days left` : 'overdue'})
                       </span>
                     )}
@@ -520,8 +565,8 @@ export default function ProjectDetails({
 
         {/* Budget Information */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <DollarSign className="h-5 w-5" />
               Budget Tracking
             </CardTitle>
@@ -531,7 +576,10 @@ export default function ProjectDetails({
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <Label className="text-sm text-muted-foreground">Total Budget</Label>
-                  <span className="font-bold text-lg">
+                  <span className={cn(
+                    "font-bold",
+                    isMobile ? "text-base" : "text-lg"
+                  )}>
                     ${project.totalBudget.toLocaleString()} {project.currency}
                   </span>
                 </div>
@@ -597,18 +645,19 @@ export default function ProjectDetails({
         </Card>
       </div>
 
-      {/* Notes Section */}
+      {/* Notes Section - Mobile Optimized */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <FileText className="h-5 w-5" />
               Notes
             </CardTitle>
             <Button 
               variant="outline" 
-              size="sm"
+              size={isMobile ? "default" : "sm"}
               onClick={() => setShowNotesDialog(true)}
+              className={cn(isMobile && "h-10")}
             >
               <Edit className="h-4 w-4 mr-2" />
               Edit Notes
@@ -621,27 +670,159 @@ export default function ProjectDetails({
               {project.notes}
             </div>
           ) : (
-            <p className="text-muted-foreground italic">
+            <p className="text-muted-foreground italic text-sm">
               No notes added yet. Click "Edit Notes" to add project notes.
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Notes Edit Dialog - Mobile Optimized */}
+      <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
+        <DialogContent className={cn(
+          isMobile 
+            ? "max-w-[95vw] max-h-[90vh] w-full h-auto" 
+            : "max-w-2xl max-h-[90vh]"
+        )}>
+          <DialogHeader>
+            <DialogTitle>Edit Project Notes</DialogTitle>
+            <DialogDescription>
+              Add notes about this project, such as special requirements or observations.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Enter project notes..."
+              className={cn(
+                "min-h-[200px] resize-none",
+                isMobile && "text-base" // Prevent zoom on iOS
+              )}
+            />
+          </div>
+          
+          <DialogFooter className={cn(
+            isMobile ? "flex-col gap-2" : "flex-row gap-2"
+          )}>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowNotesDialog(false)}
+              className={cn(isMobile && "w-full")}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveNotes}
+              disabled={isLoading}
+              className={cn(isMobile && "w-full")}
+            >
+              {isLoading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Saving...
+                </>
+              ) : (
+                'Save Notes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Dialog - Mobile Optimized */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className={cn(
+          isMobile 
+            ? "max-w-[95vw] w-full" 
+            : "max-w-md"
+        )}>
+          <DialogHeader>
+            <DialogTitle>Share Project</DialogTitle>
+            <DialogDescription>
+              Share this project with team members or clients.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Project Link</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  value={window.location.href}
+                  readOnly
+                  className={cn(
+                    "text-sm",
+                    isMobile && "text-xs"
+                  )}
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(window.location.href)
+                      toast({
+                        title: "Link Copied",
+                        description: "Project link copied to clipboard",
+                      })
+                    } catch (error) {
+                      console.error('Failed to copy link:', error)
+                    }
+                  }}
+                  className="shrink-0"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className={cn(
+            isMobile ? "flex-col gap-2" : "flex-row gap-2"
+          )}>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowShareDialog(false)}
+              className={cn(isMobile && "w-full")}
+            >
+              Close
+            </Button>
+            <Button 
+              onClick={handleShare}
+              className={cn(isMobile && "w-full")}
+            >
+              <Share2 className="h-4 w-4 mr-2" />
+              Share
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog - Mobile Optimized */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className={cn(
+          isMobile && "max-w-[95vw] w-full"
+        )}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Project</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{project.name}"? This action cannot be undone and will also delete all associated materials and calculations.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className={cn(
+            isMobile ? "flex-col gap-2" : "flex-row gap-2"
+          )}>
+            <AlertDialogCancel className={cn(isMobile && "w-full")}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={cn(
+                "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                isMobile && "w-full"
+              )}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -656,81 +837,6 @@ export default function ProjectDetails({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Share Dialog */}
-      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Share Project</DialogTitle>
-            <DialogDescription>
-              Share this project with others or copy the link.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Project Link</Label>
-              <div className="flex gap-2 mt-1">
-                <Input 
-                  value={window.location.href} 
-                  readOnly 
-                  className="flex-1"
-                />
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={() => navigator.clipboard.writeText(window.location.href)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowShareDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleShare}>
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Notes Edit Dialog */}
-      <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Project Notes</DialogTitle>
-            <DialogDescription>
-              Add or update notes for this project.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Enter project notes..."
-              className="min-h-32"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNotesDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveNotes} disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Saving...
-                </>
-              ) : (
-                'Save Notes'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 } 

@@ -483,28 +483,31 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
   // Filtering and search
   const setFilters = useCallback((filters: Partial<ProjectFilters>) => {
-    updateState({ 
-      filters: { ...state.filters, ...filters }
-    })
-  }, [state.filters, updateState])
+    setState(prev => ({
+      ...prev,
+      filters: { ...prev.filters, ...filters }
+    }))
+  }, [])
 
   const setSearchTerm = useCallback((term: string) => {
-    updateState({ searchTerm: term })
-  }, [updateState])
+    setState(prev => ({ ...prev, searchTerm: term }))
+  }, [])
 
   const setSorting = useCallback((field: ProjectSortField, direction?: SortDirection) => {
-    updateState({ 
+    setState(prev => ({
+      ...prev,
       sortField: field,
-      sortDirection: direction || (state.sortField === field && state.sortDirection === 'desc' ? 'asc' : 'desc')
-    })
-  }, [state.sortField, state.sortDirection, updateState])
+      sortDirection: direction || (prev.sortField === field && prev.sortDirection === 'desc' ? 'asc' : 'desc')
+    }))
+  }, [])
 
   const clearFilters = useCallback(() => {
-    updateState({ 
+    setState(prev => ({
+      ...prev,
       filters: {},
       searchTerm: ''
-    })
-  }, [updateState])
+    }))
+  }, [])
 
   // Analytics
   const getProjectProgress = useCallback(async (projectId: string) => {
