@@ -18,6 +18,7 @@ interface SwipeTabsProps {
   tabs: SwipeTabData[]
   className?: string
   enableSwipe?: boolean
+  stickyTabs?: boolean
   children: React.ReactNode
 }
 
@@ -27,6 +28,7 @@ export function SwipeTabs({
   tabs,
   className,
   enableSwipe = true,
+  stickyTabs = false,
   children
 }: SwipeTabsProps) {
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
@@ -124,7 +126,7 @@ export function SwipeTabs({
     <div className={cn("relative", className)}>
       <Tabs value={value} onValueChange={onValueChange} className="w-full">
         {/* Tab Navigation with Swipe Indicators */}
-        <div className="relative">
+        <div className={cn("relative", stickyTabs && "sticky top-0 z-50 backdrop-blur-sm bg-background/95 border-b border-border/50 pb-2")}>
           <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-1">

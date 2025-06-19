@@ -71,7 +71,7 @@ export function UnifiedProjectDetails({
       <Card>
         <CardContent className="p-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <CardHeader className="pb-0">
+            <CardHeader className="pb-0 sticky top-0 z-30 backdrop-blur-sm bg-card/95 border-b border-border/50">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="materials">Materials</TabsTrigger>

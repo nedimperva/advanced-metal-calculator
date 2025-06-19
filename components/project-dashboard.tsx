@@ -368,7 +368,7 @@ export default function ProjectDashboard({
       )}
 
       {/* Filters and Controls */}
-      <div className="flex flex-col lg:flex-row gap-4">
+      <div className="flex flex-col lg:flex-row gap-4 sticky top-0 z-40 backdrop-blur-sm bg-background/95 border-b border-border/50 pb-4 mb-4 -mx-4 px-4">
         {/* Search */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -464,7 +464,7 @@ export default function ProjectDashboard({
 
       {/* Bulk Actions Bar */}
       {selectedProjects.size > 0 && (
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className="border-primary/20 bg-primary/5 sticky top-16 z-30 backdrop-blur-sm bg-primary/10">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">

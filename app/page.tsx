@@ -84,10 +84,10 @@ import { getProfileTypeName } from "@/lib/i18n"
 import { CalculationHistory, CalculationComparison } from "@/components/calculation-comparison"
 
 // Projects Tab Content Component
-function ProjectsTabContent() {
+function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject?: Project }) {
   const isDesktop = useMediaQuery("(min-width: 1024px)")
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [showProjectDetails, setShowProjectDetails] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(initialSelectedProject ?? null)
+  const [showProjectDetails, setShowProjectDetails] = useState(!!initialSelectedProject)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
 
@@ -164,14 +164,12 @@ function ProjectsTabContent() {
       {isDesktop ? (
         <ProjectDashboard 
           showHeader={true} 
-          maxProjects={6} 
           onProjectSelect={handleProjectSelect}
           onCreateProject={handleCreateProject}
           onEditProject={handleEditProject}
         />
       ) : (
         <MobileProjectDashboard 
-          maxProjects={6}
           onProjectSelect={handleProjectSelect}
           onCreateProject={handleCreateProject}
           onEditProject={handleEditProject}
@@ -355,6 +353,16 @@ export default function MetalWeightCalculator() {
   // History
   const [calculations, setCalculations] = useState<Calculation[]>([])
   const [activeTab, setActiveTab] = useState("calculator")
+  
+  // State for initially selected project when navigating from calculator
+  const [initialSelectedProject, setInitialSelectedProject] = useState<Project | undefined>(undefined)
+  
+  // Reset initial selected project when navigating away from projects tab
+  useEffect(() => {
+    if (activeTab !== 'projects') {
+      setInitialSelectedProject(undefined)
+    }
+  }, [activeTab])
 
   // Comparison state
   const [comparisonCalculations, setComparisonCalculations] = useState<Set<string>>(new Set())
@@ -2034,7 +2042,16 @@ export default function MetalWeightCalculator() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setActiveTab('projects')}
+                  onClick={() => {
+                    // Find the project and navigate directly to it
+                    const project = projects.find(p => p.id === activeProjectId)
+                    if (project) {
+                      // Switch to projects tab and set the project as selected
+                      setActiveTab('projects')
+                      // Set the initial selected project
+                      setInitialSelectedProject(project)
+                    }
+                  }}
                   className="h-8 text-xs"
                 >
                   View Project
@@ -2048,6 +2065,7 @@ export default function MetalWeightCalculator() {
           value={activeTab} 
           onValueChange={setActiveTab} 
           className="w-full"
+          stickyTabs={true}
           tabs={[
             {
               value: "calculator",
@@ -2693,8 +2711,10 @@ export default function MetalWeightCalculator() {
             </div>
           </SwipeTabs.Content>
 
-          <SwipeTabs.Content value="projects" className="space-y-4">
-            <ProjectsTabContent />
+          <SwipeTabs.Content value="projects" className="">
+            <div className="h-[calc(100vh-120px)] overflow-y-auto space-y-4 p-4">
+              <ProjectsTabContent initialSelectedProject={initialSelectedProject} />
+            </div>
           </SwipeTabs.Content>
         </SwipeTabs>
 
