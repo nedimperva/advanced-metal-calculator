@@ -90,6 +90,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
   const [showProjectDetails, setShowProjectDetails] = useState(!!initialSelectedProject)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const { setCurrentProject } = useProjects()
 
   // Listen for mobile create project events
   useEffect(() => {
@@ -106,6 +107,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
   const handleProjectSelect = (project: Project) => {
     setSelectedProject(project)
     setShowProjectDetails(true)
+    setCurrentProject(project)
     // Clear any pending edit modal state when navigating to project details
     setShowCreateDialog(false)
     setEditingProject(null)
@@ -114,6 +116,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
   const handleBackToProjects = () => {
     setShowProjectDetails(false)
     setSelectedProject(undefined)
+    setCurrentProject(null)
   }
 
   const handleEditProject = (project: Project) => {
@@ -271,7 +274,7 @@ export default function MetalWeightCalculator() {
   const [weightUnit, setWeightUnit] = useState(suggestions.defaults.weightUnit)
 
   // Project context for calculator
-  const { currentProject, selectProject, projects, refreshProjects } = useProjects()
+  const { currentProject, selectProject, projects, refreshProjects, setCurrentProject } = useProjects()
   const [activeProjectId, setActiveProjectId] = useState<string>('')
 
   // Use refs to store timeout IDs for debouncing
@@ -361,8 +364,9 @@ export default function MetalWeightCalculator() {
   useEffect(() => {
     if (activeTab !== 'projects') {
       setInitialSelectedProject(undefined)
+      setCurrentProject(null)
     }
-  }, [activeTab])
+  }, [activeTab, setCurrentProject])
 
   // Comparison state
   const [comparisonCalculations, setComparisonCalculations] = useState<Set<string>>(new Set())
@@ -404,7 +408,7 @@ export default function MetalWeightCalculator() {
         if (editId) {
           setIsEditMode(true)
           setEditingCalculationId(editId)
-          if (projectId) {
+            if (projectId) {
             setInitialSelectedProject(projects.find((p: Project) => p.id === projectId))
           }
         }
@@ -1484,6 +1488,7 @@ export default function MetalWeightCalculator() {
             profileType={profileType}
             length={length}
             lengthUnit={lengthUnit}
+            projectName={currentProject?.name}
           />
         )
       }
@@ -1877,6 +1882,7 @@ export default function MetalWeightCalculator() {
               <Select value={activeProjectId || "none"} onValueChange={(value) => {
                 if (value === "none") {
                   setActiveProjectId("")
+                  setCurrentProject(null)
                 } else {
                   setActiveProjectId(value)
                   selectProject(value)

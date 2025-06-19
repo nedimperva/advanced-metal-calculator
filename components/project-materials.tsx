@@ -641,27 +641,31 @@ export default function ProjectMaterials({
   onUpdate,
   className
 }: ProjectMaterialsProps) {
-  const { updateProject, allCalculations } = useProjects()
+  const { updateProject, allCalculations, refreshProjects, projects } = useProjects()
   const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Local state
   const [showCalculationModal, setShowCalculationModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Get the fresh project data from context (this updates when context refreshes)
+  const freshProject = projects.find(p => p.id === project.id) || project
+
   // Handle add calculations
   const handleAddCalculations = async (calculationIds: string[]) => {
     setIsLoading(true)
     try {
-      const existingIds = project.calculationIds || []
+      const existingIds = freshProject.calculationIds || []
       const newIds = calculationIds.filter(id => !existingIds.includes(id))
       
       const updatedProject = {
-        ...project,
+        ...freshProject,
         calculationIds: [...existingIds, ...newIds],
         updatedAt: new Date()
       }
       
       await updateProject(updatedProject)
+      await refreshProjects()
       onUpdate?.()
       
       toast({
@@ -702,14 +706,15 @@ export default function ProjectMaterials({
       try {
         // Remove from project
         const updatedProject = {
-          ...project,
-          calculationIds: project.calculationIds?.filter(id => id !== calcId) || [],
+          ...freshProject,
+          calculationIds: freshProject.calculationIds?.filter(id => id !== calcId) || [],
           updatedAt: new Date()
         }
-        await updateProject(updatedProject)
-        onUpdate?.()
-        
-        toast({
+              await updateProject(updatedProject)
+      await refreshProjects()
+      onUpdate?.()
+      
+      toast({
           title: "Calculation Removed",
           description: "Calculation has been removed from the project.",
         })
@@ -751,7 +756,7 @@ export default function ProjectMaterials({
       </div>
 
       {/* Project Calculations */}
-      {project.calculationIds && project.calculationIds.length > 0 ? (
+      {freshProject.calculationIds && freshProject.calculationIds.length > 0 ? (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className={cn(
@@ -759,7 +764,7 @@ export default function ProjectMaterials({
               isMobile ? "text-lg" : "text-xl"
             )}>
               <Calculator className="h-5 w-5" />
-              Calculations ({project.calculationIds.length})
+              Calculations ({freshProject.calculationIds.length})
             </CardTitle>
           </CardHeader>
           <CardContent className={cn(
@@ -769,7 +774,7 @@ export default function ProjectMaterials({
               "space-y-3",
               isMobile && "space-y-2"
             )}>
-              {project.calculationIds.map((calcId) => {
+              {freshProject.calculationIds.map((calcId) => {
                 const calculation = allCalculations.find(c => c.id === calcId)
                 if (!calculation) return null
                 

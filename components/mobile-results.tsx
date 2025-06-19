@@ -41,6 +41,7 @@ interface MobileResultsProps {
   profileType?: string
   length?: string
   lengthUnit?: string
+  projectName?: string
 }
 
 export function MobileResults({ 
@@ -63,7 +64,8 @@ export function MobileResults({
   profileCategory = "",
   profileType = "",
   length = "1000",
-  lengthUnit = "mm"
+  lengthUnit = "mm",
+  projectName
 }: MobileResultsProps) {
   const DetailedResultsModal = () => (
     <DialogContent className="max-w-sm mx-4 max-h-[80vh] overflow-y-auto">
@@ -340,41 +342,45 @@ export function MobileResults({
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-3 border-t border-border/50">
-            {onSave && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onSave}
-                className="flex-1 h-8"
-              >
-                <Save className="h-3 w-3 mr-1" />
-                Save
-              </Button>
-            )}
-            {onShare && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onShare}
-                className="flex-1 h-8"
-              >
-                <Share2 className="h-3 w-3 mr-1" />
-                Share
-              </Button>
-            )}
-            {onAdvancedAnalysis && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onAdvancedAnalysis}
-                className="flex-1 h-8"
-              >
-                <TrendingUp className="h-3 w-3 mr-1" />
-                Analysis
-              </Button>
-            )}
+          {/* Action Buttons - Save on first row, others on new row if needed */}
+          <div className="flex flex-col gap-2 pt-3 border-t border-border/50">
+            <div className="flex gap-2">
+              {onSave && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={onSave}
+                  className="flex-1 h-8"
+                >
+                  <Save className="h-3 w-3 mr-1" />
+                  {projectName ? `Save to ${projectName}` : 'Save'}
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {onShare && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={onShare}
+                  className="flex-1 h-8"
+                >
+                  <Share2 className="h-3 w-3 mr-1" />
+                  Share
+                </Button>
+              )}
+              {onAdvancedAnalysis && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={onAdvancedAnalysis}
+                  className="flex-1 h-8"
+                >
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Analysis
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
