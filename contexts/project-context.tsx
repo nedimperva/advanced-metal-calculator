@@ -5,8 +5,6 @@ import type { Project, ProjectMaterial, Calculation } from '@/lib/types'
 import { ProjectStatus, MaterialStatus } from '@/lib/types'
 import {
   initializeDatabase,
-  isMigrationNeeded,
-  migrateFromLocalStorage,
   createProject as dbCreateProject,
   updateProject as dbUpdateProject,
   deleteProject as dbDeleteProject,
@@ -149,15 +147,6 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       
       // Initialize IndexedDB
       await initializeDatabase()
-      
-      // Check if migration is needed
-      if (await isMigrationNeeded()) {
-        await migrateFromLocalStorage()
-        toast({
-          title: "Data Migration Complete",
-          description: "Your calculations have been migrated to the new project system.",
-        })
-      }
       
       // Load initial data
       const [projects, calculations, statistics] = await Promise.all([

@@ -488,13 +488,12 @@ function AddCalculationModal({
     setSelectedCalculations(newSelection)
   }
 
-  // Filter available calculations (not already in project)
-  const availableCalculations = allCalculations.filter(calc => 
-    !project.calculationIds?.includes(calc.id) &&
-    (searchTerm === '' || 
-     calc.materialName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     calc.profileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     (calc.name && calc.name.toLowerCase().includes(searchTerm.toLowerCase())))
+  // Show all calculations, but disable those already in the project
+  const filteredCalculations = allCalculations.filter(calc =>
+    searchTerm === '' || 
+      calc.materialName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      calc.profileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (calc.name && calc.name.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   return (
@@ -531,7 +530,7 @@ function AddCalculationModal({
             "border rounded-lg max-h-[50vh] overflow-y-auto",
             isMobile && "max-h-[60vh]"
           )}>
-            {availableCalculations.length === 0 ? (
+            {filteredCalculations.length === 0 ? (
               <div className="p-8 text-center">
                 <Calculator className="h-12 w-12 mx-auto mb-4 opacity-30" />
                 <h3 className="text-lg font-semibold mb-2">No Calculations Available</h3>
@@ -541,54 +540,60 @@ function AddCalculationModal({
               </div>
             ) : (
               <div className="space-y-1 p-4">
-                {availableCalculations.map((calculation) => (
-                  <div
-                    key={calculation.id}
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors",
-                      selectedCalculations.has(calculation.id) && "bg-primary/10 border-primary/20"
-                    )}
-                    onClick={() => handleToggleCalculation(calculation.id)}
-                  >
-                    <Checkbox
-                      checked={selectedCalculations.has(calculation.id)}
-                      onChange={() => handleToggleCalculation(calculation.id)}
-                      className="shrink-0"
-                    />
-                    
-                    <Calculator className="h-4 w-4 text-muted-foreground shrink-0" />
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col gap-1">
-                        <h4 className={cn(
-                          "font-medium",
-                          isMobile ? "text-sm break-words" : "text-base truncate"
-                        )}>
-                          {calculation.name || `${calculation.materialName} ${calculation.profileName}`}
-                        </h4>
-                        
-                        <div className="flex flex-wrap gap-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {calculation.totalWeight ? `${calculation.totalWeight.toFixed(2)} kg` : `${calculation.weight?.toFixed(2)} kg`}
-                          </Badge>
-                          {calculation.totalCost && calculation.totalCost > 0 && (
-                            <Badge variant="outline" className="text-xs text-green-600">
-                              ${calculation.totalCost.toFixed(2)}
+                {filteredCalculations.map((calculation) => {
+                  const alreadyInProject = project.calculationIds?.includes(calculation.id)
+                  return (
+                    <div
+                      key={calculation.id}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                        selectedCalculations.has(calculation.id) && !alreadyInProject && "bg-primary/10 border-primary/20",
+                        alreadyInProject ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-muted/50"
+                      )}
+                      onClick={() => !alreadyInProject && handleToggleCalculation(calculation.id)}
+                    >
+                      <Checkbox
+                        checked={selectedCalculations.has(calculation.id)}
+                        onChange={() => handleToggleCalculation(calculation.id)}
+                        className="shrink-0"
+                        disabled={alreadyInProject}
+                      />
+                      <Calculator className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col gap-1">
+                          <h4 className={cn(
+                            "font-medium",
+                            isMobile ? "text-sm break-words" : "text-base truncate"
+                          )}>
+                            {calculation.name || `${calculation.materialName} ${calculation.profileName}`}
+                          </h4>
+                          <div className="flex flex-wrap gap-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {calculation.totalWeight ? `${calculation.totalWeight.toFixed(2)} kg` : `${calculation.weight?.toFixed(2)} kg`}
                             </Badge>
-                          )}
-                        </div>
-                        
-                        <div className={cn(
-                          "text-muted-foreground",
-                          isMobile ? "text-xs" : "text-sm"
-                        )}>
-                          {calculation.materialName} • {calculation.profileName}
-                          {calculation.quantity && calculation.quantity > 1 && ` • Qty: ${calculation.quantity}`}
+                            {calculation.totalCost && calculation.totalCost > 0 && (
+                              <Badge variant="outline" className="text-xs text-green-600">
+                                ${calculation.totalCost.toFixed(2)}
+                              </Badge>
+                            )}
+                            {alreadyInProject && (
+                              <Badge variant="outline" className="text-xs text-gray-500 border-gray-300 ml-2">
+                                Already in project
+                              </Badge>
+                            )}
+                          </div>
+                          <div className={cn(
+                            "text-muted-foreground",
+                            isMobile ? "text-xs" : "text-sm"
+                          )}>
+                            {calculation.materialName} • {calculation.profileName}
+                            {calculation.quantity && calculation.quantity > 1 && ` • Qty: ${calculation.quantity}`}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

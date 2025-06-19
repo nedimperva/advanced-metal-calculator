@@ -181,7 +181,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
       {/* Create/Edit Project Modal */}
       <ProjectCreationModal
         open={showCreateDialog}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           setShowCreateDialog(open)
           if (!open) {
             setEditingProject(null) // Clear editing project when modal closes
@@ -275,8 +275,8 @@ export default function MetalWeightCalculator() {
   const [activeProjectId, setActiveProjectId] = useState<string>('')
 
   // Use refs to store timeout IDs for debouncing
-  const lengthUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const lengthCalculationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lengthUpdateTimeoutRef = useRef<any>(null)
+  const lengthCalculationTimeoutRef = useRef<any>(null)
 
   // Initialize pricing and units from settings
   useEffect(() => {
@@ -319,14 +319,14 @@ export default function MetalWeightCalculator() {
     // Update calculation state after user stops typing (longer delay)
     lengthCalculationTimeoutRef.current = setTimeout(() => {
       setLength(newLength)
-    }, 800) // 800ms delay for calculation
+    }, 800) as any // 800ms delay for calculation
     
     // Update defaults after even longer delay
     lengthUpdateTimeoutRef.current = setTimeout(() => {
       if (newLength && newLength !== '0' && !isNaN(parseFloat(newLength))) {
         updateDefaults({ defaultLength: newLength })
       }
-    }, 1200) // 1200ms delay for defaults
+    }, 1200) as any // 1200ms delay for defaults
   }, [updateDefaults])
   const [operatingTemperature, setOperatingTemperature] = useState("20")
   const [useTemperatureEffects, setUseTemperatureEffects] = useState(false)
@@ -389,73 +389,29 @@ export default function MetalWeightCalculator() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [editingCalculationId, setEditingCalculationId] = useState<string | null>(null)
 
-  // Load saved calculations from both localStorage and IndexedDB
+  // Load saved calculations from IndexedDB only
   useEffect(() => {
     const loadSavedCalculations = async () => {
       try {
-        // Load from localStorage
-        const saved = localStorage.getItem("metal-calculations")
-        let localCalculations: Calculation[] = []
-        if (saved) {
-          localCalculations = JSON.parse(saved).map((calc: any) => ({
-            ...calc,
-            timestamp: new Date(calc.timestamp),
-          }))
-        }
-
-        // Load from IndexedDB
         const { getAllCalculations } = await import('../lib/database')
         const dbCalculations = await getAllCalculations()
-
-        // Combine and deduplicate calculations (localStorage takes priority for duplicates)
-        const allCalcs = [...localCalculations]
-        const localIds = new Set(localCalculations.map(c => c.id))
-        
-        dbCalculations.forEach(calc => {
-          if (!localIds.has(calc.id)) {
-            allCalcs.push(calc)
-          }
-        })
-
-        // Sort by timestamp (newest first)
-        allCalcs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-        
-        setCalculations(allCalcs)
-
+        dbCalculations.sort((a: Calculation, b: Calculation) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        setCalculations(dbCalculations)
         // Check for edit parameter in URL
         const urlParams = new URLSearchParams(window.location.search)
         const editId = urlParams.get('edit')
         const projectId = urlParams.get('project')
-        
         if (editId) {
-          const calcToEdit = allCalcs.find(calc => calc.id === editId)
-          if (calcToEdit) {
-            // Set project context if provided
-            if (projectId) {
-              setActiveProjectId(projectId)
-              selectProject(projectId)
-            }
-            
-            // Load calculation in edit mode
-            loadCalculation(calcToEdit, true)
-            
-            // Clean up URL parameters
-            const newUrl = new URL(window.location.href)
-            newUrl.searchParams.delete('edit')
-            newUrl.searchParams.delete('project')
-            window.history.replaceState({}, '', newUrl.toString())
+          setIsEditMode(true)
+          setEditingCalculationId(editId)
+          if (projectId) {
+            setInitialSelectedProject(projects.find((p: Project) => p.id === projectId))
           }
         }
       } catch (error) {
-        console.error("Error loading saved calculations:", error)
-        toast({
-                  title: t('loadingError'),
-        description: t('failedToLoad'),
-          variant: "destructive",
-        })
+        console.error('Failed to load calculations:', error)
       }
     }
-
     loadSavedCalculations()
   }, [])
 
@@ -463,10 +419,10 @@ export default function MetalWeightCalculator() {
   useEffect(() => {
     return () => {
       if (lengthCalculationTimeoutRef.current) {
-        clearTimeout(lengthCalculationTimeoutRef.current)
+        clearTimeout(lengthCalculationTimeoutRef.current as number)
       }
       if (lengthUpdateTimeoutRef.current) {
-        clearTimeout(lengthUpdateTimeoutRef.current)
+        clearTimeout(lengthUpdateTimeoutRef.current as number)
       }
     }
   }, [])
@@ -853,12 +809,9 @@ export default function MetalWeightCalculator() {
           timestamp: existingCalc?.timestamp || new Date(),
         }
 
-        // Update the calculation in the list
-        const updated = calculations.map(calc => 
-          calc.id === editingCalculationId ? updatedCalculation : calc
-        )
-        setCalculations(updated)
-        localStorage.setItem("metal-calculations", JSON.stringify(updated))
+        // Persist update to IndexedDB
+        const { updateCalculation } = await import('../lib/database')
+        await updateCalculation(updatedCalculation)
       } else {
         // Create new calculation
         updatedCalculation = {
@@ -898,118 +851,27 @@ export default function MetalWeightCalculator() {
           timestamp: new Date(),
         }
 
-        const updated = [updatedCalculation, ...calculations.slice(0, 19)] // Keep last 20
-        setCalculations(updated)
-        localStorage.setItem("metal-calculations", JSON.stringify(updated))
+        // Persist new calculation to IndexedDB
+        const { saveCalculation } = await import('../lib/database')
+        await saveCalculation(updatedCalculation)
       }
 
-      if (isEditMode && editingCalculationId) {
-        // Update existing calculation
-        const existingCalc = calculations.find(calc => calc.id === editingCalculationId)
-        updatedCalculation = {
-          ...existingCalc!,
-          name: mainName, // Use formatted name based on established convention
-          profileCategory,
-          profileType,
-          profileName: getProfileTypeName(language, profileType),
-          standardSize: standardSize || "Custom",
-          material,
-          grade,
-          materialName: selectedMaterial.name,
-          dimensions: { ...dimensions, length },
-          weight,
-          weightUnit,
-          lengthUnit,
-          crossSectionalArea: structuralProperties.area,
-          // Enhanced structural properties
-          momentOfInertiaX: structuralProperties.momentOfInertiaX,
-          momentOfInertiaY: structuralProperties.momentOfInertiaY,
-          sectionModulusX: structuralProperties.sectionModulusX,
-          sectionModulusY: structuralProperties.sectionModulusY,
-          radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
-          radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
-          perimeter: structuralProperties.perimeter,
-          // Pricing information
-          quantity: parseFloat(quantity),
-          priceValue: pricePerUnit ? parseFloat(pricePerUnit) : undefined,
-          pricingModel,
-          currency,
-          totalCost,
-          unitCost,
-          totalWeight,
-          // Project assignment - automatically assign to active project
-          projectId: activeProjectId || undefined,
-          notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`, // User notes or default context
-          // Keep original timestamp, but update if needed
-          timestamp: existingCalc?.timestamp || new Date(),
-        }
-
-        // Update the calculation in the list
-        const updated = calculations.map(calc => 
-          calc.id === editingCalculationId ? updatedCalculation : calc
-        )
-        setCalculations(updated)
-        localStorage.setItem("metal-calculations", JSON.stringify(updated))
-      } else {
-        // Create new calculation
-        updatedCalculation = {
-          id: Date.now().toString(),
-          name: mainName, // Use formatted name based on established convention
-          profileCategory,
-          profileType,
-          profileName: getProfileTypeName(language, profileType),
-          standardSize: standardSize || "Custom",
-          material,
-          grade,
-          materialName: selectedMaterial.name,
-          dimensions: { ...dimensions, length },
-          weight,
-          weightUnit,
-          lengthUnit,
-          crossSectionalArea: structuralProperties.area,
-          // Enhanced structural properties
-          momentOfInertiaX: structuralProperties.momentOfInertiaX,
-          momentOfInertiaY: structuralProperties.momentOfInertiaY,
-          sectionModulusX: structuralProperties.sectionModulusX,
-          sectionModulusY: structuralProperties.sectionModulusY,
-          radiusOfGyrationX: structuralProperties.radiusOfGyrationX,
-          radiusOfGyrationY: structuralProperties.radiusOfGyrationY,
-          perimeter: structuralProperties.perimeter,
-          // Pricing information
-          quantity: parseFloat(quantity),
-          priceValue: pricePerUnit ? parseFloat(pricePerUnit) : undefined,
-          pricingModel,
-          currency,
-          totalCost,
-          unitCost,
-          totalWeight,
-          // Project assignment - automatically assign to active project
-          projectId: activeProjectId || undefined,
-          notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`, // User notes or default context
-          timestamp: new Date(),
-        }
-
-        const updated = [updatedCalculation, ...calculations.slice(0, 19)] // Keep last 20
-        setCalculations(updated)
-        localStorage.setItem("metal-calculations", JSON.stringify(updated))
-      }
+      // Refresh calculations from IndexedDB
+      const { getAllCalculations } = await import('../lib/database')
+      const dbCalculations = await getAllCalculations()
+      dbCalculations.sort((a: Calculation, b: Calculation) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      setCalculations(dbCalculations)
 
       // Save to IndexedDB for project management
       if (activeProjectId) {
+        const { saveCalculationToProject } = await import('../lib/database')
         await saveCalculationToProject(updatedCalculation, activeProjectId)
-        // Refresh project context to show the new calculation
-        await refreshProjects()
-      } else if (isEditMode) {
-        // If we're editing but no project is selected, still update in IndexedDB if it exists there
-        try {
-          const { updateCalculation } = await import('../lib/database')
-          await updateCalculation(updatedCalculation)
-        } catch (error) {
-          console.warn("Failed to update calculation in IndexedDB:", error)
-        }
       }
 
-      const projectName = activeProjectId ? projects.find(p => p.id === activeProjectId)?.name : 'General History'
+      // Always refresh project context so allCalculations updates for modals
+      if (typeof refreshProjects === 'function') await refreshProjects()
+
+      const projectName = activeProjectId ? projects.find((p: Project) => p.id === activeProjectId)?.name : 'General History'
       
       // Clear edit mode and notes after saving
       if (isEditMode) {
@@ -1209,9 +1071,6 @@ export default function MetalWeightCalculator() {
       // Remove from state
       const updatedCalculations = calculations.filter(calc => calc.id !== calculationId)
       setCalculations(updatedCalculations)
-      
-      // Update localStorage
-      localStorage.setItem("metal-calculations", JSON.stringify(updatedCalculations))
       
       // Remove from IndexedDB if it exists there
       try {
@@ -2672,9 +2531,6 @@ export default function MetalWeightCalculator() {
                         calc.id === calculationId ? { ...calc, projectId } : calc
                       )
                       setCalculations(updatedCalculations)
-                      
-                      // Save to localStorage
-                      localStorage.setItem("metal-calculations", JSON.stringify(updatedCalculations))
                       
                       // Show success message
                       toast({
