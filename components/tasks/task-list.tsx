@@ -57,6 +57,7 @@ interface TaskListProps {
   sortField: TaskSortField
   sortDirection: SortDirection
   taskProgress: TaskProgressSummary
+  projectId?: string // Add project ID for linked events
   onSearchChange: (term: string) => void
   onFiltersChange: (filters: Partial<TaskFilters>) => void
   onSortChange: (field: TaskSortField, direction?: SortDirection) => void
@@ -79,6 +80,7 @@ export default function TaskList({
   sortField,
   sortDirection,
   taskProgress,
+  projectId,
   onSearchChange,
   onFiltersChange,
   onSortChange,
@@ -423,6 +425,7 @@ export default function TaskList({
               key={task.id}
               task={task}
               variant={variant}
+              projectId={projectId}
               onEdit={onEditTask}
               onDelete={onDeleteTask}
               onStatusChange={onStatusChange}

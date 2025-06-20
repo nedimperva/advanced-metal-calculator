@@ -464,12 +464,28 @@ export default function TaskForm({
           </div>
 
           {/* Timeline Event Linking */}
-          {availableTimelineEvents.length > 0 && (
-            <div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
               <Label>Link to Timeline Events</Label>
-              <p className="text-sm text-muted-foreground mb-3">
-                Connect this task to existing timeline events for better project tracking.
-              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  console.log('🔍 Available timeline events:', availableTimelineEvents)
+                  console.log('  Project ID:', projectId)
+                  console.log('  Events count:', availableTimelineEvents.length)
+                }}
+                className="text-xs h-6 px-2"
+              >
+                Debug Events
+              </Button>
+            </div>
+            {availableTimelineEvents.length > 0 ? (
+              <>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Connect this task to existing timeline events for better project tracking.
+                </p>
               <div className="space-y-2 max-h-40 overflow-y-auto border rounded-lg p-3">
                 {availableTimelineEvents.map((event) => (
                   <div
@@ -513,8 +529,13 @@ export default function TaskForm({
                   {selectedTimelineEvents.length} event{selectedTimelineEvents.length !== 1 ? 's' : ''} selected
                 </p>
               )}
-            </div>
-          )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No timeline events available for linking.
+              </p>
+            )}
+          </div>
 
           {/* Notes */}
           <div>

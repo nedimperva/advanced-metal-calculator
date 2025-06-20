@@ -22,6 +22,7 @@ import { useProjects } from '@/contexts/project-context'
 // Import task components
 import TaskList from './task-list'
 import TaskForm from './task-form'
+import TaskCard from './task-card'
 
 import { 
   type Project, 
@@ -62,15 +63,31 @@ export default function ProjectTaskManagement({
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [workers, setWorkers] = useState<Worker[]>([])
   const [timelineEvents, setTimelineEvents] = useState<any[]>([])
+  const [realTimelineEvents, setRealTimelineEvents] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null)
   const [taskProgress, setTaskProgress] = useState<TaskProgressSummary | null>(null)
 
-  // Load tasks and workers
+  // Load tasks, workers, and timeline events
   useEffect(() => {
     loadTasks()
     loadWorkers()
+    loadRealTimelineEvents()
+
+    // Listen for timeline updates
+    const handleTimelineUpdate = (event: CustomEvent) => {
+      if (event.detail?.projectId === project.id) {
+        console.log('Timeline updated, reloading timeline events in task management')
+        loadRealTimelineEvents()
+      }
+    }
+
+    window.addEventListener('timeline-update', handleTimelineUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener('timeline-update', handleTimelineUpdate as EventListener)
+    }
   }, [project.id])
 
   // Calculate task progress when tasks change
@@ -164,6 +181,17 @@ export default function ProjectTaskManagement({
     }
   }
 
+  const loadRealTimelineEvents = async () => {
+    try {
+      const { getTimelineEvents } = await import('@/lib/timeline-storage')
+      const events = getTimelineEvents(project.id)
+      console.log('Loaded real timeline events:', events.length, events) // Debug log
+      setRealTimelineEvents(events)
+    } catch (error) {
+      console.error('Failed to load timeline events:', error)
+    }
+  }
+
   const handleSaveTask = async (taskData: Omit<ProjectTask, 'id' | 'createdAt' | 'updatedAt'> | ProjectTask) => {
     try {
       if ('id' in taskData) {
@@ -176,13 +204,39 @@ export default function ProjectTaskManagement({
       
       // Handle timeline event linking if selectedTimelineEvents was provided
       if ((taskData as any).selectedTimelineEvents && (taskData as any).selectedTimelineEvents.length > 0) {
-        // Note: In a full implementation, you would update the timeline events in the database
-        // to link back to this task. For now, we'll just show a message.
-        console.log('Timeline events to link:', (taskData as any).selectedTimelineEvents)
-        toast({
-          title: "Task Saved & Linked",
-          description: `Task saved and linked to ${(taskData as any).selectedTimelineEvents.length} timeline event(s)`,
-        })
+        try {
+          const { updateTimelineEvent } = await import('@/lib/timeline-storage')
+          const selectedEvents = (taskData as any).selectedTimelineEvents as string[]
+          
+          // Get the task ID (either existing or newly created)
+          const taskId = 'id' in taskData ? taskData.id : `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          
+          // Update each selected timeline event to link to this task
+          for (const eventId of selectedEvents) {
+            const event = realTimelineEvents.find(e => e.id === eventId)
+            if (event) {
+              const existingLinks = event.linkedTaskIds || []
+              if (!existingLinks.includes(taskId)) {
+                await updateTimelineEvent(eventId, {
+                  linkedTaskIds: [...existingLinks, taskId]
+                })
+              }
+            }
+          }
+          
+          console.log('Timeline events linked:', selectedEvents, 'to task:', taskId)
+          toast({
+            title: "Task Saved & Linked",
+            description: `Task saved and linked to ${selectedEvents.length} timeline event(s)`,
+          })
+        } catch (error) {
+          console.error('Failed to link timeline events:', error)
+          toast({
+            title: "Task Saved",
+            description: "Task saved but timeline linking failed",
+            variant: "destructive"
+          })
+        }
       } else {
         toast({
           title: "Task Saved",
@@ -224,6 +278,41 @@ export default function ProjectTaskManagement({
       toast({
         title: "Delete Failed",
         description: "Failed to delete task",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleStatusChange = async (taskId: string, status: TaskStatus) => {
+    try {
+      const task = tasks.find(t => t.id === taskId)
+      if (!task) {
+        throw new Error('Task not found')
+      }
+
+      const updatedTask = {
+        ...task,
+        status,
+        progress: status === TaskStatus.COMPLETED ? 100 : 
+                 status === TaskStatus.NOT_STARTED ? 0 : 
+                 task.progress,
+        actualStart: status === TaskStatus.IN_PROGRESS && !task.actualStart ? new Date() : task.actualStart,
+        actualEnd: status === TaskStatus.COMPLETED ? new Date() : undefined,
+        updatedAt: new Date()
+      }
+
+      await updateTask(updatedTask)
+      await loadTasks()
+      
+      toast({
+        title: "Task Updated",
+        description: `Task status changed to ${status.replace('_', ' ')}`,
+      })
+    } catch (error) {
+      console.error('Failed to update task status:', error)
+      toast({
+        title: "Update Failed",
+        description: "Failed to update task status",
         variant: "destructive"
       })
     }
@@ -380,45 +469,15 @@ export default function ProjectTaskManagement({
           </CardHeader>
           <CardContent className="space-y-3">
             {tasks.map((task) => (
-              <div key={task.id} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-medium">{task.name}</h4>
-                      <Badge variant="outline" className={cn(
-                        task.status === TaskStatus.COMPLETED && "border-green-500 text-green-700 bg-green-50",
-                        task.status === TaskStatus.IN_PROGRESS && "border-blue-500 text-blue-700 bg-blue-50",
-                        task.status === TaskStatus.NOT_STARTED && "border-gray-500 text-gray-700 bg-gray-50"
-                      )}>
-                        {task.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    {task.description && (
-                      <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
-                    )}
-                    {task.assignedTo && (
-                      <p className="text-xs text-muted-foreground">Assigned to: {task.assignedTo}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditTask(task)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <TaskCard
+                key={task.id}
+                task={task}
+                projectId={project.id}
+                variant="default"
+                onEdit={handleEditTask}
+                onDelete={handleDeleteTask}
+                onStatusChange={handleStatusChange}
+              />
             ))}
           </CardContent>
         </Card>
@@ -436,7 +495,7 @@ export default function ProjectTaskManagement({
         onSave={handleSaveTask}
         availableTasks={tasks}
         availableWorkers={workers}
-        availableTimelineEvents={timelineEvents}
+        availableTimelineEvents={realTimelineEvents}
       />
     </div>
   )

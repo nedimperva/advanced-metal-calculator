@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Settings } from 'lucide-react'
 import { useProjects } from '@/contexts/project-context'
-import { TaskProvider } from '@/contexts/task-context'
+import { TaskProvider, useTask } from '@/contexts/task-context'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/lib/utils'
 import ProjectDetails from './project-details'
@@ -18,6 +18,19 @@ interface UnifiedProjectDetailsProps {
   project: Project
   onBack: () => void
   onEdit?: (project: Project) => void
+}
+
+// Timeline component that has access to tasks
+function TimelineTabContent({ project }: { project: Project }) {
+  const { filteredTasks } = useTask()
+  
+  return (
+    <ProjectTimeline
+      project={project}
+      onUpdate={() => {}}
+      availableTasks={filteredTasks}
+    />
+  )
 }
 
 export function UnifiedProjectDetails({
@@ -191,11 +204,9 @@ export function UnifiedProjectDetails({
               </TabsContent>
 
               <TabsContent value="timeline" className="mt-0">
-                <ProjectTimeline
-                  key={`timeline-${refreshKey}`}
-                  project={project}
-                  onUpdate={handleUpdate}
-                />
+                <TaskProvider initialProjectId={project.id}>
+                  <TimelineTabContent project={project} />
+                </TaskProvider>
               </TabsContent>
             </div>
           </Tabs>

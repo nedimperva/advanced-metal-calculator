@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +24,12 @@ import {
   CheckCircle2,
   AlertCircle,
   XCircle,
-  Timer
+  Timer,
+  FileText,
+  Flag,
+  RefreshCcw,
+  Truck,
+  Camera
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -42,6 +47,7 @@ interface TaskCardProps {
   task: ProjectTask
   variant?: 'default' | 'compact' | 'detailed'
   showProject?: boolean
+  projectId?: string // Add project ID for linked events
   onEdit?: (task: ProjectTask) => void
   onDelete?: (taskId: string) => void
   onStatusChange?: (taskId: string, status: TaskStatus) => void
@@ -70,10 +76,137 @@ const StatusIcon = ({ status }: { status: TaskStatus }) => {
   }
 }
 
+// Component to display linked timeline events for a task
+function LinkedEventsDisplay({ projectId, taskId }: { projectId: string, taskId: string }) {
+  const [linkedEvents, setLinkedEvents] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  const loadLinkedEvents = async () => {
+    setIsLoading(true)
+    try {
+      const { getLinkedTimelineEvents } = await import('@/lib/timeline-storage')
+      const events = getLinkedTimelineEvents(projectId, taskId)
+      console.log(`Loading linked events for task ${taskId}:`, events)
+      setLinkedEvents(events)
+    } catch (error) {
+      console.error('Failed to load linked events:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const debugStorage = () => {
+    const stored = localStorage.getItem('timeline_events')
+    console.log('🔍 DEBUG - Task Card Debug Info:')
+    console.log('  Project ID:', projectId)
+    console.log('  Task ID:', taskId)
+    console.log('  Raw timeline storage:', stored)
+    
+    if (stored) {
+      const allEvents = JSON.parse(stored)
+      console.log('  All events count:', allEvents.length)
+      console.log('  All events:', allEvents)
+      
+      const projectEvents = allEvents.filter((e: any) => e.projectId === projectId)
+      console.log('  Project events count:', projectEvents.length)
+      console.log('  Project events:', projectEvents)
+      
+      const linkedToThis = projectEvents.filter((e: any) => 
+        e.linkedTaskIds && e.linkedTaskIds.includes(taskId)
+      )
+      console.log('  Events linked to this task count:', linkedToThis.length)
+      console.log('  Events linked to this task:', linkedToThis)
+      
+      // Check if task ID exists in any linkedTaskIds arrays
+      const anyLinked = allEvents.filter((e: any) => 
+        e.linkedTaskIds && e.linkedTaskIds.includes(taskId)
+      )
+      console.log('  Any events linked to this task (cross-project):', anyLinked)
+    } else {
+      console.log('  No timeline events in storage')
+    }
+  }
+
+  useEffect(() => {
+    loadLinkedEvents()
+
+    // Listen for timeline updates
+    const handleTimelineUpdate = (event: CustomEvent) => {
+      if (event.detail?.projectId === projectId) {
+        console.log('Timeline updated, reloading linked events for task:', taskId)
+        loadLinkedEvents()
+      }
+    }
+
+    window.addEventListener('timeline-update', handleTimelineUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener('timeline-update', handleTimelineUpdate as EventListener)
+    }
+  }, [projectId, taskId])
+
+  const getEventIcon = (type: string) => {
+    switch (type) {
+      case 'milestone': return <Flag className="h-3 w-3" />
+      case 'status_change': return <RefreshCcw className="h-3 w-3" />
+      case 'material_delivery': return <Truck className="h-3 w-3" />
+      case 'note': return <FileText className="h-3 w-3" />
+      case 'photo': return <Camera className="h-3 w-3" />
+      default: return <Calendar className="h-3 w-3" />
+    }
+  }
+
+  return (
+    <div className="mt-2 pt-2 border-t border-border/50">
+      <div className="flex items-center gap-1 mb-1">
+        <Calendar className="h-3 w-3 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">
+          Linked Events ({linkedEvents.length})
+        </span>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={debugStorage}
+          className="h-5 px-1 text-xs ml-auto"
+        >
+          Debug
+        </Button>
+      </div>
+      {linkedEvents.length === 0 ? (
+        <div className="text-xs text-muted-foreground/70 italic">
+          No linked events found
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {linkedEvents.slice(0, 2).map((event, index) => (
+            <div key={event.id} className="flex items-center gap-2 text-xs">
+              <div className="text-muted-foreground">
+                {getEventIcon(event.type)}
+              </div>
+              <span className="truncate text-muted-foreground">
+                {event.title}
+              </span>
+              <span className="text-xs text-muted-foreground/70">
+                {new Date(event.timestamp).toLocaleDateString()}
+              </span>
+            </div>
+          ))}
+          {linkedEvents.length > 2 && (
+            <div className="text-xs text-muted-foreground">
+              +{linkedEvents.length - 2} more events
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function TaskCard({
   task,
   variant = 'default',
   showProject = false,
+  projectId,
   onEdit,
   onDelete,
   onStatusChange,
@@ -93,31 +226,25 @@ export default function TaskCard({
 
   const isOverdue = task.scheduledEnd && new Date(task.scheduledEnd) < new Date() && task.status !== TaskStatus.COMPLETED
 
-  // Quick status actions
+  // Quick status actions - simplified for task management (no time tracking)
   const getQuickActions = () => {
     const actions = []
     
     switch (task.status) {
       case TaskStatus.NOT_STARTED:
+        // Remove "Start Task" - just allow marking as complete
         actions.push({
-          label: 'Start Task',
-          status: TaskStatus.IN_PROGRESS,
-          icon: Play
+          label: 'Mark Complete',
+          status: TaskStatus.COMPLETED,
+          icon: CheckCircle2
         })
         break
       case TaskStatus.IN_PROGRESS:
-        actions.push(
-          {
-            label: 'Complete',
-            status: TaskStatus.COMPLETED,
-            icon: CheckCircle2
-          },
-          {
-            label: 'Pause',
-            status: TaskStatus.ON_HOLD,
-            icon: Pause
-          }
-        )
+        actions.push({
+          label: 'Complete',
+          status: TaskStatus.COMPLETED,
+          icon: CheckCircle2
+        })
         break
       case TaskStatus.ON_HOLD:
         actions.push({
@@ -303,17 +430,16 @@ export default function TaskCard({
           "grid gap-3",
           isMobile ? "grid-cols-1" : "grid-cols-2"
         )}>
-          {/* Estimated Hours */}
-          <div className="flex items-center gap-2 text-sm">
-            <Timer className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Est:</span>
-            <span>{task.estimatedHours}h</span>
-            {task.actualHours && (
-              <span className="text-muted-foreground">
-                (Actual: {task.actualHours}h)
+          {/* Task Duration (if scheduled) */}
+          {task.scheduledStart && task.scheduledEnd && (
+            <div className="flex items-center gap-2 text-sm">
+              <Timer className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Duration:</span>
+              <span>
+                {Math.ceil((new Date(task.scheduledEnd).getTime() - new Date(task.scheduledStart).getTime()) / (1000 * 60 * 60 * 24))} days
               </span>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Assigned To */}
           {task.assignedTo && (
@@ -363,6 +489,11 @@ export default function TaskCard({
               <strong>Notes:</strong> {task.notes}
             </p>
           </div>
+        )}
+
+        {/* Linked Timeline Events */}
+        {projectId && (
+          <LinkedEventsDisplay projectId={projectId} taskId={task.id} />
         )}
 
         {/* Quick Actions */}

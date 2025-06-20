@@ -44,7 +44,15 @@ import {
   TrendingUp,
   ArrowRight,
   Circle,
-  Flag
+  Flag,
+  FileIcon,
+  ImageIcon,
+  PaperclipIcon,
+  X,
+  RefreshCcw,
+  Star,
+  Clock4,
+  Milestone
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
@@ -68,16 +76,37 @@ interface TimelineEvent {
   timestamp: string
   author?: string
   data?: any
-  attachments?: string[]
-  linkedTaskIds?: string[] // Link events to specific tasks
-  color?: string // Custom color for the event
+  attachments?: Array<{
+    name: string
+    url: string
+    type: string
+    size?: number
+  }>
+  linkedTaskIds?: string[]
+  color?: string
   status?: 'completed' | 'in_progress' | 'pending' | 'cancelled'
+  // Type-specific fields
+  materialInfo?: {
+    supplier?: string
+    quantity?: number
+    cost?: number
+    trackingNumber?: string
+  }
+  statusChange?: {
+    fromStatus: ProjectStatus
+    toStatus: ProjectStatus
+  }
+  milestone?: {
+    type: 'start' | 'checkpoint' | 'completion' | 'deadline'
+    importance: 'low' | 'medium' | 'high' | 'critical'
+  }
 }
 
 interface ProjectTimelineProps {
   project: Project
   onUpdate?: () => void
   className?: string
+  availableTasks?: ProjectTask[]
 }
 
 interface AddEventModalProps {
@@ -88,7 +117,7 @@ interface AddEventModalProps {
   availableTasks?: ProjectTask[]
 }
 
-// Add Event Modal Component - Mobile Optimized
+// Add Event Modal Component with Enhanced Type-Specific UI
 function AddEventModal({ 
   project, 
   isOpen, 
@@ -96,47 +125,159 @@ function AddEventModal({
   onAdd,
   availableTasks = []
 }: AddEventModalProps) {
+  const { updateProject } = useProjects()
   const isMobile = useMediaQuery("(max-width: 767px)")
+  
+  // Common fields
   const [eventType, setEventType] = useState<TimelineEvent['type']>('note')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [author, setAuthor] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedTasks, setSelectedTasks] = useState<string[]>([])
-  const [eventStatus, setEventStatus] = useState<'completed' | 'in_progress' | 'pending' | 'cancelled'>('pending')
-  const [customColor, setCustomColor] = useState('')
+  const [files, setFiles] = useState<File[]>([])
+  
+  // Status change specific fields
+  const [newProjectStatus, setNewProjectStatus] = useState<ProjectStatus>(project.status)
+  
+  // Material delivery specific fields
+  const [supplier, setSupplier] = useState('')
+  const [quantity, setQuantity] = useState('')
+  const [cost, setCost] = useState('')
+  const [trackingNumber, setTrackingNumber] = useState('')
+  
+  // Milestone specific fields
+  const [milestoneType, setMilestoneType] = useState<'start' | 'checkpoint' | 'completion' | 'deadline'>('checkpoint')
+  const [milestoneImportance, setMilestoneImportance] = useState<'low' | 'medium' | 'high' | 'critical'>('medium')
+
+  const eventTypeOptions = [
+    { 
+      value: 'note', 
+      label: 'Note', 
+      icon: FileText,
+      color: 'bg-gray-500 hover:bg-gray-600',
+      description: 'Add a project note or observation'
+    },
+    { 
+      value: 'milestone', 
+      label: 'Milestone', 
+      icon: Flag,
+      color: 'bg-purple-500 hover:bg-purple-600',
+      description: 'Mark an important project milestone'
+    },
+    { 
+      value: 'status_change', 
+      label: 'Status Change', 
+      icon: RefreshCcw,
+      color: 'bg-blue-500 hover:bg-blue-600',
+      description: 'Update project status'
+    },
+    { 
+      value: 'material_delivery', 
+      label: 'Material Delivery', 
+      icon: Truck,
+      color: 'bg-green-500 hover:bg-green-600',
+      description: 'Record material or equipment delivery'
+    },
+    { 
+      value: 'photo', 
+      label: 'Photo/Progress', 
+      icon: Camera,
+      color: 'bg-orange-500 hover:bg-orange-600',
+      description: 'Upload photos or progress documentation'
+    }
+  ]
+
+  const resetForm = () => {
+    setTitle('')
+    setDescription('')
+    setAuthor('')
+    setSelectedTasks([])
+    setFiles([])
+    setSupplier('')
+    setQuantity('')
+    setCost('')
+    setTrackingNumber('')
+    setMilestoneType('checkpoint')
+    setMilestoneImportance('medium')
+    setNewProjectStatus(project.status)
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || [])
+    setFiles(prev => [...prev, ...selectedFiles])
+  }
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index))
+  }
 
   const handleAdd = async () => {
     if (!title.trim()) return
 
     setIsLoading(true)
     try {
-      const event: Omit<TimelineEvent, 'id' | 'timestamp'> = {
+      const baseEvent: Omit<TimelineEvent, 'id' | 'timestamp'> = {
         type: eventType,
         title: title.trim(),
         description: description.trim() || undefined,
         author: author.trim() || undefined,
         linkedTaskIds: selectedTasks.length > 0 ? selectedTasks : undefined,
-        status: eventStatus,
-        color: customColor || undefined,
-        data: {}
+        status: 'completed'
       }
 
-      await onAdd(event)
+      // Add type-specific data
+      switch (eventType) {
+        case 'status_change':
+          baseEvent.statusChange = {
+            fromStatus: project.status,
+            toStatus: newProjectStatus
+          }
+          // Update project status if it's different
+          if (newProjectStatus !== project.status) {
+            await updateProject({
+              ...project,
+              status: newProjectStatus,
+              updatedAt: new Date()
+            })
+          }
+          break
+          
+        case 'material_delivery':
+          baseEvent.materialInfo = {
+            supplier: supplier.trim() || undefined,
+            quantity: quantity ? parseFloat(quantity) : undefined,
+            cost: cost ? parseFloat(cost) : undefined,
+            trackingNumber: trackingNumber.trim() || undefined
+          }
+          break
+          
+        case 'milestone':
+          baseEvent.milestone = {
+            type: milestoneType,
+            importance: milestoneImportance
+          }
+          break
+      }
+
+      // Handle file attachments (in a real app, you'd upload to cloud storage)
+      if (files.length > 0) {
+        baseEvent.attachments = files.map(file => ({
+          name: file.name,
+          url: URL.createObjectURL(file), // In real app, this would be the uploaded URL
+          type: file.type,
+          size: file.size
+        }))
+      }
+
+      await onAdd(baseEvent)
       
-      // Reset form
-      setTitle('')
-      setDescription('')
-      setAuthor('')
-      setEventType('note')
-      setSelectedTasks([])
-      setEventStatus('pending')
-      setCustomColor('')
+      resetForm()
       onClose()
       
       toast({
         title: "Event Added",
-        description: "Timeline event has been added to the project",
+        description: `Timeline ${eventType.replace('_', ' ')} has been added to the project`,
       })
     } catch (error) {
       console.error('Failed to add timeline event:', error)
@@ -150,96 +291,280 @@ function AddEventModal({
     }
   }
 
-  const eventTypeOptions = [
-    { value: 'milestone', label: 'Milestone', icon: Flag },
-    { value: 'status_change', label: 'Status Change', icon: ArrowRight },
-    { value: 'material_delivery', label: 'Material Delivery', icon: Truck },
-    { value: 'note', label: 'Note', icon: FileText },
-    { value: 'photo', label: 'Photo/Progress', icon: Camera }
-  ]
+  const getTypeSpecificFields = () => {
+    switch (eventType) {
+      case 'status_change':
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Change Status To</Label>
+              <Select value={newProjectStatus} onValueChange={(value) => setNewProjectStatus(value as ProjectStatus)}>
+                <SelectTrigger className={cn(isMobile && "h-12")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.values(ProjectStatus).map((status) => (
+                    <SelectItem key={status} value={status}>
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          PROJECT_STATUS_COLORS[status] === 'blue' && "bg-blue-500",
+                          PROJECT_STATUS_COLORS[status] === 'green' && "bg-green-500",
+                          PROJECT_STATUS_COLORS[status] === 'yellow' && "bg-yellow-500",
+                          PROJECT_STATUS_COLORS[status] === 'gray' && "bg-gray-500",
+                          PROJECT_STATUS_COLORS[status] === 'red' && "bg-red-500"
+                        )} />
+                        {PROJECT_STATUS_LABELS[status]}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {newProjectStatus !== project.status && (
+                <p className="text-xs text-amber-600 mt-1">
+                  This will update the project status from {PROJECT_STATUS_LABELS[project.status]} to {PROJECT_STATUS_LABELS[newProjectStatus]}
+                </p>
+              )}
+            </div>
+          </div>
+        )
+
+      case 'material_delivery':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Supplier</Label>
+                <Input
+                  value={supplier}
+                  onChange={(e) => setSupplier(e.target.value)}
+                  placeholder="Supplier name"
+                  className={cn(isMobile && "text-base h-12")}
+                />
+              </div>
+              <div>
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="Quantity"
+                  className={cn(isMobile && "text-base h-12")}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Cost ({project.currency})</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  placeholder="0.00"
+                  className={cn(isMobile && "text-base h-12")}
+                />
+              </div>
+              <div>
+                <Label>Tracking Number</Label>
+                <Input
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  placeholder="Tracking #"
+                  className={cn(isMobile && "text-base h-12")}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Delivery Documents</Label>
+              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="delivery-files"
+                />
+                <label htmlFor="delivery-files" className="cursor-pointer">
+                  <div className="text-center">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Upload delivery receipts, invoices, or photos
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'milestone':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Milestone Type</Label>
+                <Select value={milestoneType} onValueChange={(value) => setMilestoneType(value as any)}>
+                  <SelectTrigger className={cn(isMobile && "h-12")}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="start">Project Start</SelectItem>
+                    <SelectItem value="checkpoint">Checkpoint</SelectItem>
+                    <SelectItem value="completion">Completion</SelectItem>
+                    <SelectItem value="deadline">Deadline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Importance</Label>
+                <Select value={milestoneImportance} onValueChange={(value) => setMilestoneImportance(value as any)}>
+                  <SelectTrigger className={cn(isMobile && "h-12")}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'photo':
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label>Photos & Documents</Label>
+              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="photo-files"
+                />
+                <label htmlFor="photo-files" className="cursor-pointer">
+                  <div className="text-center">
+                    <Camera className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Upload progress photos or documentation
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className={cn(
-        isMobile 
-          ? "max-w-[95vw] max-h-[90vh] w-full" 
-          : "max-w-lg"
+        isMobile ? "max-w-[95vw] max-h-[90vh] w-full overflow-y-auto" : "max-w-2xl max-h-[90vh] overflow-y-auto"
       )}>
         <DialogHeader>
           <DialogTitle>Add Timeline Event</DialogTitle>
           <DialogDescription>
-            Add a new event to the project timeline.
+            Choose an event type and add it to the project timeline.
           </DialogDescription>
         </DialogHeader>
         
-        <div className={cn(
-          "space-y-4",
-          isMobile && "space-y-3"
-        )}>
+        <div className="space-y-6">
+          {/* Event Type Selection with Icons */}
           <div>
-            <Label>Event Type</Label>
-            <Select value={eventType} onValueChange={(value) => setEventType(value as TimelineEvent['type'])}>
-              <SelectTrigger className={cn(isMobile && "h-12")}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {eventTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      <option.icon className="h-4 w-4" />
-                      {option.label}
+            <Label className="text-base font-medium">Event Type</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
+              {eventTypeOptions.map((option) => (
+                <div
+                  key={option.value}
+                  onClick={() => setEventType(option.value as TimelineEvent['type'])}
+                  className={cn(
+                    "relative p-4 border-2 rounded-lg cursor-pointer transition-all",
+                    eventType === option.value 
+                      ? "border-primary bg-primary/5" 
+                      : "border-muted-foreground/20 hover:border-muted-foreground/40"
+                  )}
+                >
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <div className={cn(
+                      "p-3 rounded-full text-white transition-colors",
+                      eventType === option.value ? option.color : "bg-muted"
+                    )}>
+                      <option.icon className="h-5 w-5" />
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    <div>
+                      <p className={cn(
+                        "font-medium text-sm",
+                        eventType === option.value && "text-primary"
+                      )}>
+                        {option.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {option.description}
+                      </p>
+                    </div>
+                  </div>
+                  {eventType === option.value && (
+                    <div className="absolute top-2 right-2">
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div>
-            <Label>Title</Label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter event title"
-              className={cn(
-                isMobile && "text-base h-12" // Prevent zoom on iOS
-              )}
-            />
+          {/* Common Fields */}
+          <div className="space-y-4">
+            <div>
+              <Label>Title *</Label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter event title"
+                className={cn(isMobile && "text-base h-12")}
+              />
+            </div>
+
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter event description"
+                rows={3}
+                className={cn("resize-none", isMobile && "text-base")}
+              />
+            </div>
+
+            <div>
+              <Label>Author</Label>
+              <Input
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder="Who performed this action?"
+                className={cn(isMobile && "text-base h-12")}
+              />
+            </div>
           </div>
 
-          <div>
-            <Label>Description (Optional)</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter event description"
-              rows={3}
-              className={cn(
-                "resize-none",
-                isMobile && "text-base" // Prevent zoom on iOS
-              )}
-            />
-          </div>
-
-          <div>
-            <Label>Author (Optional)</Label>
-            <Input
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              placeholder="Who performed this action?"
-              className={cn(
-                isMobile && "text-base h-12" // Prevent zoom on iOS
-              )}
-            />
-          </div>
+          {/* Type-Specific Fields */}
+          {getTypeSpecificFields()}
 
           {/* Task Linking */}
           {availableTasks.length > 0 && (
             <div>
               <Label>Link to Tasks (Optional)</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Select tasks that this timeline event relates to
-              </p>
               <div className="space-y-2 mt-2 max-h-32 overflow-y-auto border rounded-md p-2">
                 {availableTasks.map((task) => (
                   <div key={task.id} className="flex items-start space-x-2 p-1 hover:bg-muted/50 rounded">
@@ -263,11 +588,6 @@ function AddEventModal({
                       >
                         {task.name}
                       </Label>
-                      {task.description && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {task.description}
-                        </p>
-                      )}
                       <div className="flex gap-1 mt-1">
                         <span className={cn(
                           "text-xs px-1.5 py-0.5 rounded text-white",
@@ -277,43 +597,48 @@ function AddEventModal({
                         )}>
                           {task.status.replace('_', ' ')}
                         </span>
-                        {task.assignedTo && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                            {task.assignedTo}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-              {selectedTasks.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {selectedTasks.length} task{selectedTasks.length !== 1 ? 's' : ''} selected
-                </p>
-              )}
             </div>
           )}
 
-          {/* Event Status */}
-          <div>
-            <Label>Status</Label>
-            <Select value={eventStatus} onValueChange={(value) => setEventStatus(value as any)}>
-              <SelectTrigger className={cn(isMobile && "h-12")}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* File Display */}
+          {files.length > 0 && (
+            <div>
+              <Label>Attached Files</Label>
+              <div className="space-y-2 mt-2">
+                {files.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                    <div className="flex items-center gap-2">
+                      {file.type.startsWith('image/') ? (
+                        <ImageIcon className="h-4 w-4" />
+                      ) : (
+                        <FileIcon className="h-4 w-4" />
+                      )}
+                      <span className="text-sm truncate">{file.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFile(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         
         <DialogFooter className={cn(
-          isMobile ? "flex-col gap-2" : "flex-row gap-2"
+          isMobile ? "flex-col gap-2 pt-4" : "flex-row gap-2 pt-4"
         )}>
           <Button 
             variant="outline" 
@@ -345,7 +670,7 @@ function AddEventModal({
   )
 }
 
-// Timeline Event Component - Mobile Optimized
+// Enhanced Timeline Event Component with Unique Designs
 function TimelineEventItem({ 
   event, 
   isLast = false,
@@ -360,17 +685,17 @@ function TimelineEventItem({
   const getEventIcon = (type: TimelineEvent['type']) => {
     switch (type) {
       case 'milestone':
-        return <Flag className="h-4 w-4" />
+        return <Flag className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
       case 'status_change':
-        return <ArrowRight className="h-4 w-4" />
+        return <RefreshCcw className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
       case 'material_delivery':
-        return <Truck className="h-4 w-4" />
+        return <Truck className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
       case 'note':
-        return <FileText className="h-4 w-4" />
+        return <FileText className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
       case 'photo':
-        return <Camera className="h-4 w-4" />
+        return <Camera className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
       default:
-        return <Circle className="h-4 w-4" />
+        return <Circle className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
     }
   }
 
@@ -380,17 +705,7 @@ function TimelineEventItem({
       return event.color
     }
     
-    // Status-based coloring
-    if (event.status) {
-      switch (event.status) {
-        case 'completed': return 'bg-green-500'
-        case 'in_progress': return 'bg-blue-500'
-        case 'pending': return 'bg-yellow-500'
-        case 'cancelled': return 'bg-red-500'
-      }
-    }
-    
-    // Type-based coloring (fallback)
+    // Type-based coloring
     switch (event.type) {
       case 'milestone': return 'bg-purple-500'
       case 'status_change': return 'bg-blue-500'
@@ -401,12 +716,118 @@ function TimelineEventItem({
     }
   }
 
+  const getEventCardDesign = () => {
+    const baseClasses = cn(
+      "bg-card border rounded-lg",
+      isMobile ? "p-3" : "p-4"
+    )
+
+    switch (event.type) {
+      case 'milestone':
+        return cn(baseClasses, "border-l-4 border-l-purple-500 bg-purple-50/50 dark:bg-purple-950/20")
+      case 'status_change':
+        return cn(baseClasses, "border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20")
+      case 'material_delivery':
+        return cn(baseClasses, "border-l-4 border-l-green-500 bg-green-50/50 dark:bg-green-950/20")
+      case 'photo':
+        return cn(baseClasses, "border-l-4 border-l-orange-500 bg-orange-50/50 dark:bg-orange-950/20")
+      default:
+        return cn(baseClasses, "border-l-4 border-l-gray-500")
+    }
+  }
+
+  const renderEventSpecificContent = () => {
+    switch (event.type) {
+      case 'status_change':
+        if (event.statusChange) {
+          return (
+            <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200">
+                    {PROJECT_STATUS_LABELS[event.statusChange.fromStatus]}
+                  </Badge>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                  <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">
+                    {PROJECT_STATUS_LABELS[event.statusChange.toStatus]}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )
+        }
+        break
+
+      case 'material_delivery':
+        if (event.materialInfo) {
+          return (
+            <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {event.materialInfo.supplier && (
+                  <div>
+                    <span className="text-muted-foreground">Supplier:</span>
+                    <p className="font-medium">{event.materialInfo.supplier}</p>
+                  </div>
+                )}
+                {event.materialInfo.quantity && (
+                  <div>
+                    <span className="text-muted-foreground">Quantity:</span>
+                    <p className="font-medium">{event.materialInfo.quantity}</p>
+                  </div>
+                )}
+                {event.materialInfo.cost && (
+                  <div>
+                    <span className="text-muted-foreground">Cost:</span>
+                    <p className="font-medium">${event.materialInfo.cost.toFixed(2)}</p>
+                  </div>
+                )}
+                {event.materialInfo.trackingNumber && (
+                  <div>
+                    <span className="text-muted-foreground">Tracking:</span>
+                    <p className="font-medium font-mono text-xs">{event.materialInfo.trackingNumber}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        }
+        break
+
+      case 'milestone':
+        if (event.milestone) {
+          return (
+            <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "capitalize",
+                    event.milestone.importance === 'critical' && "bg-red-100 text-red-700 border-red-200",
+                    event.milestone.importance === 'high' && "bg-orange-100 text-orange-700 border-orange-200",
+                    event.milestone.importance === 'medium' && "bg-blue-100 text-blue-700 border-blue-200",
+                    event.milestone.importance === 'low' && "bg-gray-100 text-gray-700 border-gray-200"
+                  )}
+                >
+                  {event.milestone.importance} Priority
+                </Badge>
+                <Badge variant="secondary" className="capitalize">
+                  {event.milestone.type.replace('_', ' ')}
+                </Badge>
+              </div>
+            </div>
+          )
+        }
+        break
+    }
+    return null
+  }
+
   return (
     <div className={cn(
       "flex gap-3",
       isMobile && "gap-2"
     )}>
-      {/* Timeline Line - Mobile Optimized */}
+      {/* Timeline Line */}
       <div className="flex flex-col items-center shrink-0">
         <div className={cn(
           "rounded-full flex items-center justify-center text-white",
@@ -423,15 +844,12 @@ function TimelineEventItem({
         )}
       </div>
 
-      {/* Event Content - Mobile Optimized */}
+      {/* Event Content */}
       <div className={cn(
         "flex-1 min-w-0",
         isMobile ? "pb-4" : "pb-8"
       )}>
-        <div className={cn(
-          "bg-card border rounded-lg",
-          isMobile ? "p-3" : "p-4"
-        )}>
+        <div className={getEventCardDesign()}>
           <div className={cn(
             "flex justify-between mb-2",
             isMobile ? "flex-col gap-2" : "items-start"
@@ -449,7 +867,7 @@ function TimelineEventItem({
               )}>
                 <div className="flex items-center gap-1">
                   <Calendar className="h-3 w-3 shrink-0" />
-                  <span className={cn(isMobile && "break-all")}>
+                  <span>
                     {isMobile 
                       ? new Date(event.timestamp).toLocaleDateString()
                       : new Date(event.timestamp).toLocaleString()
@@ -457,11 +875,13 @@ function TimelineEventItem({
                   </span>
                 </div>
                 {event.author && (
-                  <div className="flex items-center gap-1">
+                  <>
                     <Separator orientation="vertical" className="h-3" />
-                    <User className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{event.author}</span>
-                  </div>
+                    <div className="flex items-center gap-1">
+                      <User className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{event.author}</span>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -469,7 +889,7 @@ function TimelineEventItem({
             <Badge 
               variant="outline" 
               className={cn(
-                "text-xs shrink-0",
+                "text-xs shrink-0 capitalize",
                 isMobile && "self-start"
               )}
             >
@@ -486,10 +906,16 @@ function TimelineEventItem({
             </p>
           )}
 
+          {/* Event-specific content */}
+          {renderEventSpecificContent()}
+
           {/* Show linked tasks */}
           {event.linkedTaskIds && event.linkedTaskIds.length > 0 && (
             <div className="mt-3">
-              <p className="text-xs text-muted-foreground mb-2">Linked Tasks:</p>
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                <PaperclipIcon className="h-3 w-3" />
+                Linked Tasks:
+              </p>
               <div className={cn(
                 "flex gap-1",
                 isMobile ? "flex-col" : "flex-wrap"
@@ -497,25 +923,35 @@ function TimelineEventItem({
                 {event.linkedTaskIds.map((taskId) => {
                   const task = projectTasks.find(t => t.id === taskId)
                   return task ? (
-                    <Badge 
-                      key={taskId}
-                      variant="secondary" 
-                      className={cn(
-                        "text-xs",
-                        isMobile ? "justify-start" : ""
-                      )}
-                    >
-                      {task.name}
-                    </Badge>
+                    <div key={taskId} className="flex items-center gap-2 p-2 bg-muted/30 rounded">
+                      <Badge 
+                        variant="secondary" 
+                        className={cn(
+                          "text-xs",
+                          task.status === 'completed' && "bg-green-100 text-green-700",
+                          task.status === 'in_progress' && "bg-blue-100 text-blue-700",
+                          task.status === 'not_started' && "bg-gray-100 text-gray-700"
+                        )}
+                      >
+                        {task.name}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {task.status.replace('_', ' ')}
+                      </span>
+                    </div>
                   ) : null
                 })}
               </div>
             </div>
           )}
           
+          {/* Attachments */}
           {event.attachments && event.attachments.length > 0 && (
             <div className="mt-3">
-              <p className="text-xs text-muted-foreground mb-2">Attachments:</p>
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                <PaperclipIcon className="h-3 w-3" />
+                Attachments:
+              </p>
               <div className={cn(
                 "flex gap-2",
                 isMobile ? "flex-col" : "flex-wrap"
@@ -529,9 +965,14 @@ function TimelineEventItem({
                       "text-xs",
                       isMobile ? "h-10 w-full justify-start" : "h-8"
                     )}
+                    onClick={() => window.open(attachment.url, '_blank')}
                   >
-                    <Download className="h-3 w-3 mr-1" />
-                    File {index + 1}
+                    {attachment.type.startsWith('image/') ? (
+                      <ImageIcon className="h-3 w-3 mr-1" />
+                    ) : (
+                      <FileIcon className="h-3 w-3 mr-1" />
+                    )}
+                    {attachment.name}
                   </Button>
                 ))}
               </div>
@@ -539,38 +980,68 @@ function TimelineEventItem({
           )}
         </div>
       </div>
-        </div>
+    </div>
   )
-}// Main Project Timeline Component
+}  // Main Project Timeline Component
 export default function ProjectTimeline({
   project,
   onUpdate,
-  className
+  className,
+  availableTasks = []
 }: ProjectTimelineProps) {
   const { updateProject } = useProjects()
-  const { tasks, getProjectTaskList } = useTask()
   const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Local state
-  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
+  const [customEvents, setCustomEvents] = useState<TimelineEvent[]>([])
   const [showAddEventModal, setShowAddEventModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
-  // Get project tasks for timeline linking - memoized to prevent infinite loops
+  // Use passed tasks or default to empty array
   const projectTasks = useMemo(() => 
-    tasks.filter(task => task.projectId === project.id), 
-    [tasks, project.id]
+    availableTasks.filter(task => task.projectId === project.id), 
+    [availableTasks, project.id]
   )
 
-  // Load project tasks when component mounts - only when project ID changes
+  // Load stored timeline events when component mounts
   useEffect(() => {
-    if (project.id) {
-      getProjectTaskList(project.id)
+    const loadStoredEvents = async () => {
+      try {
+        const { getTimelineEvents } = await import('@/lib/timeline-storage')
+        const storedEvents = getTimelineEvents(project.id)
+        
+        // Convert stored events to timeline events
+        const timelineEvents: TimelineEvent[] = storedEvents.map(stored => ({
+          id: stored.id,
+          type: stored.type as TimelineEvent['type'],
+          title: stored.title,
+          description: stored.description,
+          timestamp: stored.timestamp,
+          author: stored.author,
+          linkedTaskIds: stored.linkedTaskIds,
+          materialInfo: stored.materialInfo,
+          statusChange: stored.statusChange ? {
+            fromStatus: stored.statusChange.fromStatus as ProjectStatus,
+            toStatus: stored.statusChange.toStatus as ProjectStatus
+          } : undefined,
+          milestone: stored.milestone,
+          attachments: stored.attachments
+        }))
+        
+        setCustomEvents(timelineEvents)
+        console.log('Loaded stored events:', timelineEvents.length)
+      } catch (error) {
+        console.error('Failed to load stored events:', error)
+      }
     }
-  }, [project.id]) // Removed getProjectTaskList from dependencies to prevent unnecessary reloads
+
+    loadStoredEvents()
+  }, [project.id])
+
+
 
   // Generate timeline events from project data - memoized to prevent constant regeneration
-  const timelineEventsGenerated = useMemo(() => {
+  const systemTimelineEvents = useMemo(() => {
     const generateTimelineEvents = () => {
       const events: TimelineEvent[] = []
 
@@ -661,28 +1132,72 @@ export default function ProjectTimeline({
     return generateTimelineEvents()
   }, [project, projectTasks])
 
-  // Update timeline events when generated events change
-  useEffect(() => {
-    setTimelineEvents(timelineEventsGenerated)
-  }, [timelineEventsGenerated])
+  // Combine system events with custom events
+  const timelineEvents = useMemo(() => {
+    const allEvents = [...systemTimelineEvents, ...customEvents]
+    return allEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [systemTimelineEvents, customEvents])
 
   // Handle add event
   const handleAddEvent = async (eventData: Omit<TimelineEvent, 'id' | 'timestamp'>) => {
     setIsLoading(true)
     try {
-      const newEvent: TimelineEvent = {
-        ...eventData,
-        id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: new Date().toISOString()
-      }
+      // Import storage function dynamically to avoid SSR issues
+      const { saveTimelineEvent } = await import('@/lib/timeline-storage')
+      
+      // Convert to storage format and save
+      const savedEvent = saveTimelineEvent(project.id, {
+        type: eventData.type,
+        title: eventData.title,
+        description: eventData.description,
+        author: eventData.author,
+        linkedTaskIds: eventData.linkedTaskIds,
+        materialInfo: eventData.materialInfo,
+        statusChange: eventData.statusChange ? {
+          fromStatus: eventData.statusChange.fromStatus.toString(),
+          toStatus: eventData.statusChange.toStatus.toString()
+        } : undefined,
+        milestone: eventData.milestone,
+        attachments: eventData.attachments
+      })
 
-      // In a real implementation, you would save this to the database
-      // For now, we'll just add it to local state
-      setTimelineEvents(prev => [newEvent, ...prev])
+      // Manually reload events to ensure immediate UI update
+      const { getTimelineEvents } = await import('@/lib/timeline-storage')
+      const storedEvents = getTimelineEvents(project.id)
+      
+      const timelineEvents: TimelineEvent[] = storedEvents.map(stored => ({
+        id: stored.id,
+        type: stored.type as TimelineEvent['type'],
+        title: stored.title,
+        description: stored.description,
+        timestamp: stored.timestamp,
+        author: stored.author,
+        linkedTaskIds: stored.linkedTaskIds,
+        materialInfo: stored.materialInfo,
+        statusChange: stored.statusChange ? {
+          fromStatus: stored.statusChange.fromStatus as ProjectStatus,
+          toStatus: stored.statusChange.toStatus as ProjectStatus
+        } : undefined,
+        milestone: stored.milestone,
+        attachments: stored.attachments
+      }))
+      
+      setCustomEvents(timelineEvents)
+      console.log('Event saved and reloaded:', savedEvent.title, 'Total events:', timelineEvents.length)
       
       onUpdate?.()
+      
+      toast({
+        title: "Event Added",
+        description: `Timeline event "${eventData.title}" has been added successfully.`,
+      })
     } catch (error) {
       console.error('Failed to add timeline event:', error)
+      toast({
+        title: "Error",
+        description: "Failed to add timeline event. Please try again.",
+        variant: "destructive"
+      })
       throw error
     } finally {
       setIsLoading(false)
@@ -1067,10 +1582,8 @@ export default function ProjectTimeline({
         isOpen={showAddEventModal}
         onClose={() => setShowAddEventModal(false)}
         onAdd={handleAddEvent}
-        availableTasks={projectTasks}
+        availableTasks={availableTasks}
       />
     </div>
   )
 }
- 
- 
