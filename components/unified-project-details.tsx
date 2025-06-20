@@ -4,11 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Settings } from 'lucide-react'
 import { useProjects } from '@/contexts/project-context'
+import { TaskProvider } from '@/contexts/task-context'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/lib/utils'
 import ProjectDetails from './project-details'
 import ProjectMaterials from './project-materials'
 import ProjectTimeline from './project-timeline'
+import ProjectTaskManagement from './tasks/project-task-management'
+import WorkforceManagement from './workforce-management'
 import type { Project } from '@/lib/types'
 
 interface UnifiedProjectDetailsProps {
@@ -115,7 +118,7 @@ export function UnifiedProjectDetails({
               isMobile && "px-0 pt-2 bg-background/95"
             )}>
               <TabsList className={cn(
-                "grid w-full grid-cols-3",
+                "grid w-full grid-cols-5",
                 isMobile && "h-10 bg-muted/50"
               )}>
                 <TabsTrigger 
@@ -123,6 +126,18 @@ export function UnifiedProjectDetails({
                   className={cn(isMobile && "text-xs py-2")}
                 >
                   {isMobile ? 'Overview' : 'Overview'}
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="tasks" 
+                  className={cn(isMobile && "text-xs py-2")}
+                >
+                  {isMobile ? 'Tasks' : 'Tasks'}
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="workforce" 
+                  className={cn(isMobile && "text-xs py-2")}
+                >
+                  {isMobile ? 'Workers' : 'Workforce'}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="materials" 
@@ -145,6 +160,24 @@ export function UnifiedProjectDetails({
                   key={`overview-${refreshKey}`}
                   project={project}
                   onEdit={handleEdit}
+                  onUpdate={handleUpdate}
+                />
+              </TabsContent>
+
+              <TabsContent value="tasks" className="mt-0">
+                <TaskProvider initialProjectId={project.id}>
+                  <ProjectTaskManagement
+                    key={`tasks-${refreshKey}`}
+                    project={project}
+                    onUpdate={handleUpdate}
+                  />
+                </TaskProvider>
+              </TabsContent>
+
+              <TabsContent value="workforce" className="mt-0">
+                <WorkforceManagement
+                  key={`workforce-${refreshKey}`}
+                  project={project}
                   onUpdate={handleUpdate}
                 />
               </TabsContent>

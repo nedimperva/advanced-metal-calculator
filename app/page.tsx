@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock, FolderOpen, Plus, Archive } from "lucide-react"
+import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock, FolderOpen, Plus, Archive, Users } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -82,6 +82,9 @@ import {
 } from "@/lib/pricing-models"
 import { getProfileTypeName } from "@/lib/i18n"
 import { CalculationHistory, CalculationComparison } from "@/components/calculation-comparison"
+import GlobalWorkers from "@/components/global-workers"
+import GlobalMachinery from "@/components/global-machinery"
+import DailyJournal from "@/components/daily-journal"
 
 // Projects Tab Content Component
 function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject?: Project }) {
@@ -153,7 +156,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
         onEdit={() => {
           // When editing from project details, open edit modal while staying in project details
           if (selectedProject) {
-            setEditingProject(selectedProject || null)
+            setEditingProject(selectedProject)
             setShowCreateDialog(true)
           }
         }}
@@ -1949,6 +1952,24 @@ export default function MetalWeightCalculator() {
               label: "Projects",
               icon: <FolderOpen className="h-3 w-3" />,
               shortLabel: "Proj"
+            },
+            {
+              value: "workers",
+              label: "Workers",
+              icon: <Users className="h-3 w-3" />,
+              shortLabel: "Work"
+            },
+            {
+              value: "machinery",
+              label: "Machinery",
+              icon: <Cog className="h-3 w-3" />,
+              shortLabel: "Mach"
+            },
+            {
+              value: "journal",
+              label: "Daily Journal",
+              icon: <Clock className="h-3 w-3" />,
+              shortLabel: "Jour"
             }
           ]}
         >
@@ -2584,6 +2605,36 @@ export default function MetalWeightCalculator() {
               isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
             )}>
               <ProjectsTabContent initialSelectedProject={initialSelectedProject} />
+            </div>
+          </SwipeTabs.Content>
+
+          {/* Global Workers Tab */}
+          <SwipeTabs.Content value="workers" className="">
+            <div className={cn(
+              "overflow-y-auto space-y-4",
+              isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
+            )}>
+              <GlobalWorkers />
+            </div>
+          </SwipeTabs.Content>
+
+          {/* Global Machinery Tab */}
+          <SwipeTabs.Content value="machinery" className="">
+            <div className={cn(
+              "overflow-y-auto space-y-4", 
+              isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
+            )}>
+              <GlobalMachinery />
+            </div>
+          </SwipeTabs.Content>
+
+          {/* Daily Journal Tab */}
+          <SwipeTabs.Content value="journal" className="">
+            <div className={cn(
+              "overflow-y-auto space-y-4",
+              isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
+            )}>
+              <DailyJournal />
             </div>
           </SwipeTabs.Content>
         </SwipeTabs>

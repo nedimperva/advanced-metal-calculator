@@ -1,15 +1,34 @@
-import type { Project, ProjectMaterial, Calculation } from './types'
+import type { 
+  Project, 
+  ProjectMaterial, 
+  Calculation, 
+  ProjectTask, 
+  DailyWorkLog, 
+  WorkEntry,
+  Worker,
+  Machinery,
+  ProjectAssignment,
+  DailyTimesheet
+} from './types'
 import { ProjectStatus, MaterialStatus } from './types'
 
 // Database configuration
 const DB_NAME = 'MetalCalculatorDB'
-const DB_VERSION = 1
+const DB_VERSION = 3
 
 // Store names
 export const STORES = {
   PROJECTS: 'projects',
   CALCULATIONS: 'calculations',
   PROJECT_MATERIALS: 'projectMaterials',
+  PROJECT_TASKS: 'projectTasks',
+  DAILY_WORK_LOGS: 'dailyWorkLogs',
+  WORK_ENTRIES: 'workEntries',
+  // New workforce and machinery stores
+  WORKERS: 'workers',
+  MACHINERY: 'machinery',
+  PROJECT_ASSIGNMENTS: 'projectAssignments',
+  DAILY_TIMESHEETS: 'dailyTimesheets',
   SETTINGS: 'settings'
 } as const
 
@@ -18,11 +37,44 @@ export interface DatabaseSchema {
   projects: Project
   calculations: Calculation
   projectMaterials: ProjectMaterial
+  projectTasks: ProjectTask
+  dailyWorkLogs: DailyWorkLog
+  workEntries: WorkEntry
+  // New workforce and machinery schema
+  workers: Worker
+  machinery: Machinery
+  projectAssignments: ProjectAssignment
+  dailyTimesheets: DailyTimesheet
   settings: { key: string; value: any }
 }
 
 // Database connection
 let dbInstance: IDBDatabase | null = null
+
+// Force database upgrade (for development/debugging)
+export async function forceDbUpgrade(): Promise<void> {
+  if (dbInstance) {
+    dbInstance.close()
+    dbInstance = null
+  }
+  
+  // Delete existing database to force fresh creation
+  return new Promise((resolve, reject) => {
+    const deleteRequest = indexedDB.deleteDatabase(DB_NAME)
+    deleteRequest.onsuccess = () => {
+      console.log('Database deleted successfully, will recreate with new schema')
+      resolve()
+    }
+    deleteRequest.onerror = () => {
+      console.warn('Failed to delete database, proceeding anyway')
+      resolve() // Don't reject, just proceed
+    }
+    deleteRequest.onblocked = () => {
+      console.warn('Database deletion blocked, proceeding anyway')
+      resolve()
+    }
+  })
+}
 
 // Initialize database
 export async function initializeDatabase(): Promise<IDBDatabase> {
@@ -74,12 +126,97 @@ export async function initializeDatabase(): Promise<IDBDatabase> {
         materialStore.createIndex('arrivalDate', 'arrivalDate', { unique: false })
       }
 
+      // Create project tasks store
+      if (!db.objectStoreNames.contains(STORES.PROJECT_TASKS)) {
+        const taskStore = db.createObjectStore(STORES.PROJECT_TASKS, { keyPath: 'id' })
+        taskStore.createIndex('projectId', 'projectId', { unique: false })
+        taskStore.createIndex('status', 'status', { unique: false })
+        taskStore.createIndex('type', 'type', { unique: false })
+        taskStore.createIndex('priority', 'priority', { unique: false })
+        taskStore.createIndex('assignedTo', 'assignedTo', { unique: false })
+        taskStore.createIndex('scheduledStart', 'scheduledStart', { unique: false })
+        taskStore.createIndex('scheduledEnd', 'scheduledEnd', { unique: false })
+        taskStore.createIndex('createdAt', 'createdAt', { unique: false })
+        taskStore.createIndex('updatedAt', 'updatedAt', { unique: false })
+      }
+
+      // Create daily work logs store
+      if (!db.objectStoreNames.contains(STORES.DAILY_WORK_LOGS)) {
+        const workLogStore = db.createObjectStore(STORES.DAILY_WORK_LOGS, { keyPath: 'id' })
+        workLogStore.createIndex('projectId', 'projectId', { unique: false })
+        workLogStore.createIndex('date', 'date', { unique: false })
+        workLogStore.createIndex('createdAt', 'createdAt', { unique: false })
+      }
+
+      // Create work entries store
+      if (!db.objectStoreNames.contains(STORES.WORK_ENTRIES)) {
+        const workEntryStore = db.createObjectStore(STORES.WORK_ENTRIES, { keyPath: 'id' })
+        workEntryStore.createIndex('workType', 'workType', { unique: false })
+        workEntryStore.createIndex('workerCount', 'workerCount', { unique: false })
+        workEntryStore.createIndex('hoursWorked', 'hoursWorked', { unique: false })
+      }
+
+      // Create workers store
+      if (!db.objectStoreNames.contains(STORES.WORKERS)) {
+        const workerStore = db.createObjectStore(STORES.WORKERS, { keyPath: 'id' })
+        workerStore.createIndex('name', 'name', { unique: false })
+        workerStore.createIndex('employeeId', 'employeeId', { unique: false })
+        workerStore.createIndex('isActive', 'isActive', { unique: false })
+        workerStore.createIndex('createdAt', 'createdAt', { unique: false })
+      }
+
+      // Create machinery store
+      if (!db.objectStoreNames.contains(STORES.MACHINERY)) {
+        const machineryStore = db.createObjectStore(STORES.MACHINERY, { keyPath: 'id' })
+        machineryStore.createIndex('name', 'name', { unique: false })
+        machineryStore.createIndex('type', 'type', { unique: false })
+        machineryStore.createIndex('isActive', 'isActive', { unique: false })
+        machineryStore.createIndex('createdAt', 'createdAt', { unique: false })
+      }
+
+      // Create project assignments store
+      if (!db.objectStoreNames.contains(STORES.PROJECT_ASSIGNMENTS)) {
+        const assignmentStore = db.createObjectStore(STORES.PROJECT_ASSIGNMENTS, { keyPath: 'id' })
+        assignmentStore.createIndex('projectId', 'projectId', { unique: false })
+        assignmentStore.createIndex('workerId', 'workerId', { unique: false })
+        assignmentStore.createIndex('machineryId', 'machineryId', { unique: false })
+        assignmentStore.createIndex('assignedDate', 'assignedDate', { unique: false })
+        assignmentStore.createIndex('isActive', 'isActive', { unique: false })
+      }
+
+      // Create daily timesheets store
+      if (!db.objectStoreNames.contains(STORES.DAILY_TIMESHEETS)) {
+        const timesheetStore = db.createObjectStore(STORES.DAILY_TIMESHEETS, { keyPath: 'id' })
+        timesheetStore.createIndex('projectId', 'projectId', { unique: false })
+        timesheetStore.createIndex('date', 'date', { unique: false })
+        timesheetStore.createIndex('createdAt', 'createdAt', { unique: false })
+      }
+
       // Create settings store
       if (!db.objectStoreNames.contains(STORES.SETTINGS)) {
         db.createObjectStore(STORES.SETTINGS, { keyPath: 'key' })
       }
     }
   })
+}
+
+// Check if all required stores exist
+export async function checkDatabaseStores(): Promise<boolean> {
+  try {
+    const db = await getDatabase()
+    const requiredStores = Object.values(STORES)
+    
+    for (const storeName of requiredStores) {
+      if (!db.objectStoreNames.contains(storeName)) {
+        console.warn(`Missing store: ${storeName}`)
+        return false
+      }
+    }
+    return true
+  } catch (error) {
+    console.error('Failed to check database stores:', error)
+    return false
+  }
 }
 
 // Generic database operations
@@ -429,5 +566,533 @@ export async function importDatabase(jsonData: string): Promise<void> {
   } catch (error) {
     console.error('Import failed:', error)
     throw error
+  }
+}
+
+// ============================================================================
+// TASK MANAGEMENT OPERATIONS
+// ============================================================================
+
+export async function createTask(task: Omit<ProjectTask, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const id = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  const newTask: ProjectTask = {
+    ...task,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    dependencies: task.dependencies || [],
+    blockedBy: [],
+    progress: task.progress || 0
+  }
+
+  await createRecord(STORES.PROJECT_TASKS, newTask)
+  return id
+}
+
+export async function updateTask(task: ProjectTask): Promise<void> {
+  const updatedTask = {
+    ...task,
+    updatedAt: new Date()
+  }
+  await updateRecord(STORES.PROJECT_TASKS, updatedTask)
+}
+
+export async function getTask(id: string): Promise<ProjectTask | undefined> {
+  return await getRecord(STORES.PROJECT_TASKS, id)
+}
+
+export async function getProjectTasks(projectId: string): Promise<ProjectTask[]> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.PROJECT_TASKS], 'readonly')
+    const store = transaction.objectStore(STORES.PROJECT_TASKS)
+    const index = store.index('projectId')
+    const request = index.getAll(projectId)
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(new Error(`Failed to get project tasks: ${request.error?.message}`))
+  })
+}
+
+export async function getAllTasks(): Promise<ProjectTask[]> {
+  return await getAllRecords(STORES.PROJECT_TASKS)
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  // Remove this task from other tasks' dependencies
+  const allTasks = await getAllTasks()
+  for (const task of allTasks) {
+    if (task.dependencies.includes(id)) {
+      task.dependencies = task.dependencies.filter(depId => depId !== id)
+      await updateTask(task)
+    }
+    if (task.blockedBy?.includes(id)) {
+      task.blockedBy = task.blockedBy.filter(depId => depId !== id)
+      await updateTask(task)
+    }
+  }
+  
+  await deleteRecord(STORES.PROJECT_TASKS, id)
+}
+
+export async function getTasksByStatus(projectId: string, status: string): Promise<ProjectTask[]> {
+  const tasks = await getProjectTasks(projectId)
+  return tasks.filter(task => task.status === status)
+}
+
+// ============================================================================
+// WORK LOG OPERATIONS
+// ============================================================================
+
+export async function createWorkLog(workLog: Omit<DailyWorkLog, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const id = `worklog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  const newWorkLog: DailyWorkLog = {
+    ...workLog,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    entries: workLog.entries || []
+  }
+
+  await createRecord(STORES.DAILY_WORK_LOGS, newWorkLog)
+  return id
+}
+
+export async function updateWorkLog(workLog: DailyWorkLog): Promise<void> {
+  const updatedWorkLog = {
+    ...workLog,
+    updatedAt: new Date()
+  }
+  await updateRecord(STORES.DAILY_WORK_LOGS, updatedWorkLog)
+}
+
+export async function getWorkLog(id: string): Promise<DailyWorkLog | undefined> {
+  return await getRecord(STORES.DAILY_WORK_LOGS, id)
+}
+
+export async function getProjectWorkLogs(projectId: string): Promise<DailyWorkLog[]> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.DAILY_WORK_LOGS], 'readonly')
+    const store = transaction.objectStore(STORES.DAILY_WORK_LOGS)
+    const index = store.index('projectId')
+    const request = index.getAll(projectId)
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(new Error(`Failed to get project work logs: ${request.error?.message}`))
+  })
+}
+
+export async function getWorkLogByDate(projectId: string, date: Date): Promise<DailyWorkLog | undefined> {
+  const workLogs = await getProjectWorkLogs(projectId)
+  const targetDate = date.toDateString()
+  return workLogs.find(log => new Date(log.date).toDateString() === targetDate)
+}
+
+export async function deleteWorkLog(id: string): Promise<void> {
+  await deleteRecord(STORES.DAILY_WORK_LOGS, id)
+}
+
+export async function getAllWorkLogs(): Promise<DailyWorkLog[]> {
+  return await getAllRecords(STORES.DAILY_WORK_LOGS)
+}
+
+// Helper function to generate unique IDs for work entries
+export function generateWorkEntryId(): string {
+  return `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
+// ============================================================================
+// WORKFORCE MANAGEMENT OPERATIONS
+// ============================================================================
+
+export async function createWorker(worker: Omit<Worker, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const id = `worker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  const newWorker: Worker = {
+    ...worker,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    skills: worker.skills || [],
+    isActive: worker.isActive !== false // Default to true
+  }
+
+  await createRecord(STORES.WORKERS, newWorker)
+  return id
+}
+
+export async function updateWorker(worker: Worker): Promise<void> {
+  const updatedWorker = {
+    ...worker,
+    updatedAt: new Date()
+  }
+  await updateRecord(STORES.WORKERS, updatedWorker)
+}
+
+export async function getWorker(id: string): Promise<Worker | undefined> {
+  return await getRecord(STORES.WORKERS, id)
+}
+
+export async function getAllWorkers(): Promise<Worker[]> {
+  return await getAllRecords(STORES.WORKERS)
+}
+
+export async function getActiveWorkers(): Promise<Worker[]> {
+  const workers = await getAllWorkers()
+  return workers.filter(worker => worker.isActive)
+}
+
+export async function deleteWorker(id: string): Promise<void> {
+  // Deactivate instead of deleting to preserve historical data
+  const worker = await getWorker(id)
+  if (worker) {
+    await updateWorker({ ...worker, isActive: false })
+  }
+}
+
+// ============================================================================
+// MACHINERY MANAGEMENT OPERATIONS
+// ============================================================================
+
+export async function createMachinery(machinery: Omit<Machinery, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const id = `machinery_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  const newMachinery: Machinery = {
+    ...machinery,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    isActive: machinery.isActive !== false // Default to true
+  }
+
+  await createRecord(STORES.MACHINERY, newMachinery)
+  return id
+}
+
+export async function updateMachinery(machinery: Machinery): Promise<void> {
+  const updatedMachinery = {
+    ...machinery,
+    updatedAt: new Date()
+  }
+  await updateRecord(STORES.MACHINERY, updatedMachinery)
+}
+
+export async function getMachinery(id: string): Promise<Machinery | undefined> {
+  return await getRecord(STORES.MACHINERY, id)
+}
+
+export async function getAllMachinery(): Promise<Machinery[]> {
+  return await getAllRecords(STORES.MACHINERY)
+}
+
+export async function getActiveMachinery(): Promise<Machinery[]> {
+  const machinery = await getAllMachinery()
+  return machinery.filter(item => item.isActive)
+}
+
+export async function deleteMachinery(id: string): Promise<void> {
+  // Deactivate instead of deleting to preserve historical data
+  const machinery = await getMachinery(id)
+  if (machinery) {
+    await updateMachinery({ ...machinery, isActive: false })
+  }
+}
+
+// ============================================================================
+// PROJECT ASSIGNMENT OPERATIONS
+// ============================================================================
+
+export async function createProjectAssignment(assignment: Omit<ProjectAssignment, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const id = `assignment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  const newAssignment: ProjectAssignment = {
+    ...assignment,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    isActive: assignment.isActive !== false // Default to true
+  }
+
+  await createRecord(STORES.PROJECT_ASSIGNMENTS, newAssignment)
+  return id
+}
+
+export async function updateProjectAssignment(assignment: ProjectAssignment): Promise<void> {
+  const updatedAssignment = {
+    ...assignment,
+    updatedAt: new Date()
+  }
+  await updateRecord(STORES.PROJECT_ASSIGNMENTS, updatedAssignment)
+}
+
+export async function getProjectAssignment(id: string): Promise<ProjectAssignment | undefined> {
+  return await getRecord(STORES.PROJECT_ASSIGNMENTS, id)
+}
+
+export async function getProjectAssignments(projectId: string): Promise<ProjectAssignment[]> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.PROJECT_ASSIGNMENTS], 'readonly')
+    const store = transaction.objectStore(STORES.PROJECT_ASSIGNMENTS)
+    const index = store.index('projectId')
+    const request = index.getAll(projectId)
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(new Error(`Failed to get project assignments: ${request.error?.message}`))
+  })
+}
+
+export async function getActiveProjectAssignments(projectId: string): Promise<ProjectAssignment[]> {
+  const assignments = await getProjectAssignments(projectId)
+  return assignments.filter(assignment => assignment.isActive)
+}
+
+export async function deleteProjectAssignment(id: string): Promise<void> {
+  await deleteRecord(STORES.PROJECT_ASSIGNMENTS, id)
+}
+
+// ============================================================================
+// DAILY TIMESHEET OPERATIONS
+// ============================================================================
+
+export async function createDailyTimesheet(timesheet: Omit<DailyTimesheet, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const id = `timesheet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  // Calculate totals
+  const totalLaborHours = timesheet.workerEntries.reduce((total, entry) => total + entry.hoursWorked, 0)
+  const totalMachineryHours = timesheet.machineryEntries.reduce((total, entry) => total + entry.hoursUsed, 0)
+  
+  // Calculate costs (we'll need to fetch worker and machinery rates)
+  let totalLaborCost = 0
+  let totalMachineryCost = 0
+  
+  for (const entry of timesheet.workerEntries) {
+    const worker = await getWorker(entry.workerId)
+    if (worker) {
+      totalLaborCost += entry.hoursWorked * worker.hourlyRate
+    }
+  }
+  
+  for (const entry of timesheet.machineryEntries) {
+    const machinery = await getMachinery(entry.machineryId)
+    if (machinery) {
+      totalMachineryCost += entry.hoursUsed * machinery.hourlyRate
+    }
+  }
+  
+  const newTimesheet: DailyTimesheet = {
+    ...timesheet,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    totalLaborHours,
+    totalMachineryHours,
+    totalLaborCost,
+    totalMachineryCost,
+    workerEntries: timesheet.workerEntries || [],
+    machineryEntries: timesheet.machineryEntries || []
+  }
+
+  await createRecord(STORES.DAILY_TIMESHEETS, newTimesheet)
+  return id
+}
+
+export async function updateDailyTimesheet(timesheet: DailyTimesheet): Promise<void> {
+  // Recalculate totals
+  const totalLaborHours = timesheet.workerEntries.reduce((total, entry) => total + entry.hoursWorked, 0)
+  const totalMachineryHours = timesheet.machineryEntries.reduce((total, entry) => total + entry.hoursUsed, 0)
+  
+  let totalLaborCost = 0
+  let totalMachineryCost = 0
+  
+  for (const entry of timesheet.workerEntries) {
+    const worker = await getWorker(entry.workerId)
+    if (worker) {
+      totalLaborCost += entry.hoursWorked * worker.hourlyRate
+    }
+  }
+  
+  for (const entry of timesheet.machineryEntries) {
+    const machinery = await getMachinery(entry.machineryId)
+    if (machinery) {
+      totalMachineryCost += entry.hoursUsed * machinery.hourlyRate
+    }
+  }
+  
+  const updatedTimesheet = {
+    ...timesheet,
+    updatedAt: new Date(),
+    totalLaborHours,
+    totalMachineryHours,
+    totalLaborCost,
+    totalMachineryCost
+  }
+  
+  await updateRecord(STORES.DAILY_TIMESHEETS, updatedTimesheet)
+}
+
+export async function getDailyTimesheet(id: string): Promise<DailyTimesheet | undefined> {
+  return await getRecord(STORES.DAILY_TIMESHEETS, id)
+}
+
+export async function getProjectTimesheets(projectId: string): Promise<DailyTimesheet[]> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.DAILY_TIMESHEETS], 'readonly')
+    const store = transaction.objectStore(STORES.DAILY_TIMESHEETS)
+    const index = store.index('projectId')
+    const request = index.getAll(projectId)
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(new Error(`Failed to get project timesheets: ${request.error?.message}`))
+  })
+}
+
+export async function getTimesheetByDate(projectId: string, date: Date): Promise<DailyTimesheet | undefined> {
+  const timesheets = await getProjectTimesheets(projectId)
+  const targetDate = date.toDateString()
+  return timesheets.find(timesheet => new Date(timesheet.date).toDateString() === targetDate)
+}
+
+export async function deleteDailyTimesheet(id: string): Promise<void> {
+  await deleteRecord(STORES.DAILY_TIMESHEETS, id)
+}
+
+export async function getAllTimesheets(): Promise<DailyTimesheet[]> {
+  return await getAllRecords(STORES.DAILY_TIMESHEETS)
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+export function generateWorkerId(): string {
+  return `worker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
+export function generateMachineryId(): string {
+  return `machinery_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
+export function generateTimesheetId(): string {
+  return `timesheet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
+export function generateWorkerEntryId(): string {
+  return `worker_entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
+export function generateMachineryEntryId(): string {
+  return `machinery_entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+}
+
+// ============================================================================
+// ADDITIONAL DAILY JOURNAL FUNCTIONS
+// ============================================================================
+
+// Daily Journal functions for multi-project time tracking
+import { DailyJournalTimesheet, JournalWorkerEntry, JournalMachineryEntry } from '@/lib/types'
+
+export async function saveDailyJournalTimesheet(timesheet: DailyJournalTimesheet): Promise<void> {
+  const dateStr = timesheet.date.toISOString().split('T')[0]
+  const id = `journal-${dateStr}`
+  
+  // Store in a separate store for journal entries
+  const journalTimesheet = {
+    ...timesheet,
+    id,
+    createdAt: timesheet.createdAt || new Date(),
+    updatedAt: new Date()
+  }
+  
+  // For now, store in the same DAILY_TIMESHEETS store but with a different ID pattern
+  try {
+    await createRecord(STORES.DAILY_TIMESHEETS, journalTimesheet as any)
+  } catch (error) {
+    // If exists, update it
+    await updateRecord(STORES.DAILY_TIMESHEETS, journalTimesheet as any)
+  }
+}
+
+export async function getDailyJournalTimesheetByDate(date: Date): Promise<DailyJournalTimesheet | null> {
+  const dateStr = date.toISOString().split('T')[0]
+  const id = `journal-${dateStr}`
+  
+  try {
+    const timesheet = await getRecord(STORES.DAILY_TIMESHEETS, id)
+    if (timesheet) {
+      return {
+        ...timesheet,
+        date: new Date(timesheet.date),
+        createdAt: new Date(timesheet.createdAt),
+        updatedAt: new Date(timesheet.updatedAt)
+      } as DailyJournalTimesheet
+    }
+  } catch (error) {
+    console.warn('Journal timesheet not found for date:', dateStr)
+  }
+  
+  return null
+}
+
+export async function duplicateDailyJournalTimesheet(sourceDate: Date, targetDate: Date): Promise<void> {
+  const sourceTimesheet = await getDailyJournalTimesheetByDate(sourceDate)
+  if (!sourceTimesheet) {
+    throw new Error('Source journal timesheet not found')
+  }
+  
+  const targetTimesheet: DailyJournalTimesheet = {
+    id: `journal-${targetDate.toISOString().split('T')[0]}`,
+    date: targetDate,
+    workerEntries: sourceTimesheet.workerEntries || [],
+    machineryEntries: sourceTimesheet.machineryEntries || [],
+    totalLaborHours: sourceTimesheet.totalLaborHours,
+    totalMachineryHours: sourceTimesheet.totalMachineryHours,
+    totalLaborCost: sourceTimesheet.totalLaborCost,
+    totalMachineryCost: sourceTimesheet.totalMachineryCost,
+    totalCost: sourceTimesheet.totalCost,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+  
+  await saveDailyJournalTimesheet(targetTimesheet)
+}
+
+export function calculateJournalTimesheetTotals(timesheet: DailyJournalTimesheet): {
+  totalLaborHours: number
+  totalMachineryHours: number
+  totalLaborCost: number
+  totalMachineryCost: number
+  totalCost: number
+} {
+  const totalLaborHours = (timesheet.workerEntries || [])
+    .reduce((sum, entry) => sum + entry.totalHours, 0)
+    
+  const totalMachineryHours = (timesheet.machineryEntries || [])
+    .reduce((sum, entry) => sum + entry.totalHours, 0)
+    
+  const totalLaborCost = (timesheet.workerEntries || [])
+    .reduce((sum, entry) => sum + entry.totalCost, 0)
+    
+  const totalMachineryCost = (timesheet.machineryEntries || [])
+    .reduce((sum, entry) => sum + entry.totalCost, 0)
+    
+  const totalCost = totalLaborCost + totalMachineryCost
+  
+  return {
+    totalLaborHours,
+    totalMachineryHours,
+    totalLaborCost,
+    totalMachineryCost,
+    totalCost
   }
 } 

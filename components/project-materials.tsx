@@ -82,7 +82,7 @@ import {
   MATERIAL_STATUS_LABELS, 
   MATERIAL_STATUS_COLORS 
 } from '@/lib/project-utils'
-import { MaterialStatus, type Project, type ProjectMaterial, type PhysicalMaterial, type Calculation } from '@/lib/types'
+import { MaterialStatus, type Project, type ProjectMaterial, type Calculation } from '@/lib/types'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
 
@@ -111,7 +111,7 @@ interface AddMaterialModalProps {
   project: Project
   isOpen: boolean
   onClose: () => void
-  onAdd: (material: Omit<PhysicalMaterial, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>) => void
+  onAdd: (material: any) => void
 }
 
 // Mobile-optimized Calculation Card Component
@@ -330,7 +330,7 @@ function MaterialDetailsModal({
                   <Label htmlFor="name">Name</Label>
                   <Input
                     id="name"
-                    value={formData.name || ''}
+                    value={(formData as any).name || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Material name"
                     className={cn(isMobile && "text-base")}
