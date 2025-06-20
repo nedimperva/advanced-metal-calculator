@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,6 +48,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
+import { useTask } from '@/contexts/task-context'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { 
   PROJECT_STATUS_LABELS, 
@@ -55,7 +56,7 @@ import {
   MATERIAL_STATUS_LABELS,
   MATERIAL_STATUS_COLORS 
 } from '@/lib/project-utils'
-import { ProjectStatus, MaterialStatus, type Project, type ProjectMaterial } from '@/lib/types'
+import { ProjectStatus, MaterialStatus, type Project, type ProjectMaterial, type ProjectTask } from '@/lib/types'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
 
@@ -68,6 +69,9 @@ interface TimelineEvent {
   author?: string
   data?: any
   attachments?: string[]
+  linkedTaskIds?: string[] // Link events to specific tasks
+  color?: string // Custom color for the event
+  status?: 'completed' | 'in_progress' | 'pending' | 'cancelled'
 }
 
 interface ProjectTimelineProps {
@@ -81,6 +85,7 @@ interface AddEventModalProps {
   isOpen: boolean
   onClose: () => void
   onAdd: (event: Omit<TimelineEvent, 'id' | 'timestamp'>) => void
+  availableTasks?: ProjectTask[]
 }
 
 // Add Event Modal Component - Mobile Optimized
@@ -88,7 +93,8 @@ function AddEventModal({
   project, 
   isOpen, 
   onClose, 
-  onAdd 
+  onAdd,
+  availableTasks = []
 }: AddEventModalProps) {
   const isMobile = useMediaQuery("(max-width: 767px)")
   const [eventType, setEventType] = useState<TimelineEvent['type']>('note')
@@ -96,6 +102,9 @@ function AddEventModal({
   const [description, setDescription] = useState('')
   const [author, setAuthor] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([])
+  const [eventStatus, setEventStatus] = useState<'completed' | 'in_progress' | 'pending' | 'cancelled'>('pending')
+  const [customColor, setCustomColor] = useState('')
 
   const handleAdd = async () => {
     if (!title.trim()) return
@@ -107,6 +116,9 @@ function AddEventModal({
         title: title.trim(),
         description: description.trim() || undefined,
         author: author.trim() || undefined,
+        linkedTaskIds: selectedTasks.length > 0 ? selectedTasks : undefined,
+        status: eventStatus,
+        color: customColor || undefined,
         data: {}
       }
 
@@ -117,6 +129,9 @@ function AddEventModal({
       setDescription('')
       setAuthor('')
       setEventType('note')
+      setSelectedTasks([])
+      setEventStatus('pending')
+      setCustomColor('')
       onClose()
       
       toast({
@@ -217,6 +232,84 @@ function AddEventModal({
               )}
             />
           </div>
+
+          {/* Task Linking */}
+          {availableTasks.length > 0 && (
+            <div>
+              <Label>Link to Tasks (Optional)</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Select tasks that this timeline event relates to
+              </p>
+              <div className="space-y-2 mt-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                {availableTasks.map((task) => (
+                  <div key={task.id} className="flex items-start space-x-2 p-1 hover:bg-muted/50 rounded">
+                    <input
+                      type="checkbox"
+                      id={`task-${task.id}`}
+                      checked={selectedTasks.includes(task.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTasks([...selectedTasks, task.id])
+                        } else {
+                          setSelectedTasks(selectedTasks.filter(id => id !== task.id))
+                        }
+                      }}
+                      className="rounded border-gray-300 mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <Label 
+                        htmlFor={`task-${task.id}`}
+                        className="text-sm font-normal cursor-pointer block"
+                      >
+                        {task.name}
+                      </Label>
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {task.description}
+                        </p>
+                      )}
+                      <div className="flex gap-1 mt-1">
+                        <span className={cn(
+                          "text-xs px-1.5 py-0.5 rounded text-white",
+                          task.status === 'completed' && "bg-green-500",
+                          task.status === 'in_progress' && "bg-blue-500", 
+                          task.status === 'not_started' && "bg-gray-500"
+                        )}>
+                          {task.status.replace('_', ' ')}
+                        </span>
+                        {task.assignedTo && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            {task.assignedTo}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {selectedTasks.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {selectedTasks.length} task{selectedTasks.length !== 1 ? 's' : ''} selected
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Event Status */}
+          <div>
+            <Label>Status</Label>
+            <Select value={eventStatus} onValueChange={(value) => setEventStatus(value as any)}>
+              <SelectTrigger className={cn(isMobile && "h-12")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         <DialogFooter className={cn(
@@ -256,11 +349,13 @@ function AddEventModal({
 function TimelineEventItem({ 
   event, 
   isLast = false,
-  isMobile = false
+  isMobile = false,
+  projectTasks = []
 }: { 
   event: TimelineEvent
   isLast?: boolean
   isMobile?: boolean
+  projectTasks?: ProjectTask[]
 }) {
   const getEventIcon = (type: TimelineEvent['type']) => {
     switch (type) {
@@ -279,20 +374,30 @@ function TimelineEventItem({
     }
   }
 
-  const getEventColor = (type: TimelineEvent['type']) => {
-    switch (type) {
-      case 'milestone':
-        return 'bg-purple-500'
-      case 'status_change':
-        return 'bg-blue-500'
-      case 'material_delivery':
-        return 'bg-green-500'
-      case 'note':
-        return 'bg-gray-500'
-      case 'photo':
-        return 'bg-orange-500'
-      default:
-        return 'bg-gray-400'
+  const getEventColor = (event: TimelineEvent) => {
+    // Custom color takes precedence
+    if (event.color) {
+      return event.color
+    }
+    
+    // Status-based coloring
+    if (event.status) {
+      switch (event.status) {
+        case 'completed': return 'bg-green-500'
+        case 'in_progress': return 'bg-blue-500'
+        case 'pending': return 'bg-yellow-500'
+        case 'cancelled': return 'bg-red-500'
+      }
+    }
+    
+    // Type-based coloring (fallback)
+    switch (event.type) {
+      case 'milestone': return 'bg-purple-500'
+      case 'status_change': return 'bg-blue-500'
+      case 'material_delivery': return 'bg-green-500'
+      case 'note': return 'bg-gray-500'
+      case 'photo': return 'bg-orange-500'
+      default: return 'bg-gray-400'
     }
   }
 
@@ -306,7 +411,7 @@ function TimelineEventItem({
         <div className={cn(
           "rounded-full flex items-center justify-center text-white",
           isMobile ? "w-6 h-6" : "w-8 h-8",
-          getEventColor(event.type)
+          getEventColor(event)
         )}>
           {getEventIcon(event.type)}
         </div>
@@ -380,6 +485,33 @@ function TimelineEventItem({
               {event.description}
             </p>
           )}
+
+          {/* Show linked tasks */}
+          {event.linkedTaskIds && event.linkedTaskIds.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs text-muted-foreground mb-2">Linked Tasks:</p>
+              <div className={cn(
+                "flex gap-1",
+                isMobile ? "flex-col" : "flex-wrap"
+              )}>
+                {event.linkedTaskIds.map((taskId) => {
+                  const task = projectTasks.find(t => t.id === taskId)
+                  return task ? (
+                    <Badge 
+                      key={taskId}
+                      variant="secondary" 
+                      className={cn(
+                        "text-xs",
+                        isMobile ? "justify-start" : ""
+                      )}
+                    >
+                      {task.name}
+                    </Badge>
+                  ) : null
+                })}
+              </div>
+            </div>
+          )}
           
           {event.attachments && event.attachments.length > 0 && (
             <div className="mt-3">
@@ -407,26 +539,38 @@ function TimelineEventItem({
           )}
         </div>
       </div>
-    </div>
+        </div>
   )
-}
-
-// Main Project Timeline Component
+}// Main Project Timeline Component
 export default function ProjectTimeline({
   project,
   onUpdate,
   className
 }: ProjectTimelineProps) {
   const { updateProject } = useProjects()
+  const { tasks, getProjectTaskList } = useTask()
   const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Local state
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([])
   const [showAddEventModal, setShowAddEventModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Get project tasks for timeline linking - memoized to prevent infinite loops
+  const projectTasks = useMemo(() => 
+    tasks.filter(task => task.projectId === project.id), 
+    [tasks, project.id]
+  )
 
-  // Generate timeline events from project data
+  // Load project tasks when component mounts - only when project ID changes
   useEffect(() => {
+    if (project.id) {
+      getProjectTaskList(project.id)
+    }
+  }, [project.id]) // Removed getProjectTaskList from dependencies to prevent unnecessary reloads
+
+  // Generate timeline events from project data - memoized to prevent constant regeneration
+  const timelineEventsGenerated = useMemo(() => {
     const generateTimelineEvents = () => {
       const events: TimelineEvent[] = []
 
@@ -468,6 +612,35 @@ export default function ProjectTimeline({
         })
       }
 
+      // Task completion events
+      projectTasks.forEach((task) => {
+        if (task.status === 'completed' && task.actualEnd) {
+          events.push({
+            id: `task-completed-${task.id}`,
+            type: 'milestone',
+            title: `Task Completed: ${task.name}`,
+            description: `Task "${task.name}" was marked as completed`,
+            timestamp: new Date(task.actualEnd).toISOString(),
+            author: task.assignedTo || 'Team Member',
+            linkedTaskIds: [task.id],
+            status: 'completed'
+          })
+        }
+        
+        if (task.status === 'in_progress' && task.actualStart) {
+          events.push({
+            id: `task-started-${task.id}`,
+            type: 'status_change',
+            title: `Task Started: ${task.name}`,
+            description: `Work began on task "${task.name}"`,
+            timestamp: new Date(task.actualStart).toISOString(),
+            author: task.assignedTo || 'Team Member',
+            linkedTaskIds: [task.id],
+            status: 'in_progress'
+          })
+        }
+      })
+
       // Deadline milestone
       if (project.deadline) {
         const isOverdue = new Date(project.deadline) < new Date()
@@ -485,8 +658,13 @@ export default function ProjectTimeline({
       return events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     }
 
-    setTimelineEvents(generateTimelineEvents())
-  }, [project])
+    return generateTimelineEvents()
+  }, [project, projectTasks])
+
+  // Update timeline events when generated events change
+  useEffect(() => {
+    setTimelineEvents(timelineEventsGenerated)
+  }, [timelineEventsGenerated])
 
   // Handle add event
   const handleAddEvent = async (eventData: Omit<TimelineEvent, 'id' | 'timestamp'>) => {
@@ -875,6 +1053,7 @@ export default function ProjectTimeline({
                   event={event}
                   isLast={index === timelineEvents.length - 1}
                   isMobile={isMobile}
+                  projectTasks={projectTasks}
                 />
               ))}
             </div>
@@ -888,7 +1067,10 @@ export default function ProjectTimeline({
         isOpen={showAddEventModal}
         onClose={() => setShowAddEventModal(false)}
         onAdd={handleAddEvent}
+        availableTasks={projectTasks}
       />
     </div>
   )
 }
+ 
+ 

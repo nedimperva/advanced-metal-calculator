@@ -142,7 +142,7 @@ export default function TaskList({
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary">
-                  {Math.round(taskProgress.overallProgress)}%
+                  {Math.round(taskProgress.completionPercentage)}%
                 </div>
                 <div className="text-sm text-muted-foreground">Progress</div>
               </div>

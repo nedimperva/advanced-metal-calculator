@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { I18nProvider } from "@/contexts/i18n-context"
 import { ColorThemeProvider } from "@/contexts/color-theme-context"
 import { ProjectProvider } from "@/contexts/project-context"
+import { TaskProvider } from "@/contexts/task-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -38,12 +39,14 @@ export default function RootLayout({
           <ThemeProvider>
             <ColorThemeProvider>
               <ProjectProvider>
-                <div className="min-h-screen bg-background text-foreground antialiased">
-                  <ErrorBoundary>
-                    {children}
-                    <Toaster />
-                  </ErrorBoundary>
-                </div>
+                <TaskProvider>
+                  <div className="min-h-screen bg-background text-foreground antialiased">
+                    <ErrorBoundary>
+                      {children}
+                      <Toaster />
+                    </ErrorBoundary>
+                  </div>
+                </TaskProvider>
               </ProjectProvider>
             </ColorThemeProvider>
           </ThemeProvider>

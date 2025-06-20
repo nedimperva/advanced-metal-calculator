@@ -3,103 +3,204 @@
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { 
   ListTodo,
-  Kanban,
-  Clock,
-  BarChart3,
   Plus,
   AlertTriangle,
   CheckCircle2,
   TrendingUp,
-  Calendar,
-  Users
+  BarChart3,
+  Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { useTask } from '@/contexts/task-context'
 import { toast } from '@/hooks/use-toast'
+import { useProjects } from '@/contexts/project-context'
 
 // Import task components
 import TaskList from './task-list'
-import TaskCard from './task-card'
 import TaskForm from './task-form'
-import TaskStatusBoard from './task-status-board'
-import WorkLogForm from './work-log-form'
-import WorkLogList from './work-log-list'
 
-import { type Project, type ProjectTask, type DailyWorkLog, TaskStatus } from '@/lib/types'
-import { calculateTaskProgress, type TaskProgressSummary } from '@/lib/task-utils'
-import { calculateWorkLogSummary } from '@/lib/work-log-utils'
+import { 
+  type Project, 
+  type ProjectTask, 
+  type Worker,
+  TaskStatus,
+  ProjectStatus,
+  MaterialStatus
+} from '@/lib/types'
+import { PROJECT_STATUS_LABELS } from '@/lib/project-utils'
+import { 
+  calculateTaskProgress,
+  type TaskProgressSummary
+} from '@/lib/task-utils'
+import { 
+  getAllWorkers,
+  getProjectTasks,
+  updateTask,
+  createTask,
+  deleteTask
+} from '@/lib/database'
 
 interface ProjectTaskManagementProps {
   project: Project
   onUpdate?: () => void
+  availableTimelineEvents?: any[] // Will be properly typed when passed from parent
   className?: string
 }
 
-export default function ProjectTaskManagement({
-  project,
-  onUpdate,
-  className
+export default function ProjectTaskManagement({ 
+  project, 
+  availableTimelineEvents = [] 
 }: ProjectTaskManagementProps) {
+  const { updateProject } = useProjects()
   const isMobile = useMediaQuery("(max-width: 767px)")
-  const [activeTab, setActiveTab] = useState('tasks')
+  
+  // State management
+  const [tasks, setTasks] = useState<ProjectTask[]>([])
+  const [workers, setWorkers] = useState<Worker[]>([])
+  const [timelineEvents, setTimelineEvents] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [showTaskForm, setShowTaskForm] = useState(false)
-  const [showWorkLogForm, setShowWorkLogForm] = useState(false)
   const [editingTask, setEditingTask] = useState<ProjectTask | null>(null)
-  const [editingWorkLog, setEditingWorkLog] = useState<DailyWorkLog | null>(null)
+  const [taskProgress, setTaskProgress] = useState<TaskProgressSummary | null>(null)
 
-  // Use task context
-  const {
-    tasks,
-    loading,
-    error,
-    filteredTasks,
-    taskProgress,
-    searchTerm,
-    filters,
-    sortField,
-    sortDirection,
-    createNewTask,
-    updateExistingTask,
-    deleteExistingTask,
-    updateTaskStatus,
-    updateTaskProgress,
-    getProjectTaskList,
-    setSearchTerm,
-    setFilters,
-    setSorting,
-    clearFilters,
-    canDeleteTask
-  } = useTask()
-
-  // Load project tasks when component mounts or project changes
+  // Load tasks and workers
   useEffect(() => {
-    if (project.id) {
-      getProjectTaskList(project.id)
+    loadTasks()
+    loadWorkers()
+  }, [project.id])
+
+  // Calculate task progress when tasks change
+  useEffect(() => {
+    if (tasks.length > 0) {
+      const progress = calculateTaskProgress(tasks)
+      setTaskProgress(progress)
     }
-  }, [project.id, getProjectTaskList])
+  }, [tasks])
 
-  // Mock work logs (in real implementation, this would come from a work log context)
-  const [workLogs, setWorkLogs] = useState<DailyWorkLog[]>([])
+  // Generate timeline events from project data (simplified version from timeline component)
+  useEffect(() => {
+    const generateTimelineEvents = () => {
+      const events: any[] = []
 
-  // Calculate task and work log progress
-  const calculatedTaskProgress = React.useMemo(() => {
-    return calculateTaskProgress(filteredTasks)
-  }, [filteredTasks])
+      // Project creation event
+      events.push({
+        id: `project-created-${project.id}`,
+        type: 'milestone',
+        title: 'Project Created',
+        description: `Project "${project.name}" was created`,
+        timestamp: new Date(project.createdAt).toISOString(),
+        author: 'System'
+      })
 
-  const workLogSummary = React.useMemo(() => {
-    return calculateWorkLogSummary(workLogs)
-  }, [workLogs])
+      // Status changes
+      if (project.status !== ProjectStatus.PLANNING) {
+        events.push({
+          id: `status-change-${project.id}`,
+          type: 'status_change',
+          title: `Status Changed to ${PROJECT_STATUS_LABELS[project.status]}`,
+          description: `Project status updated to ${PROJECT_STATUS_LABELS[project.status]}`,
+          timestamp: new Date(project.updatedAt).toISOString(),
+          author: 'System'
+        })
+      }
 
-  // Handle task operations
-  const handleCreateTask = async () => {
-    setEditingTask(null)
-    setShowTaskForm(true)
+      // Task completion events
+      tasks.forEach((task) => {
+        if (task.status === 'completed' && task.actualEnd) {
+          events.push({
+            id: `task-completed-${task.id}`,
+            type: 'milestone',
+            title: `Task Completed: ${task.name}`,
+            description: `Task "${task.name}" was marked as completed`,
+            timestamp: new Date(task.actualEnd).toISOString(),
+            author: task.assignedTo || 'Team Member',
+            linkedTaskIds: [task.id],
+            status: 'completed'
+          })
+        }
+      })
+
+      // Sort events by timestamp (newest first)
+      return events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    }
+
+    setTimelineEvents(generateTimelineEvents())
+  }, [project, tasks])
+
+  const loadTasks = async () => {
+    setIsLoading(true)
+    try {
+      const projectTasks = await getProjectTasks(project.id)
+      setTasks(projectTasks)
+    } catch (error) {
+      console.error('Failed to load tasks:', error)
+      toast({
+        title: "Load Failed",
+        description: "Failed to load project tasks",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const loadWorkers = async () => {
+    try {
+      const allWorkers = await getAllWorkers()
+      const activeWorkers = allWorkers.filter(w => w.isActive)
+      console.log('Loaded workers:', activeWorkers.length) // Debug log
+      setWorkers(activeWorkers)
+    } catch (error) {
+      console.error('Failed to load workers:', error)
+      toast({
+        title: "Load Failed",
+        description: "Failed to load workers",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleSaveTask = async (taskData: Omit<ProjectTask, 'id' | 'createdAt' | 'updatedAt'> | ProjectTask) => {
+    try {
+      if ('id' in taskData) {
+        // Update existing task
+        await updateTask(taskData as ProjectTask)
+      } else {
+        // Create new task - returns the new task ID
+        await createTask(taskData)
+      }
+      
+      // Handle timeline event linking if selectedTimelineEvents was provided
+      if ((taskData as any).selectedTimelineEvents && (taskData as any).selectedTimelineEvents.length > 0) {
+        // Note: In a full implementation, you would update the timeline events in the database
+        // to link back to this task. For now, we'll just show a message.
+        console.log('Timeline events to link:', (taskData as any).selectedTimelineEvents)
+        toast({
+          title: "Task Saved & Linked",
+          description: `Task saved and linked to ${(taskData as any).selectedTimelineEvents.length} timeline event(s)`,
+        })
+      } else {
+        toast({
+          title: "Task Saved",
+          description: "Task has been saved successfully",
+        })
+      }
+      
+      await loadTasks()
+      setShowTaskForm(false)
+      setEditingTask(null)
+    } catch (error) {
+      console.error('Failed to save task:', error)
+      toast({
+        title: "Save Failed",
+        description: "Failed to save task",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleEditTask = (task: ProjectTask) => {
@@ -107,351 +208,221 @@ export default function ProjectTaskManagement({
     setShowTaskForm(true)
   }
 
-  const handleSaveTask = async (taskData: Omit<ProjectTask, 'id' | 'createdAt' | 'updatedAt'> | ProjectTask) => {
-    try {
-      if ('id' in taskData) {
-        // Editing existing task
-        await updateExistingTask(taskData)
-      } else {
-        // Creating new task
-        await createNewTask({
-          ...taskData,
-          projectId: project.id
-        })
-      }
-      onUpdate?.()
-    } catch (error) {
-      console.error('Failed to save task:', error)
-      throw error
-    }
-  }
-
   const handleDeleteTask = async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId)
+    if (!confirm('Are you sure you want to delete this task?')) return
     
-    if (!canDeleteTask(taskId)) {
+    try {
+      await deleteTask(taskId)
+      await loadTasks()
+      
       toast({
-        title: "Cannot Delete Task",
-        description: "This task has dependencies that must be removed first.",
+        title: "Task Deleted",
+        description: "Task has been deleted successfully",
+      })
+    } catch (error) {
+      console.error('Failed to delete task:', error)
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete task",
         variant: "destructive"
       })
-      return
     }
-
-    if (window.confirm(`Are you sure you want to delete "${task?.name || 'this task'}"?`)) {
-      try {
-        await deleteExistingTask(taskId)
-        onUpdate?.()
-      } catch (error) {
-        console.error('Failed to delete task:', error)
-      }
-    }
-  }
-
-  const handleStatusChange = async (taskId: string, status: TaskStatus) => {
-    try {
-      await updateTaskStatus(taskId, status)
-      onUpdate?.()
-    } catch (error) {
-      console.error('Failed to update task status:', error)
-    }
-  }
-
-  const handleProgressUpdate = async (taskId: string, progress: number) => {
-    try {
-      await updateTaskProgress(taskId, progress)
-      onUpdate?.()
-    } catch (error) {
-      console.error('Failed to update task progress:', error)
-    }
-  }
-
-  // Handle work log operations
-  const handleCreateWorkLog = () => {
-    setEditingWorkLog(null)
-    setShowWorkLogForm(true)
-  }
-
-  const handleEditWorkLog = (workLog: DailyWorkLog) => {
-    setEditingWorkLog(workLog)
-    setShowWorkLogForm(true)
-  }
-
-  const handleSaveWorkLog = async (workLogData: Omit<DailyWorkLog, 'id' | 'createdAt' | 'updatedAt'> | DailyWorkLog) => {
-    try {
-      // In real implementation, this would use a work log context
-      console.log('Saving work log:', workLogData)
-      
-      toast({
-        title: "Work Log Saved",
-        description: "Work log has been saved successfully.",
-      })
-      
-      onUpdate?.()
-    } catch (error) {
-      console.error('Failed to save work log:', error)
-      throw error
-    }
-  }
-
-  const handleDeleteWorkLog = async (workLogId: string) => {
-    try {
-      // In real implementation, this would use a work log context
-      setWorkLogs(prev => prev.filter(log => log.id !== workLogId))
-      
-      toast({
-        title: "Work Log Deleted",
-        description: "Work log has been deleted.",
-      })
-      
-      onUpdate?.()
-    } catch (error) {
-      console.error('Failed to delete work log:', error)
-    }
-  }
-
-  if (error) {
-    return (
-      <Card className="border-destructive">
-        <CardContent className="p-6 text-center">
-          <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-destructive" />
-          <h3 className="font-semibold text-destructive mb-2">Error Loading Tasks</h3>
-          <p className="text-sm text-muted-foreground">{error}</p>
-        </CardContent>
-      </Card>
-    )
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Project Progress Overview */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className={cn(
-            "flex items-center gap-2",
-            isMobile ? "text-lg" : "text-xl"
-          )}>
-            <BarChart3 className="h-5 w-5" />
-            Project Progress
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className={cn(
-            "grid gap-4",
-            isMobile ? "grid-cols-2" : "grid-cols-4"
-          )}>
-            {/* Overall Progress */}
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {Math.round(calculatedTaskProgress.completionPercentage)}%
-              </div>
-              <div className="text-sm text-muted-foreground">Overall</div>
-              <Progress 
-                value={calculatedTaskProgress.completionPercentage} 
-                className="mt-2 h-2" 
-              />
-            </div>
+    <div className={cn("space-y-4 md:space-y-6")}>
+      {/* Header */}
+      <div className={cn(
+        "flex gap-4",
+        isMobile ? "flex-col" : "items-center justify-between"
+      )}>
+        <h2 className={cn(
+          "font-bold",
+          isMobile ? "text-xl" : "text-2xl"
+        )}>
+          Task Management
+        </h2>
+        <Button 
+          onClick={() => {
+            setEditingTask(null)
+            setShowTaskForm(true)
+          }}
+          className={cn(isMobile ? "w-full h-12" : "")}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Task
+        </Button>
+      </div>
 
-            {/* Completed Tasks */}
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {calculatedTaskProgress.completedTasks}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                of {calculatedTaskProgress.totalTasks} Tasks
-              </div>
-            </div>
-
-            {/* Time Progress */}
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {workLogSummary.totalManHours.toFixed(1)}h
-              </div>
-              <div className="text-sm text-muted-foreground">Hours Logged</div>
-            </div>
-
-            {/* Cost */}
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                ${workLogSummary.totalCost.toFixed(0)}
-              </div>
-              <div className="text-sm text-muted-foreground">Total Cost</div>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className={cn(
-            "flex flex-wrap gap-2 mt-4 pt-4 border-t",
-            isMobile && "justify-center"
-          )}>
-            <Badge variant="outline" className="flex items-center gap-1">
-              <ListTodo className="h-3 w-3" />
-              {calculatedTaskProgress.inProgressTasks} In Progress
-            </Badge>
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {calculatedTaskProgress.blockedTasks} Blocked
-            </Badge>
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {workLogSummary.averageWorkersPerDay.toFixed(1)} Avg Workers
-            </Badge>
-            <Badge variant="outline" className="flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" />
-              {workLogSummary.productivity.toFixed(1)}h/day
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Content Tabs */}
-      <Card>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <CardHeader className="pb-3">
-            <TabsList className={cn(
-              "grid w-full",
-              isMobile ? "grid-cols-2" : "grid-cols-4"
-            )}>
-              <TabsTrigger value="tasks" className="flex items-center gap-2">
+      {/* Task Statistics */}
+      {taskProgress && (
+        <div className={cn(
+          "grid gap-4",
+          isMobile ? "grid-cols-2" : "grid-cols-4"
+        )}>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className={cn(
+                "flex items-center gap-2",
+                isMobile ? "text-sm" : "text-base"
+              )}>
                 <ListTodo className="h-4 w-4" />
-                {!isMobile && "Tasks"}
-              </TabsTrigger>
-              <TabsTrigger value="board" className="flex items-center gap-2">
-                <Kanban className="h-4 w-4" />
-                {!isMobile && "Board"}
-              </TabsTrigger>
-              <TabsTrigger value="worklogs" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                {!isMobile && "Work Logs"}
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                {!isMobile && "Analytics"}
-              </TabsTrigger>
-            </TabsList>
-          </CardHeader>
-
-          <CardContent className="pt-0">
-            {/* Task List View */}
-            <TabsContent value="tasks" className="mt-0">
-              <TaskList
-                tasks={filteredTasks}
-                loading={loading}
-                searchTerm={searchTerm}
-                filters={filters}
-                sortField={sortField}
-                sortDirection={sortDirection}
-                taskProgress={taskProgress}
-                onSearchChange={setSearchTerm}
-                onFiltersChange={setFilters}
-                onSortChange={setSorting}
-                onClearFilters={clearFilters}
-                onCreateTask={handleCreateTask}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteTask}
-                onStatusChange={handleStatusChange}
-                onProgressUpdate={handleProgressUpdate}
-                showProgress={false} // Already shown in overview
-                variant={isMobile ? 'compact' : 'default'}
-              />
-            </TabsContent>
-
-            {/* Kanban Board View */}
-            <TabsContent value="board" className="mt-0">
-              <TaskStatusBoard
-                tasks={filteredTasks}
-                loading={loading}
-                onCreateTask={handleCreateTask}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteTask}
-                onStatusChange={handleStatusChange}
-                onProgressUpdate={handleProgressUpdate}
-              />
-            </TabsContent>
-
-            {/* Work Logs View */}
-            <TabsContent value="worklogs" className="mt-0">
-              <WorkLogList
-                workLogs={workLogs}
-                loading={loading}
-                onCreateWorkLog={handleCreateWorkLog}
-                onEditWorkLog={handleEditWorkLog}
-                onDeleteWorkLog={handleDeleteWorkLog}
-                showAnalytics={false} // Already shown in overview
-              />
-            </TabsContent>
-
-            {/* Analytics View */}
-            <TabsContent value="analytics" className="mt-0">
-              <div className="space-y-6">
-                {/* Task Analytics */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Task Analytics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className={cn(
-                      "grid gap-4",
-                      isMobile ? "grid-cols-1" : "grid-cols-3"
-                    )}>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-xl font-bold text-blue-600">
-                          {calculatedTaskProgress.weightedProgress.toFixed(1)}%
-                        </div>
-                        <div className="text-sm text-muted-foreground">Weighted Progress</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-xl font-bold text-green-600">
-                          {calculatedTaskProgress.completionPercentage.toFixed(1)}%
-                        </div>
-                        <div className="text-sm text-muted-foreground">Completion Rate</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-xl font-bold text-orange-600">
-                          {calculatedTaskProgress.blockedTasks}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Blocked Tasks</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Time Analytics */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Time Analytics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className={cn(
-                      "grid gap-4",
-                      isMobile ? "grid-cols-1" : "grid-cols-3"
-                    )}>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-xl font-bold text-purple-600">
-                          {workLogSummary.dailyAverages.hours.toFixed(1)}h
-                        </div>
-                        <div className="text-sm text-muted-foreground">Daily Average</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-xl font-bold text-indigo-600">
-                          {(workLogSummary.dailyAverages.hours * 7).toFixed(1)}h
-                        </div>
-                        <div className="text-sm text-muted-foreground">Weekly Average</div>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-xl font-bold text-cyan-600">
-                          ${workLogSummary.dailyAverages.cost.toFixed(0)}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Daily Cost</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                Total Tasks
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "font-bold",
+                isMobile ? "text-xl" : "text-2xl"
+              )}>
+                {taskProgress.totalTasks}
               </div>
-            </TabsContent>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className={cn(
+                "flex items-center gap-2",
+                isMobile ? "text-sm" : "text-base"
+              )}>
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                Completed
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "font-bold text-green-600",
+                isMobile ? "text-xl" : "text-2xl"
+              )}>
+                {taskProgress.completedTasks}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className={cn(
+                "flex items-center gap-2",
+                isMobile ? "text-sm" : "text-base"
+              )}>
+                <Clock className="h-4 w-4 text-blue-600" />
+                In Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "font-bold text-blue-600",
+                isMobile ? "text-xl" : "text-2xl"
+              )}>
+                {taskProgress.inProgressTasks}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className={cn(
+                "flex items-center gap-2",
+                isMobile ? "text-sm" : "text-base"
+              )}>
+                <TrendingUp className="h-4 w-4 text-purple-600" />
+                Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "font-bold text-purple-600",
+                isMobile ? "text-xl" : "text-2xl"
+              )}>
+                {taskProgress.completionPercentage.toFixed(0)}%
+              </div>
+              <Progress value={taskProgress.completionPercentage} className="mt-2 h-2" />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Simple Task List */}
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading tasks...</p>
           </CardContent>
-        </Tabs>
-      </Card>
+        </Card>
+      ) : tasks.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <ListTodo className="h-12 w-12 mx-auto mb-4 opacity-30" />
+            <h3 className="font-semibold mb-2">No Tasks</h3>
+            <p className="text-muted-foreground mb-4">
+              Start by creating your first task for this project.
+            </p>
+            <Button 
+              onClick={() => {
+                setEditingTask(null)
+                setShowTaskForm(true)
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create First Task
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ListTodo className="h-5 w-5" />
+              Tasks ({tasks.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {tasks.map((task) => (
+              <div key={task.id} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-medium">{task.name}</h4>
+                      <Badge variant="outline" className={cn(
+                        task.status === TaskStatus.COMPLETED && "border-green-500 text-green-700 bg-green-50",
+                        task.status === TaskStatus.IN_PROGRESS && "border-blue-500 text-blue-700 bg-blue-50",
+                        task.status === TaskStatus.NOT_STARTED && "border-gray-500 text-gray-700 bg-gray-50"
+                      )}>
+                        {task.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    {task.description && (
+                      <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
+                    )}
+                    {task.assignedTo && (
+                      <p className="text-xs text-muted-foreground">Assigned to: {task.assignedTo}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditTask(task)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Task Form Modal */}
       <TaskForm
@@ -464,18 +435,8 @@ export default function ProjectTaskManagement({
         }}
         onSave={handleSaveTask}
         availableTasks={tasks}
-      />
-
-      {/* Work Log Form Modal */}
-      <WorkLogForm
-        workLog={editingWorkLog}
-        projectId={project.id}
-        isOpen={showWorkLogForm}
-        onClose={() => {
-          setShowWorkLogForm(false)
-          setEditingWorkLog(null)
-        }}
-        onSave={handleSaveWorkLog}
+        availableWorkers={workers}
+        availableTimelineEvents={timelineEvents}
       />
     </div>
   )

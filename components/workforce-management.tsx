@@ -3,105 +3,41 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select'
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs'
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { 
-  Plus,
-  User,
-  Settings,
   Calendar as CalendarIcon,
   Users,
   Wrench,
   Clock,
   DollarSign,
-  Copy,
-  Edit,
-  Trash2,
-  Phone,
-  Mail,
-  MapPin,
-  Search,
-  Filter,
-  MoreVertical,
-  CheckCircle,
-  AlertTriangle,
-  Info
+  TrendingUp,
+  BarChart3,
+  Activity,
+  ArrowRight,
+  FileText,
+  ExternalLink
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { format } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWithinInterval } from 'date-fns'
 import { 
   type Worker,
   type Machinery,
-  type ProjectAssignment,
-  type DailyTimesheet,
-  type DailyWorkerEntry,
-  type DailyMachineryEntry,
-  type Project,
-  WorkerSkill,
-  MachineryType
+  type DailyJournalTimesheet,
+  type JournalWorkerEntry,
+  type JournalMachineryEntry,
+  type Project
 } from '@/lib/types'
 import {
-  createWorker,
-  updateWorker,
   getAllWorkers,
-  getActiveWorkers,
-  deleteWorker,
-  createMachinery,
-  updateMachinery,
   getAllMachinery,
-  getActiveMachinery,
-  deleteMachinery,
-  createProjectAssignment,
-  getActiveProjectAssignments,
-  createDailyTimesheet,
-  updateDailyTimesheet,
-  getProjectTimesheets,
-  getTimesheetByDate,
-  generateWorkerEntryId,
-  generateMachineryEntryId,
-  checkDatabaseStores,
-  forceDbUpgrade
+  getDailyJournalTimesheetByDate
 } from '@/lib/database'
-import {
-  WORKER_SKILL_LABELS,
-  MACHINERY_TYPE_LABELS,
-  validateWorker,
-  validateMachinery,
-  createTimesheetTemplate
-} from '@/lib/workforce-utils'
 import { toast } from '@/hooks/use-toast'
-import WorkerForm from './workforce/worker-form'
-import MachineryForm from './workforce/machinery-form'
 
 interface WorkforceManagementProps {
   project: Project
@@ -109,7 +45,14 @@ interface WorkforceManagementProps {
   className?: string
 }
 
-
+interface ProjectWorkforceData {
+  date: Date
+  workers: JournalWorkerEntry[]
+  machinery: JournalMachineryEntry[]
+  totalLaborHours: number
+  totalMachineryHours: number
+  totalCost: number
+}
 
 export default function WorkforceManagement({
   project,
@@ -117,502 +60,393 @@ export default function WorkforceManagement({
   className
 }: WorkforceManagementProps) {
   const isMobile = useMediaQuery("(max-width: 767px)")
-  const [activeTab, setActiveTab] = useState('timesheet')
   
   // State for data
   const [workers, setWorkers] = useState<Worker[]>([])
   const [machinery, setMachinery] = useState<Machinery[]>([])
-  const [assignments, setAssignments] = useState<ProjectAssignment[]>([])
-  const [timesheets, setTimesheets] = useState<DailyTimesheet[]>([])
+  const [journalData, setJournalData] = useState<ProjectWorkforceData[]>([])
   const [loading, setLoading] = useState(false)
-  
-  // Modal states
-  const [showWorkerForm, setShowWorkerForm] = useState(false)
-  const [showMachineryForm, setShowMachineryForm] = useState(false)
-  const [showTimesheetForm, setShowTimesheetForm] = useState(false)
-  const [editingWorker, setEditingWorker] = useState<Worker | null>(null)
-  const [editingMachinery, setEditingMachinery] = useState<Machinery | null>(null)
-  const [editingTimesheet, setEditingTimesheet] = useState<DailyTimesheet | null>(null)
-  
-  // Timesheet form state
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
   const [showCalendar, setShowCalendar] = useState(false)
 
   // Load data
   useEffect(() => {
     loadData()
-  }, [project.id])
+  }, [project.id, selectedMonth])
 
   const loadData = async () => {
     setLoading(true)
     try {
-      // Check if database stores exist first
-      const storesExist = await checkDatabaseStores()
-      if (!storesExist) {
-        console.log('Database stores missing, forcing upgrade and retry...')
-        await forceDbUpgrade()
-        // Wait a moment for the database to be recreated
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        // Retry loading data after upgrade
-        console.log('Retrying data load after database upgrade...')
-      }
-
-      // Try to load data, with fallback to empty arrays on error
-      const [workersData, machineryData, assignmentsData, timesheetsData] = await Promise.all([
-        getActiveWorkers().catch(() => []),
-        getActiveMachinery().catch(() => []),
-        getActiveProjectAssignments(project.id).catch(() => []),
-        getProjectTimesheets(project.id).catch(() => [])
+      // Load workers and machinery
+      const [workersData, machineryData] = await Promise.all([
+        getAllWorkers().catch(() => []),
+        getAllMachinery().catch(() => [])
       ])
       
-      setWorkers(workersData)
-      setMachinery(machineryData)
-      setAssignments(assignmentsData)
-      setTimesheets(timesheetsData)
-      
-      if (workersData.length === 0 && machineryData.length === 0 && timesheetsData.length === 0) {
-        toast({
-          title: "Workforce System Ready",
-          description: "Database has been upgraded. You can now add workers and machinery.",
-          variant: "default"
-        })
-      }
+      setWorkers(workersData.filter(w => w.isActive))
+      setMachinery(machineryData.filter(m => m.isActive))
+
+      // Load journal data for the selected month
+      await loadJournalData()
     } catch (error) {
       console.error('Failed to load workforce data:', error)
-      
-      // If it's a store not found error, try to upgrade the database
-      if (error instanceof Error && error.message.includes('object stores was not found')) {
-        console.log('Store not found error detected, forcing database upgrade...')
-        try {
-          await forceDbUpgrade()
-          toast({
-            title: "Database Upgraded",
-            description: "Database has been upgraded. Please refresh the page to continue.",
-            variant: "default"
-          })
-        } catch (upgradeError) {
-          console.error('Database upgrade failed:', upgradeError)
-          toast({
-            title: "Upgrade Failed",
-            description: "Failed to upgrade database. Please refresh the page and try again.",
-            variant: "destructive"
-          })
-        }
-      } else {
-        toast({
-          title: "Load Failed",
-          description: "Failed to load workforce data",
-          variant: "destructive"
-        })
-      }
-      
-      // Set empty arrays as fallback
-      setWorkers([])
-      setMachinery([])
-      setAssignments([])
-      setTimesheets([])
+      toast({
+        title: "Load Failed",
+        description: "Failed to load workforce data",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  // Get assigned workers and machinery for the project
-  const assignedWorkers = useMemo(() => {
-    return workers.filter(worker => 
-      assignments.some(assignment => assignment.workerId === worker.id && assignment.isActive)
-    )
-  }, [workers, assignments])
-
-  const assignedMachinery = useMemo(() => {
-    return machinery.filter(machine => 
-      assignments.some(assignment => assignment.machineryId === machine.id && assignment.isActive)
-    )
-  }, [machinery, assignments])
-
-  // Handle worker operations
-  const handleCreateWorker = () => {
-    setEditingWorker(null)
-    setShowWorkerForm(true)
-  }
-
-  const handleEditWorker = (worker: Worker) => {
-    setEditingWorker(worker)
-    setShowWorkerForm(true)
-  }
-
-  // Handle machinery operations
-  const handleCreateMachinery = () => {
-    setEditingMachinery(null)
-    setShowMachineryForm(true)
-  }
-
-  const handleEditMachinery = (machine: Machinery) => {
-    setEditingMachinery(machine)
-    setShowMachineryForm(true)
-  }
-
-  // Handle timesheet operations
-  const handleCreateTimesheet = async (date?: Date) => {
-    const targetDate = date || selectedDate
+  const loadJournalData = async () => {
+    const monthStart = startOfMonth(selectedMonth)
+    const monthEnd = endOfMonth(selectedMonth)
+    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
     
-    // Check if timesheet already exists for this date
-    const existingTimesheet = await getTimesheetByDate(project.id, targetDate)
-    if (existingTimesheet) {
-      setEditingTimesheet(existingTimesheet)
-    } else {
-      setEditingTimesheet(null)
-      setSelectedDate(targetDate)
+    const journalEntries: ProjectWorkforceData[] = []
+    
+    for (const day of daysInMonth) {
+      try {
+        const timesheet = await getDailyJournalTimesheetByDate(day)
+        if (timesheet) {
+          // Filter entries for this project
+          const projectWorkers = timesheet.workerEntries.filter(entry =>
+            entry.projectHours.some(ph => ph.projectId === project.id)
+          ).map(entry => ({
+            ...entry,
+            projectHours: entry.projectHours.filter(ph => ph.projectId === project.id),
+            totalHours: entry.projectHours
+              .filter(ph => ph.projectId === project.id)
+              .reduce((sum, ph) => sum + ph.hours, 0),
+            totalCost: entry.projectHours
+              .filter(ph => ph.projectId === project.id)
+              .reduce((sum, ph) => sum + ph.cost, 0)
+          })).filter(entry => entry.totalHours > 0)
+
+          const projectMachinery = timesheet.machineryEntries.filter(entry =>
+            entry.projectHours.some(ph => ph.projectId === project.id)
+          ).map(entry => ({
+            ...entry,
+            projectHours: entry.projectHours.filter(ph => ph.projectId === project.id),
+            totalHours: entry.projectHours
+              .filter(ph => ph.projectId === project.id)
+              .reduce((sum, ph) => sum + ph.hours, 0),
+            totalCost: entry.projectHours
+              .filter(ph => ph.projectId === project.id)
+              .reduce((sum, ph) => sum + ph.cost, 0)
+          })).filter(entry => entry.totalHours > 0)
+
+          if (projectWorkers.length > 0 || projectMachinery.length > 0) {
+            const totalLaborHours = projectWorkers.reduce((sum, entry) => sum + entry.totalHours, 0)
+            const totalMachineryHours = projectMachinery.reduce((sum, entry) => sum + entry.totalHours, 0)
+            const totalCost = projectWorkers.reduce((sum, entry) => sum + entry.totalCost, 0) +
+                             projectMachinery.reduce((sum, entry) => sum + entry.totalCost, 0)
+
+            journalEntries.push({
+              date: day,
+              workers: projectWorkers,
+              machinery: projectMachinery,
+              totalLaborHours,
+              totalMachineryHours,
+              totalCost
+            })
+          }
+        }
+      } catch (error) {
+        // Skip days with errors
+        continue
+      }
     }
-    setShowTimesheetForm(true)
+    
+    setJournalData(journalEntries.sort((a, b) => b.date.getTime() - a.date.getTime()))
   }
 
-  const handleEditTimesheet = (timesheet: DailyTimesheet) => {
-    setEditingTimesheet(timesheet)
-    setSelectedDate(new Date(timesheet.date))
-    setShowTimesheetForm(true)
-  }
+  // Calculate summary statistics
+  const monthlyStats = useMemo(() => {
+    const totalLaborHours = journalData.reduce((sum, day) => sum + day.totalLaborHours, 0)
+    const totalMachineryHours = journalData.reduce((sum, day) => sum + day.totalMachineryHours, 0)
+    const totalCost = journalData.reduce((sum, day) => sum + day.totalCost, 0)
+    const daysWorked = journalData.length
+    const avgDailyCost = daysWorked > 0 ? totalCost / daysWorked : 0
+    
+    // Get unique workers and machinery used
+    const uniqueWorkers = new Set<string>()
+    const uniqueMachinery = new Set<string>()
+    
+    journalData.forEach(day => {
+      day.workers.forEach(worker => uniqueWorkers.add(worker.workerId))
+      day.machinery.forEach(machine => uniqueMachinery.add(machine.machineryId))
+    })
 
-  const handleDuplicateTimesheet = async (sourceTimesheet: DailyTimesheet) => {
-    // Create a new timesheet based on the source but for selected date
-    const newTimesheet = createTimesheetTemplate(sourceTimesheet, selectedDate, project.id)
-
-    try {
-      await createDailyTimesheet(newTimesheet)
-      await loadData()
-      toast({
-        title: "Timesheet Duplicated",
-        description: `Timesheet duplicated for ${format(selectedDate, 'MMM d, yyyy')}`
-      })
-    } catch (error) {
-      console.error('Failed to duplicate timesheet:', error)
-      toast({
-        title: "Duplication Failed",
-        description: "Failed to duplicate timesheet",
-        variant: "destructive"
-      })
+    return {
+      totalLaborHours,
+      totalMachineryHours,
+      totalCost,
+      daysWorked,
+      avgDailyCost,
+      uniqueWorkers: uniqueWorkers.size,
+      uniqueMachinery: uniqueMachinery.size
     }
+  }, [journalData])
+
+  const navigateToJournal = () => {
+    // Create URL to navigate to Daily Journal tab
+    const url = new URL(window.location.href)
+    url.searchParams.set('tab', 'journal')
+    window.history.pushState({}, '', url.toString())
+    window.location.reload()
   }
 
   return (
     <div className={cn("space-y-6", className)}>
-      <h2 className="text-2xl font-bold">Workforce & Machinery Management</h2>
-      
-      <Tabs defaultValue="timesheet">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="timesheet">Daily Journal</TabsTrigger>
-          <TabsTrigger value="workers">Workers</TabsTrigger>
-          <TabsTrigger value="machinery">Machinery</TabsTrigger>
-          <TabsTrigger value="assignments">Assignments</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="timesheet">
-          <div className="space-y-4">
-            {/* Date Selector and Quick Stats */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Daily Timesheet Journal
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Popover open={showCalendar} onOpenChange={setShowCalendar}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="justify-start text-left font-normal">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {format(selectedDate, "MMM d, yyyy")}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                          mode="single"
-                          selected={selectedDate}
-                          onSelect={(date) => {
-                            if (date) {
-                              setSelectedDate(date)
-                              setShowCalendar(false)
-                            }
-                          }}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <Button onClick={() => handleCreateTimesheet()}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Entry
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{assignedWorkers.length}</div>
-                    <div className="text-sm text-muted-foreground">Assigned Workers</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">{assignedMachinery.length}</div>
-                    <div className="text-sm text-muted-foreground">Assigned Machinery</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{timesheets.length}</div>
-                    <div className="text-sm text-muted-foreground">Total Timesheets</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {timesheets.reduce((total, ts) => total + ts.totalLaborHours, 0).toFixed(1)}h
-                    </div>
-                    <div className="text-sm text-muted-foreground">Total Hours</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Project Workforce Data</h2>
+          <p className="text-muted-foreground">
+            Data from Daily Journal entries for {project.name}
+          </p>
+        </div>
+        <Button onClick={navigateToJournal}>
+          <ExternalLink className="h-4 w-4 mr-2" />
+          Open Daily Journal
+        </Button>
+      </div>
 
-            {/* Recent Timesheets */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Timesheets</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {timesheets.slice(0, 5).map((timesheet) => (
-                    <Card key={timesheet.id} className="hover:bg-muted/30 transition-colors">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <CalendarIcon className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <div className="font-medium">
-                                {format(new Date(timesheet.date), 'MMM d, yyyy')}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {timesheet.workerEntries.length} workers • {timesheet.machineryEntries.length} machinery
-                              </div>
-                              <div className="text-sm text-green-600 font-medium">
-                                ${(timesheet.totalLaborCost + timesheet.totalMachineryCost).toFixed(2)} total cost
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDuplicateTimesheet(timesheet)}
-                              title="Duplicate for selected date"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditTimesheet(timesheet)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  
-                  {timesheets.length === 0 && (
-                    <Card className="border-dashed">
-                      <CardContent className="p-8 text-center">
-                        <Clock className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                        <h3 className="text-lg font-semibold mb-2">No Timesheets Yet</h3>
-                        <p className="text-muted-foreground mb-4">
-                          Start tracking daily work hours by creating your first timesheet entry
-                        </p>
-                        <Button onClick={() => handleCreateTimesheet()}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create First Entry
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+      {/* Month Selector and Summary Stats */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Monthly Summary
+            </CardTitle>
+            <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-start text-left font-normal">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(selectedMonth, "MMMM yyyy")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedMonth}
+                  onSelect={(date) => {
+                    if (date) {
+                      setSelectedMonth(date)
+                      setShowCalendar(false)
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="workers">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Workers Database
-                </CardTitle>
-                <Button onClick={handleCreateWorker}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Worker
-                </Button>
+        </CardHeader>
+        <CardContent>
+          <div className={cn(
+            "grid gap-4",
+            isMobile ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"
+          )}>
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">
+                {monthlyStats.totalLaborHours.toFixed(1)}h
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {workers.map((worker) => (
-                  <Card key={worker.id} className="hover:bg-muted/30 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                            <User className="h-5 w-5 text-primary" />
+              <div className="text-sm text-muted-foreground">Labor Hours</div>
+            </div>
+            <div className="text-center p-3 bg-orange-50 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">
+                {monthlyStats.totalMachineryHours.toFixed(1)}h
+              </div>
+              <div className="text-sm text-muted-foreground">Machine Hours</div>
+            </div>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">
+                ${monthlyStats.totalCost.toFixed(2)}
+              </div>
+              <div className="text-sm text-muted-foreground">Total Cost</div>
+            </div>
+            <div className="text-center p-3 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">
+                {monthlyStats.daysWorked}
+              </div>
+              <div className="text-sm text-muted-foreground">Work Days</div>
+            </div>
+          </div>
+          
+          <Separator className="my-4" />
+          
+          <div className={cn(
+            "grid gap-4",
+            isMobile ? "grid-cols-1" : "grid-cols-3"
+          )}>
+            <div className="text-center">
+              <div className="text-lg font-semibold">{monthlyStats.uniqueWorkers}</div>
+              <div className="text-sm text-muted-foreground">Unique Workers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold">{monthlyStats.uniqueMachinery}</div>
+              <div className="text-sm text-muted-foreground">Unique Machinery</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold">${monthlyStats.avgDailyCost.toFixed(2)}</div>
+              <div className="text-sm text-muted-foreground">Avg Daily Cost</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Daily Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Daily Breakdown
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {journalData.length > 0 ? (
+            <div className="space-y-3">
+              {journalData.slice(0, 10).map((dayData) => (
+                <Card key={dayData.date.toISOString()} className="hover:bg-muted/30 transition-colors">
+                  <CardContent className="p-4">
+                    <div className={cn(
+                      "flex gap-4",
+                      isMobile ? "flex-col" : "items-center"
+                    )}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <CalendarIcon className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">
+                            {format(dayData.date, 'MMM d, yyyy')}
                           </div>
-                          <div>
-                            <div className="font-medium">{worker.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              ${worker.hourlyRate}/hour
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {worker.skills.slice(0, 3).map((skill) => (
-                                <Badge key={skill} variant="secondary" className="text-xs">
-                                  {WORKER_SKILL_LABELS[skill]}
-                                </Badge>
-                              ))}
-                              {worker.skills.length > 3 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{worker.skills.length - 3} more
-                                </Badge>
-                              )}
-                            </div>
+                          <div className="text-sm text-muted-foreground">
+                            {dayData.workers.length} workers • {dayData.machinery.length} machinery
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditWorker(worker)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {workers.length === 0 && (
-                  <Card className="border-dashed">
-                    <CardContent className="p-8 text-center">
-                      <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                      <h3 className="text-lg font-semibold mb-2">No Workers Added</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Add workers to your database to track their time and assignments
-                      </p>
-                      <Button onClick={handleCreateWorker}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add First Worker
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="machinery">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Wrench className="h-5 w-5" />
-                  Machinery Database
-                </CardTitle>
-                <Button onClick={handleCreateMachinery}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Machinery
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {machinery.map((machine) => (
-                  <Card key={machine.id} className="hover:bg-muted/30 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                            <Wrench className="h-5 w-5 text-orange-600" />
-                          </div>
-                          <div>
-                            <div className="font-medium">{machine.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {MACHINERY_TYPE_LABELS[machine.type]} • ${machine.hourlyRate}/hour
+                      
+                      <div className="flex-1">
+                        <div className={cn(
+                          "grid gap-3",
+                          isMobile ? "grid-cols-1" : "grid-cols-3"
+                        )}>
+                          <div className="text-center p-2 bg-blue-50 rounded">
+                            <div className="text-sm font-semibold text-blue-600">
+                              {dayData.totalLaborHours.toFixed(1)}h
                             </div>
-                            {machine.model && (
-                              <div className="text-xs text-muted-foreground">
-                                Model: {machine.model}
-                              </div>
-                            )}
+                            <div className="text-xs text-muted-foreground">Labor</div>
+                          </div>
+                          <div className="text-center p-2 bg-orange-50 rounded">
+                            <div className="text-sm font-semibold text-orange-600">
+                              {dayData.totalMachineryHours.toFixed(1)}h
+                            </div>
+                            <div className="text-xs text-muted-foreground">Machinery</div>
+                          </div>
+                          <div className="text-center p-2 bg-green-50 rounded">
+                            <div className="text-sm font-semibold text-green-600">
+                              ${dayData.totalCost.toFixed(2)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Cost</div>
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditMachinery(machine)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {machinery.length === 0 && (
-                  <Card className="border-dashed">
-                    <CardContent className="p-8 text-center">
-                      <Wrench className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                      <h3 className="text-lg font-semibold mb-2">No Machinery Added</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Add machinery and equipment to track usage and costs
-                      </p>
-                      <Button onClick={handleCreateMachinery}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add First Machinery
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="assignments">
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Assignments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Assignment management coming soon...</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                    </div>
+                    
+                    {/* Worker Details */}
+                    {dayData.workers.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Workers ({dayData.workers.length})
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {dayData.workers.map((worker) => (
+                            <Badge key={worker.workerId} variant="secondary" className="text-xs">
+                              {worker.workerName} ({worker.totalHours}h)
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Machinery Details */}
+                    {dayData.machinery.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <Wrench className="h-4 w-4" />
+                          Machinery ({dayData.machinery.length})
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {dayData.machinery.map((machine) => (
+                            <Badge key={machine.machineryId} variant="outline" className="text-xs">
+                              {machine.machineryName} ({machine.totalHours}h)
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {journalData.length > 10 && (
+                <div className="text-center py-4">
+                  <Button variant="outline" onClick={navigateToJournal}>
+                    View All Entries in Daily Journal
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="p-8 text-center">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <h3 className="text-lg font-semibold mb-2">No Workforce Data</h3>
+                <p className="text-muted-foreground mb-4">
+                  No Daily Journal entries found for this project in {format(selectedMonth, "MMMM yyyy")}.
+                </p>
+                <Button onClick={navigateToJournal}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Go to Daily Journal
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Form Modals */}
-      <WorkerForm
-        worker={editingWorker}
-        isOpen={showWorkerForm}
-        onClose={() => {
-          setShowWorkerForm(false)
-          setEditingWorker(null)
-        }}
-        onSave={loadData}
-      />
-
-      <MachineryForm
-        machinery={editingMachinery}
-        isOpen={showMachineryForm}
-        onClose={() => {
-          setShowMachineryForm(false)
-          setEditingMachinery(null)
-        }}
-        onSave={loadData}
-      />
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className={cn(
+            "grid gap-3",
+            isMobile ? "grid-cols-1" : "grid-cols-3"
+          )}>
+            <Button variant="outline" onClick={navigateToJournal} className="justify-start">
+              <Clock className="h-4 w-4 mr-2" />
+              Track Today's Work
+            </Button>
+            <Button variant="outline" onClick={() => setShowCalendar(true)} className="justify-start">
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Change Month
+            </Button>
+            <Button variant="outline" onClick={() => window.location.href = '/?tab=workers'} className="justify-start">
+              <Users className="h-4 w-4 mr-2" />
+              Manage Workers
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
-} 
+}

@@ -446,7 +446,7 @@ export default function ProjectDetails({
             )}>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="text-lg font-bold text-green-600">
-                  {progress.materialsCompleted}
+                  {progress.materialsInstalled}
                 </div>
                 <div className="text-xs text-muted-foreground">Completed</div>
               </div>
@@ -468,6 +468,56 @@ export default function ProjectDetails({
                 </div>
                 <div className="text-xs text-muted-foreground">Total</div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Workforce Summary */}
+      {costs && costs.workforceBreakdown && costs.workforceBreakdown.daysWorked > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Users className="h-5 w-5" />
+              Workforce Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className={cn(
+              "grid gap-3",
+              isMobile ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-4"
+            )}>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-lg font-bold text-blue-600">
+                  {costs.workforceBreakdown.totalLaborHours.toFixed(1)}h
+                </div>
+                <div className="text-xs text-muted-foreground">Labor Hours</div>
+              </div>
+              <div className="text-center p-3 bg-orange-50 rounded-lg">
+                <div className="text-lg font-bold text-orange-600">
+                  {costs.workforceBreakdown.totalMachineryHours.toFixed(1)}h
+                </div>
+                <div className="text-xs text-muted-foreground">Machine Hours</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-lg font-bold text-green-600">
+                  {costs.workforceBreakdown.uniqueWorkers}
+                </div>
+                <div className="text-xs text-muted-foreground">Workers</div>
+              </div>
+              <div className="text-center p-3 bg-purple-50 rounded-lg">
+                <div className="text-lg font-bold text-purple-600">
+                  {costs.workforceBreakdown.daysWorked}
+                </div>
+                <div className="text-xs text-muted-foreground">Work Days</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between pt-3 border-t">
+              <span className="text-sm text-muted-foreground">Average Daily Cost</span>
+              <span className="font-medium">
+                ${costs.workforceBreakdown.averageDailyCost.toFixed(2)}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -568,7 +618,7 @@ export default function ProjectDetails({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <DollarSign className="h-5 w-5" />
-              Budget Tracking
+              Budget & Costs
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -587,9 +637,9 @@ export default function ProjectDetails({
                 {costs && (
                   <>
                     <div className="flex justify-between items-center mb-2">
-                      <Label className="text-sm text-muted-foreground">Spent</Label>
+                      <Label className="text-sm text-muted-foreground">Total Spent</Label>
                       <span className="font-medium">
-                        ${costs.totalCost.toLocaleString()} {project.currency}
+                        ${costs.totalActualCost.toLocaleString()} {project.currency}
                       </span>
                     </div>
                     
@@ -599,7 +649,7 @@ export default function ProjectDetails({
                         "font-medium",
                         costs.budgetUtilization > 100 ? "text-destructive" : "text-green-600"
                       )}>
-                        ${(project.totalBudget - costs.totalCost).toLocaleString()} {project.currency}
+                        ${costs.remainingBudget.toLocaleString()} {project.currency}
                       </span>
                     </div>
                     
@@ -624,6 +674,33 @@ export default function ProjectDetails({
                     </div>
                   </>
                 )}
+              </div>
+            )}
+            
+            {/* Cost Breakdown */}
+            {costs && (
+              <div className="space-y-3 pt-4 border-t">
+                <Label className="text-sm font-medium">Cost Breakdown</Label>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex justify-between items-center p-2 bg-blue-50 rounded">
+                    <span className="text-sm text-blue-700">Materials</span>
+                    <span className="font-medium text-blue-700">
+                      ${costs.totalMaterialCost.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-green-50 rounded">
+                    <span className="text-sm text-green-700">Labor</span>
+                    <span className="font-medium text-green-700">
+                      ${costs.totalLaborCost.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-orange-50 rounded">
+                    <span className="text-sm text-orange-700">Machinery</span>
+                    <span className="font-medium text-orange-700">
+                      ${costs.totalMachineryCost.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
             

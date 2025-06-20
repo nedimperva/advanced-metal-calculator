@@ -36,7 +36,22 @@ import {
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { format } from 'date-fns'
-import { type ProjectTask, TaskStatus, TaskType, TaskPriority } from '@/lib/types'
+import { type ProjectTask, type Worker, TaskStatus, TaskType, TaskPriority } from '@/lib/types'
+
+// Timeline Event interface for linking (copied from project-timeline.tsx)
+interface TimelineEvent {
+  id: string
+  type: 'milestone' | 'status_change' | 'material_delivery' | 'note' | 'photo'
+  title: string
+  description?: string
+  timestamp: string
+  author?: string
+  data?: any
+  attachments?: string[]
+  linkedTaskIds?: string[]
+  color?: string
+  status?: 'completed' | 'in_progress' | 'pending' | 'cancelled'
+}
 import { 
   TASK_STATUS_LABELS, 
   TASK_TYPE_LABELS, 
@@ -51,6 +66,8 @@ interface TaskFormProps {
   onClose: () => void
   onSave: (task: Omit<ProjectTask, 'id' | 'createdAt' | 'updatedAt'> | ProjectTask) => Promise<void>
   availableTasks?: ProjectTask[]
+  availableWorkers?: Worker[]
+  availableTimelineEvents?: TimelineEvent[]
   className?: string
 }
 
@@ -63,6 +80,7 @@ interface TaskFormData {
   estimatedHours: number
   actualHours?: number
   assignedTo?: string
+
   scheduledStart?: Date
   scheduledEnd?: Date
   dependencies: string[]
@@ -73,7 +91,7 @@ interface TaskFormData {
 const initialFormData: TaskFormData = {
   name: '',
   description: '',
-  type: TaskType.TASK,
+  type: TaskType.OTHER,
   priority: TaskPriority.MEDIUM,
   status: TaskStatus.NOT_STARTED,
   estimatedHours: 1,
@@ -88,6 +106,8 @@ export default function TaskForm({
   onClose,
   onSave,
   availableTasks = [],
+  availableWorkers = [],
+  availableTimelineEvents = [],
   className
 }: TaskFormProps) {
   const isMobile = useMediaQuery("(max-width: 767px)")
@@ -95,6 +115,7 @@ export default function TaskForm({
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showCalendar, setShowCalendar] = useState<string | null>(null)
+  const [selectedTimelineEvents, setSelectedTimelineEvents] = useState<string[]>([])
 
   // Reset form when task changes
   useEffect(() => {
@@ -105,9 +126,9 @@ export default function TaskForm({
         type: task.type,
         priority: task.priority,
         status: task.status,
-        estimatedHours: task.estimatedHours,
-        actualHours: task.actualHours,
+        estimatedHours: 8, // Default estimation if not available
         assignedTo: task.assignedTo,
+
         scheduledStart: task.scheduledStart ? new Date(task.scheduledStart) : undefined,
         scheduledEnd: task.scheduledEnd ? new Date(task.scheduledEnd) : undefined,
         dependencies: task.dependencies || [],
@@ -118,6 +139,7 @@ export default function TaskForm({
       setFormData(initialFormData)
     }
     setErrors({})
+    setSelectedTimelineEvents([])
   }, [task, isOpen])
 
   const validateForm = (): boolean => {
@@ -161,9 +183,11 @@ export default function TaskForm({
       const taskData = {
         ...formData,
         projectId,
-        scheduledStart: formData.scheduledStart?.toISOString(),
-        scheduledEnd: formData.scheduledEnd?.toISOString(),
-        blockedBy: []
+        scheduledStart: formData.scheduledStart,
+        scheduledEnd: formData.scheduledEnd,
+        dependencies: formData.dependencies,
+        blockedBy: [],
+        selectedTimelineEvents
       }
 
       if (task) {
@@ -339,14 +363,35 @@ export default function TaskForm({
 
             <div>
               <Label htmlFor="assignedTo">Assigned To</Label>
-              <Input
-                id="assignedTo"
-                value={formData.assignedTo || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, assignedTo: e.target.value }))}
-                placeholder="Worker name"
-                className={cn(isMobile && "text-base")}
-              />
+              {availableWorkers.length > 0 ? (
+                <Select
+                  value={formData.assignedTo || "__no_assignment__"}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, assignedTo: value === "__no_assignment__" ? undefined : value }))}
+                >
+                  <SelectTrigger className={cn(isMobile && "h-12")}>
+                    <SelectValue placeholder="Select a worker" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__no_assignment__">No assignment</SelectItem>
+                    {availableWorkers.map((worker) => (
+                      <SelectItem key={worker.id} value={worker.name}>
+                        {worker.name} {worker.employeeId && `(${worker.employeeId})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="assignedTo"
+                  value={formData.assignedTo || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, assignedTo: e.target.value }))}
+                  placeholder="Worker name"
+                  className={cn(isMobile && "text-base")}
+                />
+              )}
             </div>
+
+
           </div>
 
           {/* Schedule Dates */}
@@ -417,6 +462,59 @@ export default function TaskForm({
               </div>
             </div>
           </div>
+
+          {/* Timeline Event Linking */}
+          {availableTimelineEvents.length > 0 && (
+            <div>
+              <Label>Link to Timeline Events</Label>
+              <p className="text-sm text-muted-foreground mb-3">
+                Connect this task to existing timeline events for better project tracking.
+              </p>
+              <div className="space-y-2 max-h-40 overflow-y-auto border rounded-lg p-3">
+                {availableTimelineEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => {
+                      setSelectedTimelineEvents(prev => 
+                        prev.includes(event.id)
+                          ? prev.filter(id => id !== event.id)
+                          : [...prev, event.id]
+                      )
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTimelineEvents.includes(event.id)}
+                      onChange={() => {}}
+                      className="mt-1"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium text-sm truncate">{event.title}</h4>
+                        <Badge variant="secondary" className="text-xs">
+                          {event.type.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                      {event.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-2">
+                          {event.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(event.timestamp).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {selectedTimelineEvents.length > 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  {selectedTimelineEvents.length} event{selectedTimelineEvents.length !== 1 ? 's' : ''} selected
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Notes */}
           <div>

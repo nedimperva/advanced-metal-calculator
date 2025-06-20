@@ -8,13 +8,16 @@ import type {
   Worker,
   Machinery,
   ProjectAssignment,
-  DailyTimesheet
+  DailyTimesheet,
+  DailyJournalTimesheet,
+  JournalWorkerEntry,
+  JournalMachineryEntry
 } from './types'
 import { ProjectStatus, MaterialStatus } from './types'
 
 // Database configuration
 const DB_NAME = 'MetalCalculatorDB'
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 // Store names
 export const STORES = {
@@ -22,6 +25,7 @@ export const STORES = {
   CALCULATIONS: 'calculations',
   PROJECT_MATERIALS: 'projectMaterials',
   PROJECT_TASKS: 'projectTasks',
+  PROJECT_MILESTONES: 'projectMilestones',
   DAILY_WORK_LOGS: 'dailyWorkLogs',
   WORK_ENTRIES: 'workEntries',
   // New workforce and machinery stores
@@ -38,6 +42,7 @@ export interface DatabaseSchema {
   calculations: Calculation
   projectMaterials: ProjectMaterial
   projectTasks: ProjectTask
+
   dailyWorkLogs: DailyWorkLog
   workEntries: WorkEntry
   // New workforce and machinery schema
@@ -134,10 +139,23 @@ export async function initializeDatabase(): Promise<IDBDatabase> {
         taskStore.createIndex('type', 'type', { unique: false })
         taskStore.createIndex('priority', 'priority', { unique: false })
         taskStore.createIndex('assignedTo', 'assignedTo', { unique: false })
+        taskStore.createIndex('milestoneId', 'milestoneId', { unique: false })
         taskStore.createIndex('scheduledStart', 'scheduledStart', { unique: false })
         taskStore.createIndex('scheduledEnd', 'scheduledEnd', { unique: false })
         taskStore.createIndex('createdAt', 'createdAt', { unique: false })
         taskStore.createIndex('updatedAt', 'updatedAt', { unique: false })
+      }
+
+      // Create project milestones store
+      if (!db.objectStoreNames.contains(STORES.PROJECT_MILESTONES)) {
+        const milestoneStore = db.createObjectStore(STORES.PROJECT_MILESTONES, { keyPath: 'id' })
+        milestoneStore.createIndex('projectId', 'projectId', { unique: false })
+        milestoneStore.createIndex('status', 'status', { unique: false })
+        milestoneStore.createIndex('type', 'type', { unique: false })
+        milestoneStore.createIndex('targetDate', 'targetDate', { unique: false })
+        milestoneStore.createIndex('completedDate', 'completedDate', { unique: false })
+        milestoneStore.createIndex('createdAt', 'createdAt', { unique: false })
+        milestoneStore.createIndex('updatedAt', 'updatedAt', { unique: false })
       }
 
       // Create daily work logs store
@@ -643,6 +661,99 @@ export async function getTasksByStatus(projectId: string, status: string): Promi
 }
 
 // ============================================================================
+// MILESTONE MANAGEMENT OPERATIONS
+// ============================================================================
+
+export async function createMilestone(milestone: Omit<ProjectMilestone, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const db = await getDatabase()
+  
+  // Check if milestones store exists, if not, database needs upgrade
+  if (!db.objectStoreNames.contains(STORES.PROJECT_MILESTONES)) {
+    console.warn('PROJECT_MILESTONES store not found, milestone creation failed. Database needs upgrade.')
+    throw new Error('Milestones not supported in current database version. Please refresh the application to upgrade.')
+  }
+  
+  const id = `milestone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  const newMilestone: ProjectMilestone = {
+    ...milestone,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    taskIds: milestone.taskIds || [],
+    progress: milestone.progress || 0,
+    autoComplete: milestone.autoComplete ?? true,
+    requiredTaskCompletion: milestone.requiredTaskCompletion || 100
+  }
+
+  await createRecord(STORES.PROJECT_MILESTONES, newMilestone)
+  return id
+}
+
+export async function updateMilestone(milestone: ProjectMilestone): Promise<void> {
+  const updatedMilestone = {
+    ...milestone,
+    updatedAt: new Date()
+  }
+  await updateRecord(STORES.PROJECT_MILESTONES, updatedMilestone)
+}
+
+export async function getMilestone(id: string): Promise<ProjectMilestone | undefined> {
+  return await getRecord(STORES.PROJECT_MILESTONES, id)
+}
+
+export async function getProjectMilestones(projectId: string): Promise<ProjectMilestone[]> {
+  const db = await getDatabase()
+  
+  // Check if milestones store exists
+  if (!db.objectStoreNames.contains(STORES.PROJECT_MILESTONES)) {
+    console.warn('PROJECT_MILESTONES store not found, returning empty array. Database may need upgrade.')
+    return []
+  }
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = db.transaction([STORES.PROJECT_MILESTONES], 'readonly')
+      const store = transaction.objectStore(STORES.PROJECT_MILESTONES)
+      const index = store.index('projectId')
+      const request = index.getAll(projectId)
+
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(new Error(`Failed to get project milestones: ${request.error?.message}`))
+    } catch (error) {
+      console.warn('Error accessing PROJECT_MILESTONES store:', error)
+      resolve([])
+    }
+  })
+}
+
+export async function getAllMilestones(): Promise<ProjectMilestone[]> {
+  const db = await getDatabase()
+  
+  // Check if milestones store exists
+  if (!db.objectStoreNames.contains(STORES.PROJECT_MILESTONES)) {
+    console.warn('PROJECT_MILESTONES store not found, returning empty array. Database may need upgrade.')
+    return []
+  }
+  
+  return await getAllRecords(STORES.PROJECT_MILESTONES)
+}
+
+export async function deleteMilestone(id: string): Promise<void> {
+  // Unlink tasks from this milestone
+  const allTasks = await getAllTasks()
+  for (const task of allTasks) {
+    if (task.milestoneId === id) {
+      task.milestoneId = undefined
+      await updateTask(task)
+    }
+  }
+  
+  await deleteRecord(STORES.PROJECT_MILESTONES, id)
+}
+
+// ============================================================================
 // WORK LOG OPERATIONS
 // ============================================================================
 
@@ -1000,7 +1111,6 @@ export function generateMachineryEntryId(): string {
 // ============================================================================
 
 // Daily Journal functions for multi-project time tracking
-import { DailyJournalTimesheet, JournalWorkerEntry, JournalMachineryEntry } from '@/lib/types'
 
 export async function saveDailyJournalTimesheet(timesheet: DailyJournalTimesheet): Promise<void> {
   const dateStr = timesheet.date.toISOString().split('T')[0]

@@ -174,11 +174,10 @@ export interface ProjectTask {
   type: TaskType
   status: TaskStatus
   priority: TaskPriority
+
   
-  // Progress tracking
+  // Progress tracking (simplified)
   progress: number // 0-100
-  estimatedHours: number
-  actualHours?: number
   
   // Dependencies
   dependencies: string[] // task IDs that must complete first
@@ -205,6 +204,9 @@ export interface ProjectTask {
   createdAt: Date
   updatedAt: Date
 }
+
+// Milestone system for project management
+
 
 // ============================================================================
 // WORKFORCE & MACHINERY MANAGEMENT

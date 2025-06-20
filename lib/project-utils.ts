@@ -1,6 +1,7 @@
-import type { Project, ProjectMaterial, Calculation } from './types'
+import type { Project, ProjectMaterial, Calculation, DailyJournalTimesheet, JournalWorkerEntry, JournalMachineryEntry, ProjectMilestone } from './types'
 import { ProjectStatus, MaterialStatus } from './types'
-import { getAllProjects, getProjectMaterials, getProjectCalculations } from './database'
+import { getAllProjects, getProjectMaterials, getProjectCalculations, getDailyJournalTimesheetByDate } from './database'
+import { startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
 
 // Project status management functions
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
@@ -79,19 +80,36 @@ export interface ProjectCostSummary {
   totalBudget: number
   totalActualCost: number
   totalMaterialCost: number
+  totalLaborCost: number
+  totalMachineryCost: number
+  totalWorkforceCost: number
   remainingBudget: number
   budgetUtilization: number // percentage
   averageCostPerMaterial: number
   costByStatus: Record<MaterialStatus, number>
+  workforceBreakdown: {
+    totalLaborHours: number
+    totalMachineryHours: number
+    uniqueWorkers: number
+    uniqueMachinery: number
+    averageDailyCost: number
+    daysWorked: number
+  }
 }
 
 export async function calculateProjectCosts(project: Project): Promise<ProjectCostSummary> {
   const materials = await getProjectMaterials(project.id)
   
   const totalMaterialCost = materials.reduce((sum, material) => sum + (material.cost || 0), 0)
+  
+  // Get workforce costs from Daily Journal
+  const workforceData = await calculateProjectWorkforceCosts(project.id)
+  
+  const totalWorkforceCost = workforceData.totalLaborCost + workforceData.totalMachineryCost
+  const totalActualCost = totalMaterialCost + totalWorkforceCost
   const totalBudget = project.totalBudget || 0
-  const remainingBudget = totalBudget - totalMaterialCost
-  const budgetUtilization = totalBudget > 0 ? (totalMaterialCost / totalBudget) * 100 : 0
+  const remainingBudget = totalBudget - totalActualCost
+  const budgetUtilization = totalBudget > 0 ? (totalActualCost / totalBudget) * 100 : 0
   const averageCostPerMaterial = materials.length > 0 ? totalMaterialCost / materials.length : 0
 
   const costByStatus: Record<MaterialStatus, number> = {
@@ -109,12 +127,106 @@ export async function calculateProjectCosts(project: Project): Promise<ProjectCo
 
   return {
     totalBudget,
-    totalActualCost: totalMaterialCost,
+    totalActualCost,
     totalMaterialCost,
+    totalLaborCost: workforceData.totalLaborCost,
+    totalMachineryCost: workforceData.totalMachineryCost,
+    totalWorkforceCost,
     remainingBudget,
     budgetUtilization,
     averageCostPerMaterial,
-    costByStatus
+    costByStatus,
+    workforceBreakdown: {
+      totalLaborHours: workforceData.totalLaborHours,
+      totalMachineryHours: workforceData.totalMachineryHours,
+      uniqueWorkers: workforceData.uniqueWorkers,
+      uniqueMachinery: workforceData.uniqueMachinery,
+      averageDailyCost: workforceData.averageDailyCost,
+      daysWorked: workforceData.daysWorked
+    }
+  }
+}
+
+// New function to calculate workforce costs for a project
+export async function calculateProjectWorkforceCosts(projectId: string, monthsBack: number = 12) {
+  const endDate = new Date()
+  const startDate = new Date()
+  startDate.setMonth(startDate.getMonth() - monthsBack)
+  
+  const daysToCheck = eachDayOfInterval({ start: startDate, end: endDate })
+  
+  let totalLaborHours = 0
+  let totalMachineryHours = 0
+  let totalLaborCost = 0
+  let totalMachineryCost = 0
+  const uniqueWorkers = new Set<string>()
+  const uniqueMachinery = new Set<string>()
+  const workDays: Date[] = []
+  
+  for (const day of daysToCheck) {
+    try {
+      const timesheet = await getDailyJournalTimesheetByDate(day)
+      if (timesheet) {
+        // Filter entries for this project
+        const projectWorkers = timesheet.workerEntries.filter(entry =>
+          entry.projectHours.some(ph => ph.projectId === projectId)
+        )
+        
+        const projectMachinery = timesheet.machineryEntries.filter(entry =>
+          entry.projectHours.some(ph => ph.projectId === projectId)
+        )
+        
+        if (projectWorkers.length > 0 || projectMachinery.length > 0) {
+          workDays.push(day)
+          
+          // Calculate project-specific hours and costs
+          projectWorkers.forEach(worker => {
+            const projectHours = worker.projectHours
+              .filter(ph => ph.projectId === projectId)
+              .reduce((sum, ph) => sum + ph.hours, 0)
+            const projectCost = worker.projectHours
+              .filter(ph => ph.projectId === projectId)
+              .reduce((sum, ph) => sum + ph.cost, 0)
+            
+            totalLaborHours += projectHours
+            totalLaborCost += projectCost
+            uniqueWorkers.add(worker.workerId)
+          })
+          
+          projectMachinery.forEach(machine => {
+            const projectHours = machine.projectHours
+              .filter(ph => ph.projectId === projectId)
+              .reduce((sum, ph) => sum + ph.hours, 0)
+            const projectCost = machine.projectHours
+              .filter(ph => ph.projectId === projectId)
+              .reduce((sum, ph) => sum + ph.cost, 0)
+            
+            totalMachineryHours += projectHours
+            totalMachineryCost += projectCost
+            uniqueMachinery.add(machine.machineryId)
+          })
+        }
+      }
+    } catch (error) {
+      // Skip days with errors
+      continue
+    }
+  }
+  
+  const daysWorked = workDays.length
+  const totalWorkforceCost = totalLaborCost + totalMachineryCost
+  const averageDailyCost = daysWorked > 0 ? totalWorkforceCost / daysWorked : 0
+  
+  return {
+    totalLaborHours,
+    totalMachineryHours,
+    totalLaborCost,
+    totalMachineryCost,
+    totalWorkforceCost,
+    uniqueWorkers: uniqueWorkers.size,
+    uniqueMachinery: uniqueMachinery.size,
+    daysWorked,
+    averageDailyCost
   }
 }
 
@@ -131,13 +243,7 @@ export interface ProjectProgress {
   milestones: ProjectMilestone[]
 }
 
-export interface ProjectMilestone {
-  id: string
-  name: string
-  status: 'pending' | 'in-progress' | 'completed'
-  date?: Date
-  percentage: number
-}
+// ProjectMilestone is now defined in types.ts with enhanced functionality
 
 export async function calculateProjectProgress(project: Project): Promise<ProjectProgress> {
   const materials = await getProjectMaterials(project.id)
@@ -340,6 +446,9 @@ export interface ProjectStatistics {
   averageProjectDuration: number // in days
   averageBudget: number
   totalBudget: number
+  totalMaterialCosts: number
+  totalWorkforceCosts: number
+  totalProjectCosts: number
   completionRate: number // percentage
   overdueProjects: number
   projectsWithDeadlines: number
@@ -350,6 +459,13 @@ export interface ProjectStatistics {
     action: string
     date: Date
   }>
+  workforceStats: {
+    totalLaborHours: number
+    totalMachineryHours: number
+    averageProjectLaborCost: number
+    averageProjectMachineryCost: number
+    projectsWithWorkforce: number
+  }
 }
 
 export async function calculateProjectStatistics(): Promise<ProjectStatistics> {
@@ -364,19 +480,48 @@ export async function calculateProjectStatistics(): Promise<ProjectStatistics> {
   }
 
   let totalBudget = 0
+  let totalMaterialCosts = 0
+  let totalWorkforceCosts = 0
   let totalDuration = 0
   let completedProjects = 0
   let overdueProjects = 0
   let projectsWithDeadlines = 0
+  let totalLaborHours = 0
+  let totalMachineryHours = 0
+  let projectsWithWorkforce = 0
   const tagCounts: Record<string, number> = {}
 
   const now = new Date()
 
-  projects.forEach(project => {
+  // Calculate costs for all projects
+  const allProjectCosts = await Promise.all(
+    projects.map(async (project) => {
+      try {
+        return await calculateProjectCosts(project)
+      } catch (error) {
+        console.error(`Failed to calculate costs for project ${project.id}:`, error)
+        return null
+      }
+    })
+  )
+
+  projects.forEach((project, index) => {
     projectsByStatus[project.status]++
     
     if (project.totalBudget) {
       totalBudget += project.totalBudget
+    }
+
+    const costs = allProjectCosts[index]
+    if (costs) {
+      totalMaterialCosts += costs.totalMaterialCost
+      totalWorkforceCosts += costs.totalWorkforceCost
+      totalLaborHours += costs.workforceBreakdown.totalLaborHours
+      totalMachineryHours += costs.workforceBreakdown.totalMachineryHours
+      
+      if (costs.workforceBreakdown.daysWorked > 0) {
+        projectsWithWorkforce++
+      }
     }
 
     if (project.status === ProjectStatus.COMPLETED) {
@@ -402,6 +547,7 @@ export async function calculateProjectStatistics(): Promise<ProjectStatistics> {
   const averageProjectDuration = completedProjects > 0 ? totalDuration / completedProjects : 0
   const averageBudget = projects.length > 0 ? totalBudget / projects.length : 0
   const completionRate = projects.length > 0 ? (completedProjects / projects.length) * 100 : 0
+  const totalProjectCosts = totalMaterialCosts + totalWorkforceCosts
 
   const mostCommonTags = Object.entries(tagCounts)
     .map(([tag, count]) => ({ tag, count }))
@@ -425,11 +571,21 @@ export async function calculateProjectStatistics(): Promise<ProjectStatistics> {
     averageProjectDuration,
     averageBudget,
     totalBudget,
+    totalMaterialCosts,
+    totalWorkforceCosts,
+    totalProjectCosts,
     completionRate,
     overdueProjects,
     projectsWithDeadlines,
     mostCommonTags,
-    recentActivity
+    recentActivity,
+    workforceStats: {
+      totalLaborHours,
+      totalMachineryHours,
+      averageProjectLaborCost: projectsWithWorkforce > 0 ? totalWorkforceCosts / projectsWithWorkforce : 0,
+      averageProjectMachineryCost: projectsWithWorkforce > 0 ? (totalWorkforceCosts * 0.4) / projectsWithWorkforce : 0, // Rough estimate
+      projectsWithWorkforce
+    }
   }
 }
 
