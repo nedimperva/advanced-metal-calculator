@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Wrench, Search, Cog, Edit, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { type Machinery } from '@/lib/types'
 import { MACHINERY_TYPE_LABELS } from '@/lib/workforce-utils'
 import { getAllMachinery, updateMachinery } from '@/lib/database'
@@ -14,6 +15,7 @@ import { toast } from '@/hooks/use-toast'
 import MachineryForm from './workforce/machinery-form'
 
 export default function GlobalMachinery() {
+  const isMobile = useMediaQuery("(max-width: 767px)")
   const [machinery, setMachinery] = useState<Machinery[]>([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -92,12 +94,15 @@ export default function GlobalMachinery() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Machinery Database</h1>
+      <div className={cn(
+        "flex items-center justify-between",
+        isMobile && "flex-col space-y-3"
+      )}>
+        <div className={cn(isMobile && "text-center")}>
+          <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>Machinery Database</h1>
           <p className="text-muted-foreground">Manage your equipment and machinery</p>
         </div>
-        <Button onClick={handleCreateMachinery}>
+        <Button onClick={handleCreateMachinery} className={cn(isMobile && "w-full")}>
           <Plus className="h-4 w-4 mr-2" />
           Add Machinery
         </Button>
@@ -117,7 +122,10 @@ export default function GlobalMachinery() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex gap-4">
+          <div className={cn(
+            "flex gap-4",
+            isMobile && "flex-col space-y-3"
+          )}>
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -125,7 +133,7 @@ export default function GlobalMachinery() {
                   placeholder="Search machinery..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className={cn("pl-10", isMobile && "text-base")}
                 />
               </div>
             </div>
@@ -133,7 +141,10 @@ export default function GlobalMachinery() {
             <Button
               variant={showInactive ? "default" : "outline"}
               onClick={() => setShowInactive(!showInactive)}
-              className="flex items-center gap-2"
+              className={cn(
+                "flex items-center gap-2",
+                isMobile && "w-full"
+              )}
             >
               {showInactive ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               {showInactive ? 'Hide Inactive' : 'Show Inactive'}
@@ -149,31 +160,51 @@ export default function GlobalMachinery() {
             !machine.isActive && "opacity-60"
           )}>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+              <div className={cn(
+                "flex items-center justify-between",
+                isMobile && "flex-col space-y-3"
+              )}>
+                <div className={cn(
+                  "flex items-center gap-4",
+                  isMobile && "w-full"
+                )}>
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <Wrench className="h-6 w-6 text-orange-600" />
                   </div>
                   
-                  <div>
+                  <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold">{machine.name}</h3>
                       {!machine.isActive && (
                         <Badge variant="secondary" className="text-xs">Inactive</Badge>
                       )}
-                      <Badge variant="outline" className="text-xs">
-                        {MACHINERY_TYPE_LABELS[machine.type]}
-                      </Badge>
+                      {!isMobile && (
+                        <Badge variant="outline" className="text-xs">
+                          {MACHINERY_TYPE_LABELS[machine.type]}
+                        </Badge>
+                      )}
                     </div>
                     
                     <div className="text-sm text-muted-foreground mb-2">
                       ${machine.hourlyRate}/hour
                       {machine.model && ` • ${machine.model}`}
-                      {machine.serialNumber && ` • SN: ${machine.serialNumber}`}
+                      {isMobile && machine.serialNumber && (
+                        <div className="text-xs">SN: {machine.serialNumber}</div>
+                      )}
+                      {!isMobile && machine.serialNumber && ` • SN: ${machine.serialNumber}`}
                     </div>
                     
+                    {isMobile && (
+                      <Badge variant="outline" className="text-xs mb-2">
+                        {MACHINERY_TYPE_LABELS[machine.type]}
+                      </Badge>
+                    )}
+                    
                     {machine.maintenanceSchedule && (
-                      <div className="flex gap-2">
+                      <div className={cn(
+                        "flex gap-2",
+                        isMobile && "flex-col space-y-1"
+                      )}>
                         {machine.maintenanceSchedule.lastMaintenance && (
                           <Badge variant="secondary" className="text-xs">
                             Last: {new Date(machine.maintenanceSchedule.lastMaintenance).toLocaleDateString()}
@@ -189,11 +220,15 @@ export default function GlobalMachinery() {
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2">
+                <div className={cn(
+                  "flex items-center gap-2",
+                  isMobile && "w-full"
+                )}>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleToggleMachineryStatus(machine)}
+                    className={cn(isMobile && "flex-1")}
                   >
                     {machine.isActive ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
@@ -201,6 +236,7 @@ export default function GlobalMachinery() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleEditMachinery(machine)}
+                    className={cn(isMobile && "flex-1")}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>

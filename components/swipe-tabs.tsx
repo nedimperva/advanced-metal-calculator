@@ -131,7 +131,7 @@ export function SwipeTabs({
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-1">
                 {tab.icon}
-                <span className={cn("", isMobile ? "hidden sm:inline" : "")}>
+                <span className="">
                   {isMobile && tab.shortLabel ? tab.shortLabel : tab.label}
                 </span>
               </TabsTrigger>

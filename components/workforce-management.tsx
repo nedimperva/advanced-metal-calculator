@@ -192,9 +192,10 @@ export default function WorkforceManagement({
   }, [journalData])
 
   const navigateToJournal = () => {
-    // Create URL to navigate to Daily Journal tab
+    // Create URL to navigate to Workforce tab with journal sub-tab
     const url = new URL(window.location.href)
-    url.searchParams.set('tab', 'journal')
+    url.searchParams.set('tab', 'workforce')
+    url.searchParams.set('workforce-view', 'journal')
     window.history.pushState({}, '', url.toString())
     window.location.reload()
   }
@@ -440,7 +441,7 @@ export default function WorkforceManagement({
               <CalendarIcon className="h-4 w-4 mr-2" />
               Change Month
             </Button>
-            <Button variant="outline" onClick={() => window.location.href = '/?tab=workers'} className="justify-start">
+            <Button variant="outline" onClick={() => window.location.href = '/?tab=workforce'} className="justify-start">
               <Users className="h-4 w-4 mr-2" />
               Manage Workers
             </Button>

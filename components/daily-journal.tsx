@@ -287,11 +287,21 @@ function TimesheetEntryDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className={cn(
+          "gap-2",
+          "sm:flex-row flex-col"
+        )}>
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave}>
+          <Button 
+            onClick={handleSave}
+            className="w-full sm:w-auto"
+          >
             Save Entry
           </Button>
         </DialogFooter>
@@ -452,23 +462,29 @@ export default function DailyJournal() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Daily Journal</h1>
-          <p className="text-muted-foreground">
+      <div className={cn(
+        "flex items-center justify-between",
+        isMobile && "flex-col space-y-4"
+      )}>
+        <div className={cn(isMobile && "text-center")}>
+          <h1 className={cn("font-bold", isMobile ? "text-2xl" : "text-3xl")}>Daily Journal</h1>
+          <p className={cn("text-muted-foreground", isMobile ? "text-sm" : "")}>
             Track daily work hours across multiple projects
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className={cn("flex gap-2", isMobile && "w-full")}>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline">
+              <Button 
+                variant="outline"
+                className={cn(isMobile && "w-full")}
+              >
                 <CalendarIcon className="h-4 w-4 mr-2" />
-                {format(selectedDate, 'MMM d, yyyy')}
+                {isMobile ? format(selectedDate, 'MMM d') : format(selectedDate, 'MMM d, yyyy')}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-auto p-0" align={isMobile ? "center" : "end"}>
               <Calendar
                 mode="single"
                 selected={selectedDate}
@@ -481,14 +497,19 @@ export default function DailyJournal() {
       </div>
 
       {/* Date and Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className={cn(
+        "grid gap-4",
+        isMobile ? "grid-cols-2" : "grid-cols-1 md:grid-cols-4"
+      )}>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className={cn("p-4", isMobile && "p-3")}>
             <div className="flex items-center">
-              <Clock className="h-6 w-6 text-blue-600" />
+              <Clock className={cn("text-blue-600", isMobile ? "h-5 w-5" : "h-6 w-6")} />
               <div className="ml-3">
-                <p className="text-sm text-muted-foreground">Labor Hours</p>
-                <p className="text-xl font-bold">
+                <p className={cn("text-muted-foreground", isMobile ? "text-xs" : "text-sm")}>
+                  Labor Hours
+                </p>
+                <p className={cn("font-bold", isMobile ? "text-lg" : "text-xl")}>
                   {currentTimesheet?.totalLaborHours?.toFixed(1) || '0.0'}
                 </p>
               </div>
@@ -497,12 +518,14 @@ export default function DailyJournal() {
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className={cn("p-4", isMobile && "p-3")}>
             <div className="flex items-center">
-              <Wrench className="h-6 w-6 text-orange-600" />
+              <Wrench className={cn("text-orange-600", isMobile ? "h-5 w-5" : "h-6 w-6")} />
               <div className="ml-3">
-                <p className="text-sm text-muted-foreground">Machine Hours</p>
-                <p className="text-xl font-bold">
+                <p className={cn("text-muted-foreground", isMobile ? "text-xs" : "text-sm")}>
+                  Machine Hours
+                </p>
+                <p className={cn("font-bold", isMobile ? "text-lg" : "text-xl")}>
                   {currentTimesheet?.totalMachineryHours?.toFixed(1) || '0.0'}
                 </p>
               </div>
@@ -511,12 +534,14 @@ export default function DailyJournal() {
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className={cn("p-4", isMobile && "p-3")}>
             <div className="flex items-center">
-              <Calculator className="h-6 w-6 text-green-600" />
+              <Calculator className={cn("text-green-600", isMobile ? "h-5 w-5" : "h-6 w-6")} />
               <div className="ml-3">
-                <p className="text-sm text-muted-foreground">Total Cost</p>
-                <p className="text-xl font-bold">
+                <p className={cn("text-muted-foreground", isMobile ? "text-xs" : "text-sm")}>
+                  Total Cost
+                </p>
+                <p className={cn("font-bold", isMobile ? "text-lg" : "text-xl")}>
                   ${currentTimesheet?.totalCost?.toFixed(2) || '0.00'}
                 </p>
               </div>
@@ -525,12 +550,14 @@ export default function DailyJournal() {
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className={cn("p-4", isMobile && "p-3")}>
             <div className="flex items-center">
-              <FileText className="h-6 w-6 text-purple-600" />
+              <FileText className={cn("text-purple-600", isMobile ? "h-5 w-5" : "h-6 w-6")} />
               <div className="ml-3">
-                <p className="text-sm text-muted-foreground">Entries</p>
-                <p className="text-xl font-bold">
+                <p className={cn("text-muted-foreground", isMobile ? "text-xs" : "text-sm")}>
+                  Entries
+                </p>
+                <p className={cn("font-bold", isMobile ? "text-lg" : "text-xl")}>
                   {(currentTimesheet?.workerEntries?.length || 0) + (currentTimesheet?.machineryEntries?.length || 0)}
                 </p>
               </div>
@@ -541,13 +568,19 @@ export default function DailyJournal() {
 
       {/* Worker Entries */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className={cn(isMobile && "pb-3")}>
+          <div className={cn(
+            "flex items-center justify-between",
+            isMobile && "flex-col space-y-3"
+          )}>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               Worker Entries
             </CardTitle>
-            <Button onClick={() => handleAddEntry('worker')}>
+            <Button 
+              onClick={() => handleAddEntry('worker')}
+              className={cn(isMobile && "w-full")}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Worker
             </Button>
@@ -556,28 +589,60 @@ export default function DailyJournal() {
         <CardContent>
           <div className="space-y-3">
             {currentTimesheet?.workerEntries?.map((entry, index) => (
-              <div key={`${entry.workerId}-${index}`} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+              <div key={`${entry.workerId}-${index}`} className={cn(
+                "border rounded-lg",
+                isMobile ? "p-3" : "flex items-center justify-between p-3"
+              )}>
+                <div className={cn(
+                  "flex-1",
+                  isMobile && "space-y-3"
+                )}>
+                  <div className={cn(
+                    isMobile ? "space-y-2" : "flex items-center gap-2 mb-2"
+                  )}>
                     <h4 className="font-medium">{entry.workerName}</h4>
-                    <Badge variant="outline">${entry.hourlyRate}/hr</Badge>
-                    <Badge variant="secondary">{entry.totalHours}h</Badge>
-                    <Badge variant="default">${entry.totalCost.toFixed(2)}</Badge>
+                    <div className={cn(
+                      "flex flex-wrap gap-1",
+                      isMobile && "justify-start"
+                    )}>
+                      <Badge variant="outline" className="text-xs">
+                        ${entry.hourlyRate}/hr
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {entry.totalHours}h
+                      </Badge>
+                      <Badge variant="default" className="text-xs">
+                        ${entry.totalCost.toFixed(2)}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className={cn("text-muted-foreground", isMobile ? "text-xs" : "text-sm")}>
                     Projects: {entry.projectHours.map(ph => {
                       const project = projects.find(p => p.id === ph.projectId)
                       return `${project?.name || 'Unknown'} (${ph.hours}h)`
                     }).join(', ')}
                   </div>
+                  {isMobile && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditEntry(entry, 'worker')}
+                      className="w-full"
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Worker
+                    </Button>
+                  )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEditEntry(entry, 'worker')}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
+                {!isMobile && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditEntry(entry, 'worker')}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             ))}
             
@@ -592,13 +657,19 @@ export default function DailyJournal() {
 
       {/* Machinery Entries */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className={cn(isMobile && "pb-3")}>
+          <div className={cn(
+            "flex items-center justify-between",
+            isMobile && "flex-col space-y-3"
+          )}>
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5" />
               Machinery Entries
             </CardTitle>
-            <Button onClick={() => handleAddEntry('machinery')}>
+            <Button 
+              onClick={() => handleAddEntry('machinery')}
+              className={cn(isMobile && "w-full")}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Machinery
             </Button>
@@ -607,28 +678,60 @@ export default function DailyJournal() {
         <CardContent>
           <div className="space-y-3">
             {currentTimesheet?.machineryEntries?.map((entry, index) => (
-              <div key={`${entry.machineryId}-${index}`} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+              <div key={`${entry.machineryId}-${index}`} className={cn(
+                "border rounded-lg",
+                isMobile ? "p-3" : "flex items-center justify-between p-3"
+              )}>
+                <div className={cn(
+                  "flex-1",
+                  isMobile && "space-y-3"
+                )}>
+                  <div className={cn(
+                    isMobile ? "space-y-2" : "flex items-center gap-2 mb-2"
+                  )}>
                     <h4 className="font-medium">{entry.machineryName}</h4>
-                    <Badge variant="outline">${entry.hourlyRate}/hr</Badge>
-                    <Badge variant="secondary">{entry.totalHours}h</Badge>
-                    <Badge variant="default">${entry.totalCost.toFixed(2)}</Badge>
+                    <div className={cn(
+                      "flex flex-wrap gap-1",
+                      isMobile && "justify-start"
+                    )}>
+                      <Badge variant="outline" className="text-xs">
+                        ${entry.hourlyRate}/hr
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {entry.totalHours}h
+                      </Badge>
+                      <Badge variant="default" className="text-xs">
+                        ${entry.totalCost.toFixed(2)}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className={cn("text-muted-foreground", isMobile ? "text-xs" : "text-sm")}>
                     Projects: {entry.projectHours.map(ph => {
                       const project = projects.find(p => p.id === ph.projectId)
                       return `${project?.name || 'Unknown'} (${ph.hours}h)`
                     }).join(', ')}
                   </div>
+                  {isMobile && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditEntry(entry, 'machinery')}
+                      className="w-full"
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Machinery
+                    </Button>
+                  )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEditEntry(entry, 'machinery')}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
+                {!isMobile && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditEntry(entry, 'machinery')}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             ))}
             

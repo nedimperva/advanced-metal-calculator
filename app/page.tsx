@@ -371,9 +371,21 @@ export default function MetalWeightCalculator() {
     }
   }, [activeTab, setCurrentProject])
 
+  // Handle URL parameters for workforce sub-view
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const workforceViewParam = urlParams.get('workforce-view')
+      if (workforceViewParam && (workforceViewParam === 'workers' || workforceViewParam === 'machinery' || workforceViewParam === 'journal')) {
+        setWorkforceView(workforceViewParam)
+      }
+    }
+  }, [activeTab])
+
   // Comparison state
   const [comparisonCalculations, setComparisonCalculations] = useState<Set<string>>(new Set())
   const [historyCompareView, setHistoryCompareView] = useState<'history' | 'compare'>('history')
+  const [workforceView, setWorkforceView] = useState<'workers' | 'machinery' | 'journal'>('workers')
 
   // Error handling and validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([])
@@ -1954,22 +1966,10 @@ export default function MetalWeightCalculator() {
               shortLabel: "Proj"
             },
             {
-              value: "workers",
-              label: "Workers",
+              value: "workforce",
+              label: "Workforce",
               icon: <Users className="h-3 w-3" />,
               shortLabel: "Work"
-            },
-            {
-              value: "machinery",
-              label: "Machinery",
-              icon: <Cog className="h-3 w-3" />,
-              shortLabel: "Mach"
-            },
-            {
-              value: "journal",
-              label: "Daily Journal",
-              icon: <Clock className="h-3 w-3" />,
-              shortLabel: "Jour"
             }
           ]}
         >
@@ -2608,33 +2608,61 @@ export default function MetalWeightCalculator() {
             </div>
           </SwipeTabs.Content>
 
-          {/* Global Workers Tab */}
-          <SwipeTabs.Content value="workers" className="">
+          {/* Workforce Tab with Sub-tabs */}
+          <SwipeTabs.Content value="workforce" className="">
             <div className={cn(
               "overflow-y-auto space-y-4",
               isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
             )}>
-              <GlobalWorkers />
-            </div>
-          </SwipeTabs.Content>
+              {/* Sub-tabs for Workforce */}
+              <div className={cn(
+                "flex bg-muted rounded-lg p-1 sticky top-0 z-10 backdrop-blur-sm bg-muted/95 border border-border/50",
+                !isDesktop && "mx-2"
+              )}>
+                <Button
+                  variant={workforceView === 'workers' ? 'default' : 'ghost'}
+                  size={isDesktop ? "sm" : "sm"}
+                  onClick={() => setWorkforceView('workers')}
+                  className={cn(
+                    "flex-1",
+                    !isDesktop && "text-xs px-2 py-1.5 h-8"
+                  )}
+                >
+                  <Users className={cn("mr-1", isDesktop ? "h-4 w-4" : "h-3 w-3")} />
+                  {isDesktop ? "Workers" : "Workers"}
+                </Button>
+                <Button
+                  variant={workforceView === 'machinery' ? 'default' : 'ghost'}
+                  size={isDesktop ? "sm" : "sm"}
+                  onClick={() => setWorkforceView('machinery')}
+                  className={cn(
+                    "flex-1",
+                    !isDesktop && "text-xs px-2 py-1.5 h-8"
+                  )}
+                >
+                  <Cog className={cn("mr-1", isDesktop ? "h-4 w-4" : "h-3 w-3")} />
+                  {isDesktop ? "Machinery" : "Machines"}
+                </Button>
+                <Button
+                  variant={workforceView === 'journal' ? 'default' : 'ghost'}
+                  size={isDesktop ? "sm" : "sm"}
+                  onClick={() => setWorkforceView('journal')}
+                  className={cn(
+                    "flex-1",
+                    !isDesktop && "text-xs px-2 py-1.5 h-8"
+                  )}
+                >
+                  <Clock className={cn("mr-1", isDesktop ? "h-4 w-4" : "h-3 w-3")} />
+                  {isDesktop ? "Journal" : "Journal"}
+                </Button>
+              </div>
 
-          {/* Global Machinery Tab */}
-          <SwipeTabs.Content value="machinery" className="">
-            <div className={cn(
-              "overflow-y-auto space-y-4", 
-              isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
-            )}>
-              <GlobalMachinery />
-            </div>
-          </SwipeTabs.Content>
-
-          {/* Daily Journal Tab */}
-          <SwipeTabs.Content value="journal" className="">
-            <div className={cn(
-              "overflow-y-auto space-y-4",
-              isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
-            )}>
-              <DailyJournal />
+              {/* Content based on selected workforce view */}
+              <div className={cn(!isDesktop && "px-2")}>
+                {workforceView === 'workers' && <GlobalWorkers />}
+                {workforceView === 'machinery' && <GlobalMachinery />}
+                {workforceView === 'journal' && <DailyJournal />}
+              </div>
             </div>
           </SwipeTabs.Content>
         </SwipeTabs>
