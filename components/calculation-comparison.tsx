@@ -745,7 +745,7 @@ export function CalculationHistory({
                           <Badge variant="outline">
                             {calc.totalWeight ? `${calc.totalWeight.toFixed(2)} kg` : `${calc.weight?.toFixed(2)} kg`}
                           </Badge>
-                          {calc.totalCost && (
+                          {calc.totalCost && calc.totalCost > 0 && (
                             <Badge variant="outline" className="text-green-600">
                               ${calc.totalCost.toFixed(2)}
                             </Badge>

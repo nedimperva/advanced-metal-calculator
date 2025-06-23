@@ -246,7 +246,7 @@ function getProfileTypeForViewer(profileType: string, dimensions: Record<string,
   return profileType
 }
 
-export default function MetalWeightCalculator() {
+export default function SteelForgePro() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [layoutReady, setLayoutReady] = useState(false)
   const { trackStandardSize, trackDimension, trackCalculation, getSuggestions, updateDefaults } = useUserPreferences()
@@ -381,6 +381,20 @@ export default function MetalWeightCalculator() {
       }
     }
   }, [activeTab])
+
+  // Listen for navigation events from other components
+  useEffect(() => {
+    const handleNavigateToWorkforceJournal = () => {
+      setActiveTab('workforce')
+      setWorkforceView('journal')
+    }
+
+    window.addEventListener('navigate-to-workforce-journal', handleNavigateToWorkforceJournal)
+    
+    return () => {
+      window.removeEventListener('navigate-to-workforce-journal', handleNavigateToWorkforceJournal)
+    }
+  }, [])
 
   // Comparison state
   const [comparisonCalculations, setComparisonCalculations] = useState<Set<string>>(new Set())
@@ -751,7 +765,7 @@ export default function MetalWeightCalculator() {
         parseFloat(length),
         weightUnit,
         lengthUnit
-      ) : 0
+      ) : undefined
 
       const totalCost = pricePerUnit ? calculateTotalCost(
         pricingModel,
@@ -761,7 +775,7 @@ export default function MetalWeightCalculator() {
         parseFloat(quantity),
         weightUnit,
         lengthUnit
-      ) : 0
+      ) : undefined
 
       const totalWeight = weight * parseFloat(quantity)
 
@@ -1060,7 +1074,7 @@ export default function MetalWeightCalculator() {
     const shortMaterialTag = getShortMaterialTag(materialTag)
 
     const shareData = {
-      title: "Metal Weight Calculator Result",
+              title: "SteelForge Pro Calculation Result",
       text: `${mainName} (${shortMaterialTag}) weighs ${weight.toFixed(4)} ${WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}`,
       url: window.location.href,
     }

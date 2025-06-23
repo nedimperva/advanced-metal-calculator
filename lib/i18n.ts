@@ -409,7 +409,7 @@ export interface Translations {
 export const translations: Record<Language, Translations> = {
   en: {
     // App title and navigation
-    appTitle: "Professional Metal Calculator",
+    appTitle: "SteelForge Pro",
     appSubtitle: "Calculate weights for structural profiles and materials",
     
     // Tabs

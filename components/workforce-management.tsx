@@ -197,7 +197,9 @@ export default function WorkforceManagement({
     url.searchParams.set('tab', 'workforce')
     url.searchParams.set('workforce-view', 'journal')
     window.history.pushState({}, '', url.toString())
-    window.location.reload()
+    
+    // Trigger navigation by dispatching a custom event that the main app can listen to
+    window.dispatchEvent(new CustomEvent('navigate-to-workforce-journal'))
   }
 
   return (
@@ -423,31 +425,7 @@ export default function WorkforceManagement({
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className={cn(
-            "grid gap-3",
-            isMobile ? "grid-cols-1" : "grid-cols-3"
-          )}>
-            <Button variant="outline" onClick={navigateToJournal} className="justify-start">
-              <Clock className="h-4 w-4 mr-2" />
-              Track Today's Work
-            </Button>
-            <Button variant="outline" onClick={() => setShowCalendar(true)} className="justify-start">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              Change Month
-            </Button>
-            <Button variant="outline" onClick={() => window.location.href = '/?tab=workforce'} className="justify-start">
-              <Users className="h-4 w-4 mr-2" />
-              Manage Workers
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+
     </div>
   )
 }
