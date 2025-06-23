@@ -194,7 +194,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
           }
         }}
         onProjectCreated={handleProjectCreated}
-        editProject={editingProject}
+        editProject={editingProject ?? undefined}
       />
     </div>
   )
