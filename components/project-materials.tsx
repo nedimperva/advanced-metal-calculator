@@ -85,6 +85,7 @@ import {
 import { MaterialStatus, type Project, type ProjectMaterial, type Calculation } from '@/lib/types'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 interface ProjectMaterialsProps {
   project: Project
@@ -461,6 +462,7 @@ function AddCalculationModal({
   onAdd 
 }: AddCalculationModalProps) {
   const { allCalculations } = useProjects()
+  const { t, language } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   const [selectedCalculations, setSelectedCalculations] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
@@ -504,9 +506,9 @@ function AddCalculationModal({
           : "max-w-4xl max-h-[90vh]"
       )}>
         <DialogHeader>
-          <DialogTitle>Add Calculations</DialogTitle>
+          <DialogTitle>{language === 'bs' ? 'Dodaj Izračune' : 'Add Calculations'}</DialogTitle>
           <DialogDescription>
-            Select calculations from your history to add to this project.
+            {language === 'bs' ? 'Odaberite izračune iz vaše historije da ih dodate u ovaj projekat.' : 'Select calculations from your history to add to this project.'}
           </DialogDescription>
         </DialogHeader>
         
@@ -515,7 +517,7 @@ function AddCalculationModal({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search calculations..."
+placeholder={language === 'bs' ? 'Pretraži izračune...' : 'Search calculations...'}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={cn(
@@ -533,9 +535,12 @@ function AddCalculationModal({
             {filteredCalculations.length === 0 ? (
               <div className="p-8 text-center">
                 <Calculator className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <h3 className="text-lg font-semibold mb-2">No Calculations Available</h3>
+                <h3 className="text-lg font-semibold mb-2">{language === 'bs' ? 'Nema Dostupnih Izračuna' : 'No Calculations Available'}</h3>
                 <p className="text-muted-foreground">
-                  {searchTerm ? "No calculations match your search." : "No calculations available to add."}
+                  {searchTerm ? 
+                    (language === 'bs' ? 'Nijedan izračun ne odgovara vašoj pretrazi.' : 'No calculations match your search.') : 
+                    (language === 'bs' ? 'Nema dostupnih izračuna za dodavanje.' : 'No calculations available to add.')
+                  }
                 </p>
               </div>
             ) : (
@@ -578,7 +583,7 @@ function AddCalculationModal({
                             )}
                             {alreadyInProject && (
                               <Badge variant="outline" className="text-xs text-gray-500 border-gray-300 ml-2">
-                                Already in project
+                                {language === 'bs' ? 'Već u projektu' : 'Already in project'}
                               </Badge>
                             )}
                           </div>
@@ -607,7 +612,10 @@ function AddCalculationModal({
             isMobile ? "w-full" : ""
           )}>
             <span className="text-sm text-muted-foreground">
-              {selectedCalculations.size} calculation{selectedCalculations.size !== 1 ? 's' : ''} selected
+              {language === 'bs' ? 
+                `${selectedCalculations.size} ${selectedCalculations.size === 1 ? 'izračun' : selectedCalculations.size < 5 ? 'izračuna' : 'izračuna'} odabrano` :
+                `${selectedCalculations.size} calculation${selectedCalculations.size !== 1 ? 's' : ''} selected`
+              }
             </span>
           </div>
           <div className={cn(
@@ -619,14 +627,14 @@ function AddCalculationModal({
               onClick={onClose}
               className={cn(isMobile && "w-full")}
             >
-              Cancel
+              {language === 'bs' ? 'Otkaži' : 'Cancel'}
             </Button>
             <Button 
               onClick={handleAdd}
               disabled={selectedCalculations.size === 0}
               className={cn(isMobile && "w-full")}
             >
-              Add Selected ({selectedCalculations.size})
+              {language === 'bs' ? `Dodaj Odabrane (${selectedCalculations.size})` : `Add Selected (${selectedCalculations.size})`}
             </Button>
           </div>
         </DialogFooter>
@@ -642,6 +650,7 @@ export default function ProjectMaterials({
   className
 }: ProjectMaterialsProps) {
   const { updateProject, allCalculations, refreshProjects, projects } = useProjects()
+  const { t, language } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Local state
@@ -669,14 +678,14 @@ export default function ProjectMaterials({
       onUpdate?.()
       
       toast({
-        title: "Calculations Added",
-        description: `Added ${newIds.length} calculations to the project`,
+        title: language === 'bs' ? 'Izračuni Dodani' : 'Calculations Added',
+        description: language === 'bs' ? `Dodano ${newIds.length} izračuna u projekat` : `Added ${newIds.length} calculations to the project`,
       })
     } catch (error) {
       console.error('Failed to add calculations:', error)
       toast({
-        title: "Add Failed",
-        description: "Failed to add calculations to project",
+        title: language === 'bs' ? 'Dodavanje Neuspješno' : 'Add Failed',
+        description: language === 'bs' ? 'Neuspješno dodavanje izračuna u projekat' : 'Failed to add calculations to project',
         variant: "destructive"
       })
     } finally {
@@ -702,7 +711,9 @@ export default function ProjectMaterials({
   const handleRemoveCalculation = async (calcId: string) => {
     const calculation = allCalculations.find(c => c.id === calcId)
     
-    if (window.confirm(`Are you sure you want to remove "${calculation?.name || 'this calculation'}" from this project?`)) {
+    if (window.confirm(language === 'bs' ? 
+      `Jeste li sigurni da želite ukloniti "${calculation?.name || 'ovaj izračun'}" iz ovog projekta?` :
+      `Are you sure you want to remove "${calculation?.name || 'this calculation'}" from this project?`)) {
       try {
         // Remove from project
         const updatedProject = {
@@ -715,14 +726,14 @@ export default function ProjectMaterials({
       onUpdate?.()
       
       toast({
-          title: "Calculation Removed",
-          description: "Calculation has been removed from the project.",
+          title: language === 'bs' ? 'Izračun Uklonjen' : 'Calculation Removed',
+          description: language === 'bs' ? 'Izračun je uklonjen iz projekta.' : 'Calculation has been removed from the project.',
         })
       } catch (error) {
         console.error('Failed to remove calculation:', error)
         toast({
-          title: "Remove Failed",
-          description: "Failed to remove calculation from project",
+          title: language === 'bs' ? 'Uklanjanje Neuspješno' : 'Remove Failed',
+          description: language === 'bs' ? 'Neuspješno uklanjanje izračuna iz projekta' : 'Failed to remove calculation from project',
           variant: "destructive"
         })
       }
@@ -741,7 +752,7 @@ export default function ProjectMaterials({
             "font-bold",
             isMobile ? "text-xl" : "text-2xl"
           )}>
-            Project Calculations
+{language === 'bs' ? 'Projektni Izračuni' : 'Project Calculations'}
           </h2>
           <Button 
             onClick={() => setShowCalculationModal(true)}
@@ -750,7 +761,7 @@ export default function ProjectMaterials({
             )}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Calculations
+            {language === 'bs' ? 'Dodaj Izračune' : 'Add Calculations'}
           </Button>
         </div>
       </div>
@@ -764,7 +775,7 @@ export default function ProjectMaterials({
               isMobile ? "text-lg" : "text-xl"
             )}>
               <Calculator className="h-5 w-5" />
-              Calculations ({freshProject.calculationIds.length})
+{language === 'bs' ? `Izračuni (${freshProject.calculationIds.length})` : `Calculations (${freshProject.calculationIds.length})`}
             </CardTitle>
           </CardHeader>
           <CardContent className={cn(
@@ -806,13 +817,13 @@ export default function ProjectMaterials({
               "font-semibold mb-2",
               isMobile ? "text-base" : "text-lg"
             )}>
-              No Calculations
+{language === 'bs' ? 'Nema Izračuna' : 'No Calculations'}
             </h3>
             <p className={cn(
               "text-muted-foreground mb-4",
               isMobile ? "text-sm" : "text-base"
             )}>
-              Add calculations from your history to track them in this project.
+{language === 'bs' ? 'Dodajte izračune iz vaše historije da ih pratite u ovom projektu.' : 'Add calculations from your history to track them in this project.'}
             </p>
             <Button 
               onClick={() => setShowCalculationModal(true)}
@@ -821,7 +832,7 @@ export default function ProjectMaterials({
               )}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Calculations
+              {language === 'bs' ? 'Dodaj Izračune' : 'Add Calculations'}
             </Button>
           </CardContent>
         </Card>

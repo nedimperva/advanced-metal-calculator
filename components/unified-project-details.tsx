@@ -1,12 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Settings } from 'lucide-react'
+import { ArrowLeft, Settings, BarChart3, CheckCircle2, Users, Package, Calendar } from 'lucide-react'
 import { useProjects } from '@/contexts/project-context'
 import { TaskProvider, useTask } from '@/contexts/task-context'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/contexts/i18n-context'
 import ProjectDetails from './project-details'
 import ProjectMaterials from './project-materials'
 import ProjectTimeline from './project-timeline'
@@ -38,6 +39,7 @@ export function UnifiedProjectDetails({
   onBack,
   onEdit
 }: UnifiedProjectDetailsProps) {
+  const { t, language } = useI18n()
   const [activeTab, setActiveTab] = useState('overview')
   const [refreshKey, setRefreshKey] = useState(0)
   const isDesktop = useMediaQuery("(min-width: 768px)")
@@ -101,7 +103,7 @@ export function UnifiedProjectDetails({
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Projects
+{language === 'bs' ? 'Nazad na Projekte' : 'Back to Projects'}
             </Button>
             <div>
               <h2 className="text-lg font-semibold">{project.name}</h2>
@@ -116,7 +118,7 @@ export function UnifiedProjectDetails({
               className="flex items-center gap-2"
             >
               <Settings className="h-4 w-4" />
-              Edit Project
+{t('editProject')}
             </Button>
           )}
         </div>
@@ -138,31 +140,36 @@ export function UnifiedProjectDetails({
                   value="overview" 
                   className={cn(isMobile && "text-xs py-2")}
                 >
-                  {isMobile ? 'Overview' : 'Overview'}
+                  <BarChart3 className="h-4 w-4" />
+                  {t('overview')}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="tasks" 
                   className={cn(isMobile && "text-xs py-2")}
                 >
-                  {isMobile ? 'Tasks' : 'Tasks'}
+                  <CheckCircle2 className="h-4 w-4" />
+                  {t('tasks')}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="workforce" 
                   className={cn(isMobile && "text-xs py-2")}
                 >
-                  {isMobile ? 'Workers' : 'Workforce'}
+                  <Users className="h-4 w-4" />
+{language === 'bs' ? 'Radna Snaga' : 'Workforce'}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="materials" 
                   className={cn(isMobile && "text-xs py-2")}
                 >
-                  {isMobile ? 'Materials' : 'Materials'}
+                  <Package className="h-4 w-4" />
+                  {t('materials')}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="timeline" 
                   className={cn(isMobile && "text-xs py-2")}
                 >
-                  {isMobile ? 'Timeline' : 'Timeline'}
+                  <Calendar className="h-4 w-4" />
+                  {t('timeline')}
                 </TabsTrigger>
               </TabsList>
             </CardHeader>

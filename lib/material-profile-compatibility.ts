@@ -25,13 +25,15 @@ export const MATERIAL_PROFILE_COMPATIBILITY: MaterialProfileMapping[] = [
     materialKey: "steel",
     compatibleProfiles: {
       basic: ["rectangular", "round", "square", "flat", "hexagonal"],
-      beams: ["ipn", "ipe", "hea", "heb", "hec", "wBeam"],
-      channels: ["upn", "uChannel", "equalAngle", "unequalAngle"],
-      hollow: ["rhs", "shs", "chs", "pipe"],
-      special: ["tBeam", "bulbFlat", "halfRound"],
-      plates: ["plate", "sheetMetal", "checkeredPlate", "perforatedPlate"]
+      beams: ["hea", "heb", "hem", "ipe", "ipn", "hec", "wbeam"],
+      channels: ["upn", "channel", "uchannel"],
+      hollow: ["rhs", "shs", "chs"],
+      angles: ["equalAngle", "unequalAngle"],
+      bars: ["roundBar", "squareBar", "flatBar", "hexBar", "rectangularBar"],
+      plates: ["plate", "sheetMetal", "checkeredPlate", "perforatedPlate"],
+      pipes: ["pipe"],
     },
-    notes: "Steel is the most versatile structural material with excellent availability for all profile types."
+    notes: "steelVersatileDesc" // Translation key
   },
 
   // STAINLESS STEEL - Similar to steel but more expensive, fewer specialty shapes
@@ -45,7 +47,7 @@ export const MATERIAL_PROFILE_COMPATIBILITY: MaterialProfileMapping[] = [
       special: ["tBeam"],
       plates: ["plate", "sheetMetal", "perforatedPlate"]
     },
-    notes: "Stainless steel availability limited for large structural sections due to cost."
+    notes: "stainlessLimitedDesc" // Translation key
   },
 
   // ALUMINUM - Excellent for extrusions, limited structural beams

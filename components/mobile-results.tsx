@@ -1,12 +1,13 @@
 "use client"
 
 import React from "react"
+import { useI18n } from "@/contexts/i18n-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { CheckCircle, Info, BarChart3, Layers, Save, Share2, TrendingUp } from "lucide-react"
+import { CheckCircle, Info, BarChart3, Layers, Save, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { animations, safeAnimation } from "@/lib/animations"
 import { WEIGHT_UNITS, LENGTH_UNITS } from "@/lib/unit-conversions"
@@ -27,7 +28,7 @@ interface MobileResultsProps {
   volume: number
   className?: string
   onSave?: () => void
-  onShare?: () => void
+  onBreakdown?: () => void
   onAdvancedAnalysis?: () => void
   // Pricing props
   quantity?: string
@@ -51,7 +52,7 @@ export function MobileResults({
   volume, 
   className,
   onSave,
-  onShare,
+  onBreakdown,
   onAdvancedAnalysis,
   // Pricing props
   quantity = "1",
@@ -67,6 +68,8 @@ export function MobileResults({
   lengthUnit = "mm",
   projectName
 }: MobileResultsProps) {
+  const { t } = useI18n()
+  
   const DetailedResultsModal = () => (
     <DialogContent className="max-w-sm mx-4 max-h-[80vh] overflow-y-auto">
       <DialogHeader>
@@ -185,7 +188,7 @@ export function MobileResults({
           )}>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-foreground" />
-              Results
+              {t('calculationResults')}
             </div>
             <Dialog>
               <DialogTrigger asChild>
@@ -353,20 +356,20 @@ export function MobileResults({
                   className="flex-1 h-8"
                 >
                   <Save className="h-3 w-3 mr-1" />
-                  {projectName ? `Save to ${projectName}` : 'Save'}
+                  {projectName ? `${t('save')} to ${projectName}` : t('save')}
                 </Button>
               )}
             </div>
             <div className="flex gap-2">
-              {onShare && (
+              {onBreakdown && (
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={onShare}
+                  onClick={onBreakdown}
                   className="flex-1 h-8"
                 >
-                  <Share2 className="h-3 w-3 mr-1" />
-                  Share
+                  <Layers className="h-3 w-3 mr-1" />
+                  {t('breakdown')}
                 </Button>
               )}
               {onAdvancedAnalysis && (
@@ -377,7 +380,7 @@ export function MobileResults({
                   className="flex-1 h-8"
                 >
                   <TrendingUp className="h-3 w-3 mr-1" />
-                  Analysis
+                  {t('advancedAnalysis')}
                 </Button>
               )}
             </div>

@@ -67,6 +67,7 @@ import {
 import { ProjectStatus, MaterialStatus, type Project, type ProjectMaterial, type ProjectTask } from '@/lib/types'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 interface TimelineEvent {
   id: string
@@ -126,6 +127,7 @@ function AddEventModal({
   availableTasks = []
 }: AddEventModalProps) {
   const { updateProject } = useProjects()
+  const { t, language } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Common fields
@@ -990,6 +992,7 @@ export default function ProjectTimeline({
   availableTasks = []
 }: ProjectTimelineProps) {
   const { updateProject } = useProjects()
+  const { t, language } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Local state
@@ -1049,10 +1052,10 @@ export default function ProjectTimeline({
       events.push({
         id: `project-created-${project.id}`,
         type: 'milestone',
-        title: 'Project Created',
-        description: `Project "${project.name}" was created`,
+        title: language === 'bs' ? 'Projekat Kreiran' : 'Project Created',
+        description: language === 'bs' ? `Projekat "${project.name}" je kreiran` : `Project "${project.name}" was created`,
         timestamp: new Date(project.createdAt).toISOString(),
-        author: 'System'
+        author: language === 'bs' ? 'Sistem' : 'System'
       })
 
       // Status changes (mock data - in real implementation, this would come from status history)
@@ -1060,10 +1063,10 @@ export default function ProjectTimeline({
         events.push({
           id: `status-change-${project.id}`,
           type: 'status_change',
-          title: `Status Changed to ${PROJECT_STATUS_LABELS[project.status]}`,
-          description: `Project status updated to ${PROJECT_STATUS_LABELS[project.status]}`,
+          title: language === 'bs' ? `Status Promijenjen na ${PROJECT_STATUS_LABELS[project.status]}` : `Status Changed to ${PROJECT_STATUS_LABELS[project.status]}`,
+          description: language === 'bs' ? `Status projekta ažuriran na ${PROJECT_STATUS_LABELS[project.status]}` : `Project status updated to ${PROJECT_STATUS_LABELS[project.status]}`,
           timestamp: new Date(project.updatedAt).toISOString(),
-          author: 'System'
+          author: language === 'bs' ? 'Sistem' : 'System'
         })
       }
 
@@ -1074,10 +1077,10 @@ export default function ProjectTimeline({
             events.push({
               id: `material-delivery-${material.id}`,
               type: 'material_delivery',
-              title: `Material Delivered`,
-              description: `${material.quantity} units delivered`,
+              title: language === 'bs' ? `Materijal Isporučen` : `Material Delivered`,
+              description: language === 'bs' ? `${material.quantity} jedinica isporučeno` : `${material.quantity} units delivered`,
               timestamp: material.arrivalDate ? new Date(material.arrivalDate).toISOString() : new Date().toISOString(),
-              author: material.supplier || 'Supplier'
+              author: material.supplier || (language === 'bs' ? 'Dobavljač' : 'Supplier')
             })
           }
         })
@@ -1089,10 +1092,10 @@ export default function ProjectTimeline({
           events.push({
             id: `task-completed-${task.id}`,
             type: 'milestone',
-            title: `Task Completed: ${task.name}`,
-            description: `Task "${task.name}" was marked as completed`,
+            title: language === 'bs' ? `Zadatak Završen: ${task.name}` : `Task Completed: ${task.name}`,
+            description: language === 'bs' ? `Zadatak "${task.name}" je označen kao završen` : `Task "${task.name}" was marked as completed`,
             timestamp: new Date(task.actualEnd).toISOString(),
-            author: task.assignedTo || 'Team Member',
+            author: task.assignedTo || (language === 'bs' ? 'Član Tima' : 'Team Member'),
             linkedTaskIds: [task.id],
             status: 'completed'
           })
@@ -1102,10 +1105,10 @@ export default function ProjectTimeline({
           events.push({
             id: `task-started-${task.id}`,
             type: 'status_change',
-            title: `Task Started: ${task.name}`,
-            description: `Work began on task "${task.name}"`,
+            title: language === 'bs' ? `Zadatak Počet: ${task.name}` : `Task Started: ${task.name}`,
+            description: language === 'bs' ? `Rad je počet na zadatku "${task.name}"` : `Work began on task "${task.name}"`,
             timestamp: new Date(task.actualStart).toISOString(),
-            author: task.assignedTo || 'Team Member',
+            author: task.assignedTo || (language === 'bs' ? 'Član Tima' : 'Team Member'),
             linkedTaskIds: [task.id],
             status: 'in_progress'
           })
@@ -1118,10 +1121,14 @@ export default function ProjectTimeline({
         events.push({
           id: `deadline-${project.id}`,
           type: 'milestone',
-          title: isOverdue ? 'Deadline Passed' : 'Project Deadline',
-          description: `Project deadline: ${new Date(project.deadline).toLocaleDateString()}`,
+          title: isOverdue ? 
+            (language === 'bs' ? 'Rok Prošao' : 'Deadline Passed') : 
+            (language === 'bs' ? 'Projektni Rok' : 'Project Deadline'),
+          description: language === 'bs' ? 
+            `Rok projekta: ${new Date(project.deadline).toLocaleDateString()}` : 
+            `Project deadline: ${new Date(project.deadline).toLocaleDateString()}`,
           timestamp: new Date(project.deadline).toISOString(),
-          author: 'System'
+          author: language === 'bs' ? 'Sistem' : 'System'
         })
       }
 
@@ -1188,14 +1195,18 @@ export default function ProjectTimeline({
       onUpdate?.()
       
       toast({
-        title: "Event Added",
-        description: `Timeline event "${eventData.title}" has been added successfully.`,
+        title: language === 'bs' ? 'Događaj Dodan' : 'Event Added',
+        description: language === 'bs' ? 
+          `Vremenski događaj "${eventData.title}" je uspješno dodan.` :
+          `Timeline event "${eventData.title}" has been added successfully.`,
       })
     } catch (error) {
       console.error('Failed to add timeline event:', error)
       toast({
-        title: "Error",
-        description: "Failed to add timeline event. Please try again.",
+        title: language === 'bs' ? 'Greška' : 'Error',
+        description: language === 'bs' ? 
+          'Neuspješno dodavanje vremenskog događaja. Molimo pokušajte ponovo.' :
+          'Failed to add timeline event. Please try again.',
         variant: "destructive"
       })
       throw error
@@ -1230,7 +1241,7 @@ export default function ProjectTimeline({
       const daysUntil = Math.ceil((new Date(project.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
       upcoming.push({
         type: 'deadline',
-        title: 'Project Deadline',
+        title: language === 'bs' ? 'Projektni Rok' : 'Project Deadline',
         date: project.deadline,
         daysUntil,
         urgent: daysUntil <= 7
@@ -1251,7 +1262,7 @@ export default function ProjectTimeline({
             const daysUntil = Math.ceil((estimatedDelivery.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
             upcoming.push({
               type: 'delivery',
-              title: `Material Delivery`,
+              title: language === 'bs' ? `Dostava Materijala` : `Material Delivery`,
               date: estimatedDelivery.toISOString(),
               daysUntil,
               urgent: daysUntil <= 3
@@ -1276,7 +1287,7 @@ export default function ProjectTimeline({
             "font-bold",
             isMobile ? "text-xl" : "text-2xl"
           )}>
-            Project Timeline
+{language === 'bs' ? 'Projektna Vremenska Linija' : 'Project Timeline'}
           </h2>
           <Button 
             onClick={() => setShowAddEventModal(true)}
@@ -1285,7 +1296,7 @@ export default function ProjectTimeline({
             )}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Event
+{language === 'bs' ? 'Dodaj Događaj' : 'Add Event'}
           </Button>
         </div>
 
@@ -1316,7 +1327,7 @@ export default function ProjectTimeline({
                     "text-muted-foreground",
                     isMobile ? "text-xs" : "text-sm"
                   )}>
-                    Total Events
+{language === 'bs' ? 'Ukupni Događaji' : 'Total Events'}
                   </p>
                   <p className={cn(
                     "font-bold",
@@ -1351,7 +1362,7 @@ export default function ProjectTimeline({
                     "text-muted-foreground",
                     isMobile ? "text-xs" : "text-sm"
                   )}>
-                    Milestones
+{language === 'bs' ? 'Prekretnice' : 'Milestones'}
                   </p>
                   <p className={cn(
                     "font-bold",
@@ -1386,7 +1397,7 @@ export default function ProjectTimeline({
                     "text-muted-foreground",
                     isMobile ? "text-xs" : "text-sm"
                   )}>
-                    Deliveries
+{language === 'bs' ? 'Dostave' : 'Deliveries'}
                   </p>
                   <p className={cn(
                     "font-bold",
@@ -1421,7 +1432,7 @@ export default function ProjectTimeline({
                     "text-muted-foreground",
                     isMobile ? "text-xs" : "text-sm"
                   )}>
-                    Recent (7d)
+{language === 'bs' ? 'Nedavni (7d)' : 'Recent (7d)'}
                   </p>
                   <p className={cn(
                     "font-bold",
@@ -1445,7 +1456,7 @@ export default function ProjectTimeline({
               isMobile ? "text-lg" : "text-xl"
             )}>
               <Clock className="h-5 w-5" />
-              Upcoming Deadlines & Deliveries
+{language === 'bs' ? 'Nadolazeći Rokovi i Dostave' : 'Upcoming Deadlines & Deliveries'}
             </CardTitle>
           </CardHeader>
           <CardContent className={cn(
@@ -1504,8 +1515,8 @@ export default function ProjectTimeline({
                       isMobile ? "text-xs ml-2" : "text-xs"
                     )}
                   >
-                    {item.daysUntil === 0 ? 'Today' : 
-                     item.daysUntil === 1 ? 'Tomorrow' : 
+{item.daysUntil === 0 ? (language === 'bs' ? 'Danas' : 'Today') : 
+                     item.daysUntil === 1 ? (language === 'bs' ? 'Sutra' : 'Tomorrow') : 
                      `${item.daysUntil}d`}
                   </Badge>
                 </div>
@@ -1523,7 +1534,7 @@ export default function ProjectTimeline({
             isMobile ? "text-lg" : "text-xl"
           )}>
             <Calendar className="h-5 w-5" />
-            Timeline Events
+{language === 'bs' ? 'Vremenski Događaji' : 'Timeline Events'}
           </CardTitle>
         </CardHeader>
         <CardContent className={cn(
@@ -1542,13 +1553,13 @@ export default function ProjectTimeline({
                 "font-semibold mb-2",
                 isMobile ? "text-base" : "text-lg"
               )}>
-                No Timeline Events
+{language === 'bs' ? 'Nema Vremenskih Događaja' : 'No Timeline Events'}
               </h3>
               <p className={cn(
                 "text-muted-foreground mb-4",
                 isMobile ? "text-sm" : "text-base"
               )}>
-                Start adding events to track project progress and milestones.
+{language === 'bs' ? 'Počnite dodavati događaje da pratite napredak projekta i prekretnice.' : 'Start adding events to track project progress and milestones.'}
               </p>
               <Button 
                 onClick={() => setShowAddEventModal(true)}
@@ -1557,7 +1568,7 @@ export default function ProjectTimeline({
                 )}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add First Event
+{language === 'bs' ? 'Dodaj Prvi Događaj' : 'Add First Event'}
               </Button>
             </div>
           ) : (

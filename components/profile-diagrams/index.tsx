@@ -1,6 +1,7 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Eye, EyeOff } from 'lucide-react'
+import { useI18n } from '@/contexts/i18n-context'
 
 // Base interface for all profile components
 export interface BaseProfileProps {
@@ -813,6 +814,7 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
   defaultVisible = false,
   size = 'medium'
 }) => {
+  const { t } = useI18n()
   const [isVisible, setIsVisible] = React.useState(defaultVisible)
 
   const renderProfile = () => {
@@ -876,7 +878,7 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
   return (
     <div className={className}>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-medium text-foreground">Cross-Section View</div>
+        <div className="text-sm font-medium text-foreground">{t('crossSectionView')}</div>
         <Button
           variant="outline"
           size="sm"

@@ -39,13 +39,15 @@ import {
   Wrench, 
   Clock,
   Layers,
-  ArrowRight
+  ArrowRight,
+  FolderOpen
 } from 'lucide-react'
 import { useProjects } from '@/contexts/project-context'
 import { cn } from '@/lib/utils'
 import { ProjectStatus, type Project } from '@/lib/types'
 import { PROJECT_STATUS_LABELS } from '@/lib/project-utils'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 // Project template definitions
 interface ProjectTemplate {
@@ -187,6 +189,7 @@ export default function ProjectCreationModal({
   onProjectCreated,
   editProject 
 }: ProjectCreationModalProps) {
+  const { t } = useI18n()
   const { createProject, updateProject } = useProjects()
   const isEditMode = !!editProject
   

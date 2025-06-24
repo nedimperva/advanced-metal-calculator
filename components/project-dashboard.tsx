@@ -68,6 +68,7 @@ import { ProjectStatus, type Project } from '@/lib/types'
 import { LoadingSpinner } from '@/components/loading-states'
 import ProjectCard from '@/components/project-card'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 // View modes
 type ViewMode = 'grid' | 'list'
@@ -123,6 +124,8 @@ export default function ProjectDashboard({
 
   // Search debouncing
   const [searchInput, setSearchInput] = useState(searchTerm)
+  
+  const { t } = useI18n()
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -289,8 +292,8 @@ export default function ProjectDashboard({
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-            <p className="text-muted-foreground">
-              Manage your construction projects and track materials
+            <p className="text-lg text-muted-foreground mb-6">
+              {t('manageConstructionProjects')}
             </p>
           </div>
           
@@ -299,9 +302,13 @@ export default function ProjectDashboard({
               <Layers className="h-4 w-4 mr-2" />
               Templates
             </Button> */}
-            <Button onClick={handleCreateProject}>
+            <Button 
+              onClick={() => onCreateProject()}
+              className="mb-6"
+              size="lg"
+            >
               <Plus className="h-4 w-4 mr-2" />
-              New Project
+              {t('newProject')}
             </Button>
           </div>
         </div>
@@ -319,7 +326,7 @@ export default function ProjectDashboard({
                     <FolderOpen className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Projects</p>
+                    <p className="text-sm text-muted-foreground">{t('totalProjects')}</p>
                     <p className="text-2xl font-bold">{statistics.totalProjects}</p>
                   </div>
                 </div>
@@ -333,7 +340,7 @@ export default function ProjectDashboard({
                     <BarChart3 className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Active Projects</p>
+                    <p className="text-sm text-muted-foreground">{t('activeProjects')}</p>
                     <p className="text-2xl font-bold">{statistics.projectsByStatus.active}</p>
                   </div>
                 </div>
@@ -347,7 +354,7 @@ export default function ProjectDashboard({
                     <DollarSign className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Investment</p>
+                    <p className="text-sm text-muted-foreground">{t('totalInvestment')}</p>
                     <p className="text-2xl font-bold">${statistics.totalProjectCosts.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">
                       Budget: ${statistics.totalBudget.toLocaleString()}
@@ -364,7 +371,7 @@ export default function ProjectDashboard({
                     <TrendingUp className="h-5 w-5 text-orange-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Completion Rate</p>
+                    <p className="text-sm text-muted-foreground">{t('completionRate')}</p>
                     <p className="text-2xl font-bold">{statistics.completionRate.toFixed(1)}%</p>
                   </div>
                 </div>
@@ -384,7 +391,7 @@ export default function ProjectDashboard({
                         <Users className="h-5 w-5 text-blue-600" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Total Labor Hours</p>
+                        <p className="text-sm text-muted-foreground">{t('totalLaborHours')}</p>
                         <p className="text-2xl font-bold">{statistics.workforceStats.totalLaborHours.toLocaleString()}</p>
                       </div>
                     </div>
@@ -398,7 +405,7 @@ export default function ProjectDashboard({
                         <Settings className="h-5 w-5 text-orange-600" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Machine Hours</p>
+                        <p className="text-sm text-muted-foreground">{t('machineHours')}</p>
                         <p className="text-2xl font-bold">{statistics.workforceStats.totalMachineryHours.toLocaleString()}</p>
                       </div>
                     </div>
@@ -412,7 +419,7 @@ export default function ProjectDashboard({
                         <DollarSign className="h-5 w-5 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Labor Costs</p>
+                        <p className="text-sm text-muted-foreground">{t('laborCosts')}</p>
                         <p className="text-2xl font-bold">${statistics.totalWorkforceCosts.toLocaleString()}</p>
                       </div>
                     </div>
@@ -426,7 +433,7 @@ export default function ProjectDashboard({
                         <BarChart3 className="h-5 w-5 text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Active Projects</p>
+                        <p className="text-sm text-muted-foreground">{t('activeProjects')}</p>
                         <p className="text-2xl font-bold">{statistics.workforceStats.projectsWithWorkforce}</p>
                         <p className="text-xs text-muted-foreground">with workforce</p>
                       </div>
@@ -445,7 +452,7 @@ export default function ProjectDashboard({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search projects..."
+            placeholder={t('searchProjects')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="pl-10"
@@ -462,7 +469,7 @@ export default function ProjectDashboard({
           }
         >
           <SelectTrigger className="w-full lg:w-[180px]">
-            <SelectValue placeholder="All Statuses" />
+            <SelectValue placeholder={t('allStatuses')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>

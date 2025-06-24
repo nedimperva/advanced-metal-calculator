@@ -39,6 +39,8 @@ import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
 import type { Calculation } from '@/lib/types'
 import { toast } from '@/hooks/use-toast'
+import { useMediaQuery } from '@/hooks/use-media-query'
+import { useI18n } from '@/contexts/i18n-context'
 
 interface MobileCalculationHistoryProps {
   calculations: Calculation[]
@@ -71,6 +73,8 @@ export function MobileCalculationHistory({
   onAddToComparison,
   onDeleteCalculation
 }: MobileCalculationHistoryProps) {
+  const { t } = useI18n()
+  const isMobile = useMediaQuery("(max-width: 768px)")
   const [historyFilters, setHistoryFilters] = useState<HistoryFilters>({
     projectId: 'all',
     search: '',
@@ -364,7 +368,7 @@ export function MobileCalculationHistory({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search calculations..."
+              placeholder={t('searchCalculations')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-10 pr-10"
@@ -411,7 +415,7 @@ export function MobileCalculationHistory({
                       onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, projectId: value }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="All Projects" />
+                        <SelectValue placeholder={t('allProjects')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Projects</SelectItem>
@@ -432,7 +436,7 @@ export function MobileCalculationHistory({
                       onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, dateRange: value as any }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="All Time" />
+                        <SelectValue placeholder={t('allTime')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Time</SelectItem>
@@ -450,7 +454,7 @@ export function MobileCalculationHistory({
                       onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, materialType: value }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="All Materials" />
+                        <SelectValue placeholder={t('allMaterials')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Materials</SelectItem>

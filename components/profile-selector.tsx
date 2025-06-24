@@ -39,7 +39,9 @@ export default function ProfileSelector({
 
   // Get material compatibility data
   const compatibleCategories = getCompatibleProfileCategories(material)
-  const materialNotes = getMaterialProfileNotes(material)
+  const materialNotesKey = getMaterialProfileNotes(material)
+  // Translate the notes if they are a translation key, otherwise use as-is for compatibility
+  const materialNotes = materialNotesKey && materialNotesKey.includes('Desc') ? t(materialNotesKey as any) : materialNotesKey
   
   // Filter available profile categories based on material compatibility
   const availableCategories = Object.entries(PROFILES).filter(([key]) => 

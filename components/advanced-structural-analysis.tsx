@@ -35,13 +35,15 @@ interface AdvancedStructuralAnalysisProps {
   memberLength: number
   selectedMaterial?: MaterialGrade | null
   profileName?: string
+  materialName?: string
 }
 
 export function AdvancedStructuralAnalysis({ 
   structuralProperties, 
   memberLength,
   selectedMaterial,
-  profileName
+  profileName,
+  materialName
 }: AdvancedStructuralAnalysisProps) {
   // Analysis parameters state - auto-populate from selected material
   const [yieldStrength, setYieldStrength] = useState<number>(selectedMaterial?.yieldStrength || 250)
@@ -313,7 +315,7 @@ export function AdvancedStructuralAnalysis({
               Profile: {profileName || 'Not Selected'}
             </Badge>
             <Badge variant="outline" className="font-normal">
-              Material: {selectedMaterial?.name || 'Not Selected'}
+              Material: {materialName || 'Not Selected'}
             </Badge>
             <Badge variant="outline" className="font-normal">
               Length: {memberLength.toFixed(0)} cm
