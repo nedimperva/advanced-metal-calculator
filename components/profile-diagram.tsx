@@ -1,4 +1,7 @@
 import React from 'react'
+import { Button } from '@/components/ui/button'
+import { Eye, EyeOff, Calculator } from 'lucide-react'
+import { useI18n } from '@/contexts/i18n-context'
 
 interface ProfileDiagramProps {
   profileType: string
@@ -7,6 +10,8 @@ interface ProfileDiagramProps {
 }
 
 export function ProfileDiagram({ profileType, dimensions, className = "" }: ProfileDiagramProps) {
+  const { t } = useI18n()
+
   const renderDiagram = () => {
     const dims = Object.fromEntries(
       Object.entries(dimensions).map(([key, value]) => [key, parseFloat(value) || 0])
@@ -237,7 +242,7 @@ export function ProfileDiagram({ profileType, dimensions, className = "" }: Prof
   return (
     <div className={`bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950 
                      rounded-lg border border-border/30 p-4 ${className}`}>
-      <div className="text-xs text-muted-foreground mb-2 text-center">Cross-Section View</div>
+      <div className="text-xs text-muted-foreground mb-2 text-center">{t('crossSectionView') || 'Cross-Section View'}</div>
       {renderDiagram()}
     </div>
   )

@@ -7,13 +7,14 @@ import { Toaster } from "@/components/ui/toaster"
 import { I18nProvider } from "@/contexts/i18n-context"
 import { ColorThemeProvider } from "@/contexts/color-theme-context"
 import { ProjectProvider } from "@/contexts/project-context"
+import { TaskProvider } from "@/contexts/task-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Professional Metal Calculator",
-  description: "Calculate weights and properties for structural profiles and materials",
-  keywords: ["metal calculator", "steel calculator", "weight calculator", "structural calculator", "engineering calculator"],
+  title: "SteelForge Pro - Comprehensive Steel Fabrication Management",
+  description: "Professional steel fabrication management platform with project management, workforce tracking, calculations, and timeline management for construction professionals",
+  keywords: ["steel fabrication", "construction management", "project management", "workforce tracking", "metal calculator", "structural analysis", "fabrication platform"],
 }
 
 export const viewport: Viewport = {
@@ -38,12 +39,14 @@ export default function RootLayout({
           <ThemeProvider>
             <ColorThemeProvider>
               <ProjectProvider>
-                <div className="min-h-screen bg-background text-foreground antialiased">
-                  <ErrorBoundary>
-                    {children}
-                    <Toaster />
-                  </ErrorBoundary>
-                </div>
+                <TaskProvider>
+                  <div className="min-h-screen bg-background text-foreground antialiased">
+                    <ErrorBoundary>
+                      {children}
+                      <Toaster />
+                    </ErrorBoundary>
+                  </div>
+                </TaskProvider>
               </ProjectProvider>
             </ColorThemeProvider>
           </ThemeProvider>

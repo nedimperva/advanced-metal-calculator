@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock, FolderOpen, Plus, Archive } from "lucide-react"
+import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock, FolderOpen, Plus, Archive, Users } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -80,8 +80,11 @@ import {
   calculateUnitCost,
   getRecommendedPricingModel 
 } from "@/lib/pricing-models"
-import { getProfileTypeName } from "@/lib/i18n"
+import { getProfileTypeName, getMaterialGradeName } from "@/lib/i18n"
 import { CalculationHistory, CalculationComparison } from "@/components/calculation-comparison"
+import GlobalWorkers from "@/components/global-workers"
+import GlobalMachinery from "@/components/global-machinery"
+import DailyJournal from "@/components/daily-journal"
 
 // Projects Tab Content Component
 function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject?: Project }) {
@@ -153,7 +156,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
         onEdit={() => {
           // When editing from project details, open edit modal while staying in project details
           if (selectedProject) {
-            setEditingProject(selectedProject || null)
+            setEditingProject(selectedProject)
             setShowCreateDialog(true)
           }
         }}
@@ -191,7 +194,7 @@ function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject
           }
         }}
         onProjectCreated={handleProjectCreated}
-        editProject={editingProject}
+        editProject={editingProject ?? undefined}
       />
     </div>
   )
@@ -243,7 +246,7 @@ function getProfileTypeForViewer(profileType: string, dimensions: Record<string,
   return profileType
 }
 
-export default function MetalWeightCalculator() {
+export default function SteelForgePro() {
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [layoutReady, setLayoutReady] = useState(false)
   const { trackStandardSize, trackDimension, trackCalculation, getSuggestions, updateDefaults } = useUserPreferences()
@@ -368,9 +371,35 @@ export default function MetalWeightCalculator() {
     }
   }, [activeTab, setCurrentProject])
 
+  // Handle URL parameters for workforce sub-view
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const workforceViewParam = urlParams.get('workforce-view')
+      if (workforceViewParam && (workforceViewParam === 'workers' || workforceViewParam === 'machinery' || workforceViewParam === 'journal')) {
+        setWorkforceView(workforceViewParam)
+      }
+    }
+  }, [activeTab])
+
+  // Listen for navigation events from other components
+  useEffect(() => {
+    const handleNavigateToWorkforceJournal = () => {
+      setActiveTab('workforce')
+      setWorkforceView('journal')
+    }
+
+    window.addEventListener('navigate-to-workforce-journal', handleNavigateToWorkforceJournal)
+    
+    return () => {
+      window.removeEventListener('navigate-to-workforce-journal', handleNavigateToWorkforceJournal)
+    }
+  }, [])
+
   // Comparison state
   const [comparisonCalculations, setComparisonCalculations] = useState<Set<string>>(new Set())
   const [historyCompareView, setHistoryCompareView] = useState<'history' | 'compare'>('history')
+  const [workforceView, setWorkforceView] = useState<'workers' | 'machinery' | 'journal'>('workers')
 
   // Error handling and validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([])
@@ -736,7 +765,7 @@ export default function MetalWeightCalculator() {
         parseFloat(length),
         weightUnit,
         lengthUnit
-      ) : 0
+      ) : undefined
 
       const totalCost = pricePerUnit ? calculateTotalCost(
         pricingModel,
@@ -746,7 +775,7 @@ export default function MetalWeightCalculator() {
         parseFloat(quantity),
         weightUnit,
         lengthUnit
-      ) : 0
+      ) : undefined
 
       const totalWeight = weight * parseFloat(quantity)
 
@@ -755,9 +784,9 @@ export default function MetalWeightCalculator() {
         id: isEditMode ? editingCalculationId! : Date.now().toString(),
         profileCategory,
         profileType,
-        standardSize: standardSize || "Custom",
+        standardSize: standardSize || t('custom'),
         dimensions: { ...dimensions, length },
-        materialName: selectedMaterial.name,
+        materialName: getMaterialGradeName(language, material, grade),
         profileName: getProfileTypeName(language, profileType),
         material,
         grade,
@@ -781,10 +810,10 @@ export default function MetalWeightCalculator() {
           profileCategory,
           profileType,
           profileName: getProfileTypeName(language, profileType),
-          standardSize: standardSize || "Custom",
+          standardSize: standardSize || t('custom'),
           material,
           grade,
-          materialName: selectedMaterial.name,
+          materialName: getMaterialGradeName(language, material, grade),
           dimensions: { ...dimensions, length },
           weight,
           weightUnit,
@@ -824,10 +853,10 @@ export default function MetalWeightCalculator() {
           profileCategory,
           profileType,
           profileName: getProfileTypeName(language, profileType),
-          standardSize: standardSize || "Custom",
+          standardSize: standardSize || t('custom'),
           material,
           grade,
-          materialName: selectedMaterial.name,
+          materialName: getMaterialGradeName(language, material, grade),
           dimensions: { ...dimensions, length },
           weight,
           weightUnit,
@@ -886,7 +915,7 @@ export default function MetalWeightCalculator() {
       setShowNotesInput(false)
 
       toast({
-        title: isEditMode ? "Calculation Updated" : t('calculationSaved'),
+        title: isEditMode ? t('calculationUpdated') : t('calculationSaved'),
         description: isEditMode 
           ? `Updated "${mainName}" in ${projectName}`
           : `Saved "${mainName}" to ${projectName}`,
@@ -919,10 +948,10 @@ export default function MetalWeightCalculator() {
       profileCategory,
       profileType,
       profileName: getProfileTypeName(language, profileType),
-      standardSize: standardSize || "Custom",
+      standardSize: standardSize || t('custom'),
       material,
       grade,
-      materialName: selectedMaterial.name,
+      materialName: getMaterialGradeName(language, material, grade),
       dimensions: { ...dimensions, length },
       weight,
       weightUnit,
@@ -937,7 +966,7 @@ export default function MetalWeightCalculator() {
       // Basic Information - Using new naming convention
       profileSpecification: mainName,
       material: materialTag,
-      standardSize: standardSize || "Custom",
+      standardSize: standardSize || t('custom'),
       density: `${selectedMaterial.density} g/cm³`,
       
       // Dimensions
@@ -1029,10 +1058,10 @@ export default function MetalWeightCalculator() {
       profileCategory,
       profileType,
       profileName: getProfileTypeName(language, profileType),
-      standardSize: standardSize || "Custom",
+      standardSize: standardSize || t('custom'),
       material,
       grade,
-      materialName: selectedMaterial.name,
+      materialName: getMaterialGradeName(language, material, grade),
       dimensions: { ...dimensions, length },
       weight,
       weightUnit,
@@ -1045,7 +1074,7 @@ export default function MetalWeightCalculator() {
     const shortMaterialTag = getShortMaterialTag(materialTag)
 
     const shareData = {
-      title: "Metal Weight Calculator Result",
+              title: "SteelForge Pro Calculation Result",
       text: `${mainName} (${shortMaterialTag}) weighs ${weight.toFixed(4)} ${WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name.toLowerCase()}`,
       url: window.location.href,
     }
@@ -1090,13 +1119,13 @@ export default function MetalWeightCalculator() {
       }
       
       toast({
-        title: "Calculation Deleted",
-        description: "The calculation has been removed from history.",
+              title: t('calculationDeleted'),
+      description: t('calculationRemoved'),
       })
     } catch (error) {
       console.error("Error deleting calculation:", error)
       toast({
-        title: "Delete Failed",
+        title: t('deleteFailed'),
         description: "Failed to delete calculation. Please try again.",
         variant: "destructive",
       })
@@ -1110,8 +1139,8 @@ export default function MetalWeightCalculator() {
     setCalculationNotes("")
     setShowNotesInput(false)
     toast({
-      title: "Edit Cancelled",
-      description: "Returned to normal mode.",
+      title: t('editCancelled'),
+      description: t('returnedToNormalMode'),
     })
   }
 
@@ -1137,8 +1166,8 @@ export default function MetalWeightCalculator() {
     setDimensions(otherDimensions)
 
     // Set standard size if available
-    setStandardSize(calc.standardSize === "Custom" ? "" : calc.standardSize)
-    setCustomInput(calc.standardSize === "Custom")
+    setStandardSize(calc.standardSize === t('custom') ? "" : calc.standardSize)
+    setCustomInput(calc.standardSize === t('custom'))
 
     // Load pricing information if available (backward compatibility)
     if (calc.quantity !== undefined) {
@@ -1165,8 +1194,8 @@ export default function MetalWeightCalculator() {
       setIsEditMode(true)
       setEditingCalculationId(calc.id)
       toast({
-        title: "Edit Mode",
-        description: `Editing: ${calc.name || 'Calculation'}. Click Update to save changes.`,
+        title: t('editMode'),
+        description: `${t('editingCalculation')}: ${calc.name || 'Calculation'}. ${t('clickUpdateToSave')}.`,
       })
     } else {
       setIsEditMode(false)
@@ -1474,7 +1503,7 @@ export default function MetalWeightCalculator() {
             volume={volume}
             className={safeAnimation(animationPresets.result)}
             onSave={saveCalculation}
-            onShare={shareCalculation}
+            onBreakdown={() => setActiveTab("breakdown")}
             onAdvancedAnalysis={() => setActiveTab("advanced")}
             // Pricing props
             quantity={quantity}
@@ -1508,7 +1537,7 @@ export default function MetalWeightCalculator() {
             <CardContent className="space-y-4">
               {/* Current Pricing Display */}
               <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg mb-3">
-                <span>Defaults: {currency} • {PRICING_MODELS[pricingModel].name}</span>
+                <span>{t('defaults')}: {currency} • {PRICING_MODELS[pricingModel].name}</span>
                 <span className="text-foreground">{t('changeInSettings')}</span>
               </div>
 
@@ -1518,7 +1547,7 @@ export default function MetalWeightCalculator() {
                   <Label htmlFor="quantity" className="text-xs">{t('quantity')}</Label>
                   <UnitInput
                     id="quantity"
-                    unit="pcs"
+                    unit={t('pcs')}
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="1"
@@ -1765,7 +1794,7 @@ export default function MetalWeightCalculator() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="notes-toggle" className="text-sm font-medium">
-                    Add notes (optional)
+                                          {t('addNotesOptional')}
                   </Label>
                   <Switch
                     id="notes-toggle"
@@ -1780,7 +1809,7 @@ export default function MetalWeightCalculator() {
                     safeAnimation(animations.slideInFromBottom)
                   )}>
                     <Input
-                      placeholder="Add notes about this calculation..."
+                      placeholder={t('addNotesPlaceholder')}
                       value={calculationNotes}
                       onChange={(e) => setCalculationNotes(e.target.value)}
                       className="text-sm"
@@ -1804,7 +1833,7 @@ export default function MetalWeightCalculator() {
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
                   )}
-                  {isEditMode ? "Update" : t('save')}
+                                          {isEditMode ? t('update') : t('save')}
                   {activeProjectId && (
                     <span className="ml-1 text-xs opacity-80">
                       to {projects.find(p => p.id === activeProjectId)?.name}
@@ -1818,7 +1847,7 @@ export default function MetalWeightCalculator() {
                     className="flex-1"
                     disabled={isSaving}
                   >
-                    Cancel Edit
+                    {t('cancelEdit')}
                   </Button>
                 )}
                 <Button 
@@ -1889,10 +1918,10 @@ export default function MetalWeightCalculator() {
                 }
               }}>
                 <SelectTrigger className="w-64 h-8 text-xs">
-                  <SelectValue placeholder="Select project (optional)" />
+                                          <SelectValue placeholder={t('selectProjectOptional')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No Project</SelectItem>
+                                      <SelectItem value="none">{t('noProject')}</SelectItem>
                   {projects.map(project => (
                     <SelectItem key={project.id} value={project.id}>
                       <div className="flex items-center gap-2">
@@ -1919,7 +1948,7 @@ export default function MetalWeightCalculator() {
                   }}
                   className="h-8 text-xs"
                 >
-                  View Project
+                  {t('viewProject')}
                 </Button>
               )}
             </div>
@@ -1940,15 +1969,21 @@ export default function MetalWeightCalculator() {
             },
             {
               value: "comparison",
-              label: "History & Compare",
+              label: t('historyAndCompare'),
               icon: <BarChart3 className="h-3 w-3" />,
               shortLabel: "Hist"
             },
             {
               value: "projects", 
-              label: "Projects",
+              label: t('projects'),
               icon: <FolderOpen className="h-3 w-3" />,
               shortLabel: "Proj"
+            },
+            {
+              value: "workforce",
+              label: t('workforce'),
+              icon: <Users className="h-3 w-3" />,
+              shortLabel: "Work"
             }
           ]}
         >
@@ -2045,7 +2080,7 @@ export default function MetalWeightCalculator() {
                         <CardContent className="space-y-4">
                           {/* Current Units Display */}
                           <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg">
-                            <span>Units: {LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].name} • {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}</span>
+                            <span>{t('units')}: {LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].name} • {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}</span>
                             <span className="text-foreground">{t('changeInSettings')}</span>
                           </div>
 
@@ -2057,153 +2092,10 @@ export default function MetalWeightCalculator() {
                               {selectedProfile && (
                                 <div className="flex items-center gap-2">
                                   <Badge variant="outline" className="font-normal">
-                                    {(() => {
-                                      // Generate profile spec for display with actual dimensions
-                                      let profileSpec = ""
-                                      switch (profileType) {
-                                        case 'hea':
-                                          if (standardSize) {
-                                            profileSpec = standardSize
-                                          } else {
-                                            // Find the closest standard size based on height
-                                            const sizes = STANDARD_SIZES.hea
-                                            const height = parseFloat(dimensions.h || '0')
-                                            const closestSize = sizes.reduce((prev, curr) => {
-                                              const prevHeight = parseFloat(prev.dimensions.h)
-                                              const currHeight = parseFloat(curr.dimensions.h)
-                                              return Math.abs(currHeight - height) < Math.abs(prevHeight - height) ? curr : prev
-                                            })
-                                            profileSpec = closestSize.designation
-                                          }
-                                          break
-                                        case 'heb':
-                                          profileSpec = standardSize ? `HEB ${standardSize.replace('HEB ', '')}` : `HEB ${dimensions.h || '?'}x${dimensions.b || '?'}`
-                                          break
-                                        case 'hem':
-                                          profileSpec = standardSize ? `HEM ${standardSize.replace('HEM ', '')}` : `HEM ${dimensions.h || '?'}x${dimensions.b || '?'}`
-                                          break
-                                        case 'ipe':
-                                          profileSpec = standardSize ? `IPE ${standardSize.replace('IPE ', '')}` : `IPE ${dimensions.h || '?'}x${dimensions.b || '?'}`
-                                          break
-                                        case 'ipn':
-                                          profileSpec = standardSize ? `IPN ${standardSize.replace('IPN ', '')}` : `IPN ${dimensions.h || '?'}x${dimensions.b || '?'}`
-                                          break
-                                        case 'upn':
-                                          profileSpec = standardSize ? `UPN ${standardSize.replace('UPN ', '')}` : `UPN ${dimensions.h || '?'}x${dimensions.b || '?'}`
-                                          break
-                                        case 'rhs': 
-                                          if (standardSize) {
-                                            profileSpec = `RHS ${standardSize.replace('RHS ', '')}`
-                                          } else {
-                                            const h = dimensions.h || '?'
-                                            const b = dimensions.b || '?'
-                                            const t = dimensions.t || '?'
-                                            profileSpec = `RHS ${h}x${b}x${t}`
-                                          }
-                                          break
-                                        case 'shs':
-                                          if (standardSize) {
-                                            profileSpec = `SHS ${standardSize.replace('SHS ', '')}`
-                                          } else {
-                                            const a = dimensions.a || '?'
-                                            const t = dimensions.t || '?'
-                                            profileSpec = `SHS ${a}x${t}`
-                                          }
-                                          break
-                                        case 'chs':
-                                          if (standardSize) {
-                                            profileSpec = `CHS ${standardSize.replace('CHS ', '')}`
-                                          } else {
-                                            const od = dimensions.od || '?'
-                                            const wt = dimensions.wt || '?'
-                                            profileSpec = `CHS ${od}x${wt}`
-                                          }
-                                          break
-                                        case 'plate':
-                                        case 'sheetMetal':
-                                        case 'checkeredPlate':
-                                        case 'perforatedPlate':
-                                          if (standardSize) {
-                                            profileSpec = standardSize
-                                          } else {
-                                            const plateLength = dimensions.length || '?'
-                                            const plateWidth = dimensions.width || '?'
-                                            const plateThickness = dimensions.thickness || '?'
-                                            const plateType = profileType === 'plate' ? 'PLATE' : 
-                                                             profileType === 'sheetMetal' ? 'SHEET' :
-                                                             profileType === 'checkeredPlate' ? 'CHECKER' : 'PERF'
-                                            profileSpec = `${plateType} ${plateLength}x${plateWidth}x${plateThickness}`
-                                          }
-                                          break
-                                        case 'equalAngle':
-                                          if (standardSize) {
-                                            profileSpec = standardSize
-                                          } else {
-                                            const a = dimensions.a || '?'
-                                            const t = dimensions.t || '?'
-                                            profileSpec = `L${a}x${a}x${t}`
-                                          }
-                                          break
-                                        case 'unequalAngle':
-                                          if (standardSize) {
-                                            profileSpec = standardSize
-                                          } else {
-                                            const a = dimensions.a || '?'
-                                            const b = dimensions.b || '?'
-                                            const t = dimensions.t || '?'
-                                            profileSpec = `L${a}x${b}x${t}`
-                                          }
-                                          break
-                                        case 'pipe':
-                                          if (standardSize) {
-                                            profileSpec = standardSize
-                                          } else {
-                                            const diameter = dimensions.diameter || dimensions.od || '?'
-                                            const wallThickness = dimensions.wt || dimensions.t || '?'
-                                            profileSpec = `PIPE ${diameter}x${wallThickness}`
-                                          }
-                                          break
-                                        case 'roundBar':
-                                          if (standardSize) {
-                                            profileSpec = standardSize
-                                          } else {
-                                            const roundDiameter = dimensions.diameter || dimensions.d || '?'
-                                            profileSpec = `Ø${roundDiameter}`
-                                          }
-                                          break
-                                        case 'squareBar':
-                                          if (standardSize) {
-                                            profileSpec = standardSize
-                                          } else {
-                                            const squareSide = dimensions.a || dimensions.side || '?'
-                                            profileSpec = `SQ${squareSide}`
-                                          }
-                                          break
-                                        case 'hexBar':
-                                          if (standardSize) {
-                                            profileSpec = standardSize
-                                          } else {
-                                            const hexDistance = dimensions.distance || dimensions.d || '?'
-                                            profileSpec = `HEX${hexDistance}`
-                                          }
-                                          break
-                                        case 'flatBar':
-                                          if (standardSize) {
-                                            profileSpec = standardSize
-                                          } else {
-                                            const width = dimensions.b || dimensions.width || '?'
-                                            const thickness = dimensions.t || dimensions.thickness || '?'
-                                            profileSpec = `FLAT ${width}x${thickness}`
-                                          }
-                                          break
-                                        default: 
-                                          profileSpec = standardSize || selectedProfile.name
-                                      }
-                                      return profileSpec
-                                    })()}
+                                    {getProfileTypeName(language, profileType)} {standardSize && `(${standardSize})`}
                                   </Badge>
                                   <Badge variant="secondary" className="text-xs font-normal">
-                                    {selectedMaterial?.name || ''}
+                                    {selectedMaterial ? getMaterialGradeName(language, material, grade) : ''}
                                   </Badge>
                                 </div>
                               )}
@@ -2350,7 +2242,7 @@ export default function MetalWeightCalculator() {
                     <CardContent className="space-y-4">
                       {/* Current Units Display */}
                       <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg">
-                        <span>Units: {LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].name} • {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}</span>
+                        <span>{t('units')}: {LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].name} • {WEIGHT_UNITS[weightUnit as keyof typeof WEIGHT_UNITS].name}</span>
                         <span className="text-foreground">{t('changeInSettings')}</span>
                       </div>
 
@@ -2458,6 +2350,7 @@ export default function MetalWeightCalculator() {
                 structuralProperties={structuralProperties}
                 weight={weight}
                 weightUnit={weightUnit}
+                materialName={getMaterialGradeName(language, material, grade)}
                 temperatureEffects={useTemperatureEffects && structuralProperties.adjustedDensity ? {
                   originalDensity: selectedMaterial.density,
                   adjustedDensity: structuralProperties.adjustedDensity,
@@ -2482,6 +2375,7 @@ export default function MetalWeightCalculator() {
                 memberLength={parseFloat(length) * LENGTH_UNITS[lengthUnit as keyof typeof LENGTH_UNITS].factor} // Convert to cm
                 selectedMaterial={selectedMaterial}
                 profileName={selectedProfile?.name || `${profileType.toUpperCase()}${standardSize ? ` ${standardSize}` : ''}`}
+                materialName={getMaterialGradeName(language, material, grade)}
               />
             ) : (
               <Card className="backdrop-blur-sm bg-card/90 border-accent/20">
@@ -2511,7 +2405,7 @@ export default function MetalWeightCalculator() {
                   className="flex-1"
                 >
                   <Archive className="h-4 w-4 mr-2" />
-                  {isDesktop ? 'History' : 'History'}
+                  {isDesktop ? t('history') : t('history')}
                 </Button>
                 <Button
                   variant={historyCompareView === 'compare' ? 'default' : 'ghost'}
@@ -2520,7 +2414,7 @@ export default function MetalWeightCalculator() {
                   className="flex-1"
                 >
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  {isDesktop ? `Compare (${comparisonCalculations.size})` : `Compare (${comparisonCalculations.size})`}
+                  {isDesktop ? `${t('compare')} (${comparisonCalculations.size})` : `${t('compare')} (${comparisonCalculations.size})`}
                 </Button>
               </div>
 
@@ -2540,20 +2434,20 @@ export default function MetalWeightCalculator() {
                       
                       // Show success message
                       toast({
-                        title: "Calculation Updated",
-                        description: "Calculation has been assigned to the project.",
+                                    title: t('calculationUpdated'),
+            description: "Calculation has been assigned to the project.",
                       })
                     }}
                     onAddToComparison={(id) => {
                       if (comparisonCalculations.size < 5) {
                         setComparisonCalculations(prev => new Set([...prev, id]))
                         toast({
-                          title: "Added to Comparison",
-                          description: "Calculation added to comparison list.",
+                                                  title: t('addedToComparison'),
+                        description: t('calculationAddedToComparison'),
                         })
                       } else {
                         toast({
-                          title: "Comparison Limit",
+                          title: t('comparisonLimit'),
                           description: "You can compare up to 5 calculations at once.",
                           variant: "destructive"
                         })
@@ -2584,6 +2478,64 @@ export default function MetalWeightCalculator() {
               isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
             )}>
               <ProjectsTabContent initialSelectedProject={initialSelectedProject} />
+            </div>
+          </SwipeTabs.Content>
+
+          {/* Workforce Tab with Sub-tabs */}
+          <SwipeTabs.Content value="workforce" className="">
+            <div className={cn(
+              "overflow-y-auto space-y-4",
+              isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
+            )}>
+              {/* Sub-tabs for Workforce */}
+              <div className={cn(
+                "flex bg-muted rounded-lg p-1 sticky top-0 z-10 backdrop-blur-sm bg-muted/95 border border-border/50",
+                !isDesktop && "mx-2"
+              )}>
+                <Button
+                  variant={workforceView === 'workers' ? 'default' : 'ghost'}
+                  size={isDesktop ? "sm" : "sm"}
+                  onClick={() => setWorkforceView('workers')}
+                  className={cn(
+                    "flex-1",
+                    !isDesktop && "text-xs px-2 py-1.5 h-8"
+                  )}
+                >
+                  <Users className={cn("mr-1", isDesktop ? "h-4 w-4" : "h-3 w-3")} />
+                  {isDesktop ? t('workers') : t('workers')}
+                </Button>
+                <Button
+                  variant={workforceView === 'machinery' ? 'default' : 'ghost'}
+                  size={isDesktop ? "sm" : "sm"}
+                  onClick={() => setWorkforceView('machinery')}
+                  className={cn(
+                    "flex-1",
+                    !isDesktop && "text-xs px-2 py-1.5 h-8"
+                  )}
+                >
+                  <Cog className={cn("mr-1", isDesktop ? "h-4 w-4" : "h-3 w-3")} />
+                  {isDesktop ? t('machinery') : t('machinery')}
+                </Button>
+                <Button
+                  variant={workforceView === 'journal' ? 'default' : 'ghost'}
+                  size={isDesktop ? "sm" : "sm"}
+                  onClick={() => setWorkforceView('journal')}
+                  className={cn(
+                    "flex-1",
+                    !isDesktop && "text-xs px-2 py-1.5 h-8"
+                  )}
+                >
+                  <Clock className={cn("mr-1", isDesktop ? "h-4 w-4" : "h-3 w-3")} />
+                  {isDesktop ? t('journal') : t('journal')}
+                </Button>
+              </div>
+
+              {/* Content based on selected workforce view */}
+              <div className={cn(!isDesktop && "px-2")}>
+                {workforceView === 'workers' && <GlobalWorkers />}
+                {workforceView === 'machinery' && <GlobalMachinery />}
+                {workforceView === 'journal' && <DailyJournal />}
+              </div>
             </div>
           </SwipeTabs.Content>
         </SwipeTabs>

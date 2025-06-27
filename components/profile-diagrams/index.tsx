@@ -1,6 +1,7 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Eye, EyeOff } from 'lucide-react'
+import { useI18n } from '@/contexts/i18n-context'
 
 // Base interface for all profile components
 export interface BaseProfileProps {
@@ -813,7 +814,12 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
   defaultVisible = false,
   size = 'medium'
 }) => {
+  const { t, language } = useI18n()
   const [isVisible, setIsVisible] = React.useState(defaultVisible)
+  
+  // Simple translation for Show/Hide
+  const showText = language === 'bs' ? 'Prikaži' : 'Show'
+  const hideText = language === 'bs' ? 'Sakrij' : 'Hide'
 
   const renderProfile = () => {
     const props: BaseProfileProps = {
@@ -876,7 +882,7 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
   return (
     <div className={className}>
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-medium text-foreground">Cross-Section View</div>
+        <div className="text-sm font-medium text-foreground">{t('crossSectionView')}</div>
         <Button
           variant="outline"
           size="sm"
@@ -884,7 +890,7 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
           className="text-xs h-8"
         >
           {isVisible ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-          {isVisible ? 'Hide' : 'Show'}
+          {isVisible ? hideText : showText}
         </Button>
       </div>
       

@@ -50,6 +50,7 @@ import { ProjectStatus, type Project } from '@/lib/types'
 import { LoadingSpinner } from '@/components/loading-states'
 import ProjectCard from '@/components/project-card'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 interface MobileProjectDashboardProps {
   className?: string
@@ -66,6 +67,7 @@ export default function MobileProjectDashboard({
   onCreateProject,
   onEditProject 
 }: MobileProjectDashboardProps) {
+  const { t } = useI18n()
   // Router no longer needed - navigation handled by parent
   const isMobile = !useMediaQuery("(min-width: 768px)")
   
@@ -338,7 +340,7 @@ export default function MobileProjectDashboard({
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search projects..."
+              placeholder={t('searchProjects')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-10 pr-10"
@@ -390,7 +392,7 @@ export default function MobileProjectDashboard({
                       }
                     >
                       <SelectTrigger className="mt-2">
-                        <SelectValue placeholder="All Statuses" />
+                        <SelectValue placeholder={t('allStatuses')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>

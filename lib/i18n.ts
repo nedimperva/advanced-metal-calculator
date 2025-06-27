@@ -13,6 +13,14 @@ export interface Translations {
   advanced: string
   settings: string
   
+  // New tabs and navigation
+  projects: string
+  workforce: string
+  workers: string
+  machinery: string
+  journal: string
+  historyAndCompare: string
+  
   // Settings
   settingsTitle: string
   appearance: string
@@ -27,7 +35,7 @@ export interface Translations {
   structuralGray: string
   copperBronze: string
   language: string
-  units: string
+  unitsSettings: string
   defaultLengthUnit: string
   defaultWeightUnit: string
   
@@ -126,6 +134,89 @@ export interface Translations {
   recent: string
   allSizes: string
   allOptions: string
+  
+  // Projects
+  projectName: string
+  projectDescription: string
+  createProject: string
+  editProject: string
+  deleteProject: string
+  viewProject: string
+  noProject: string
+  selectProject: string
+  generalHistory: string
+  projectDetails: string
+  projectMaterials: string
+  projectTimeline: string
+  projectTasks: string
+  projectStatus: string
+  projectProgress: string
+  addCalculation: string
+  moveToProject: string
+  projectCreated: string
+  projectUpdated: string
+  projectDeleted: string
+  
+  // Workforce
+  workersManagement: string
+  machineryManagement: string
+  dailyJournal: string
+  addWorker: string
+  addMachinery: string
+  workerName: string
+  hourlyRate: string
+  specialization: string
+  machineryName: string
+  machineryType: string
+  operatingCost: string
+  hoursWorked: string
+  totalHours: string
+  journalEntry: string
+  timesheet: string
+  workLog: string
+  
+  // History & Compare
+  filterHistory: string
+  searchHistory: string
+  compareCalculations: string
+  addToComparison: string
+  removeFromComparison: string
+  comparisonLimit: string
+  clearFilters: string
+  resetFilters: string
+  showAll: string
+  dateRange: string
+  lastWeek: string
+  lastMonth: string
+  lastThreeMonths: string
+  lastSixMonths: string
+  
+  // Bulk operations
+  bulkEntry: string
+  bulkSelect: string
+  selectAll: string
+  deselectAll: string
+  applyToSelected: string
+  defaultHours: string
+  
+  // Templates
+  template: string
+  templates: string
+  saveTemplate: string
+  deleteTemplate: string
+  applyTemplate: string
+  templateName: string
+  createTemplate: string
+  
+  // View modes
+  quickMode: string
+  dailyMode: string
+  projectMode: string
+  
+  // Navigation
+  previousDay: string
+  nextDay: string
+  goToToday: string
   
   // Errors and validation
   calculationError: string
@@ -404,12 +495,117 @@ export interface Translations {
   warning: string
   error: string
   success: string
+  
+  // Missing keys for UI elements
+  update: string
+  custom: string
+  editMode: string
+  cancelEdit: string
+  addNotes: string
+  addNotesOptional: string
+  addNotesPlaceholder: string
+  defaults: string
+  units: string
+  selectProjectOptional: string
+  calculationUpdated: string
+  addedToComparison: string
+  calculationAddedToComparison: string
+  comparisonLimitReached: string
+  movedTo: string
+  editingCalculation: string
+  clickUpdateToSave: string
+  calculationDeleted: string
+  calculationRemoved: string
+  deleteFailed: string
+  editCancelled: string
+  returnedToNormalMode: string
+  updatedIn: string
+  pcs: string
+  
+  // New strings to translate  
+  crossSectionView: string
+  steelVersatileDesc: string
+  stainlessLimitedDesc: string
+  noCalculationsSelected: string
+  noCalculationsSelectedForComparison: string
+  selectCalculationsFromHistory: string
+  calculationHistoryTitle: string
+  searchCalculations: string
+  allProjects: string
+  allTime: string
+  allMaterials: string
+  allProfileTypes: string
+  clearAll: string
+  applyFilters: string
+  narrowDownHistory: string
+  exportSuccessful: string
+  exportedCalculations: string
+  
+  // Mobile history and comparison translations
+  noCalculationsInHistory: string
+  startCreatingCalculations: string
+  releaseToRefresh: string
+  pullToRefresh: string
+  filterCalculations: string
+  filters: string
+  calculationDetails: string
+  comparison: string
+  comparisonOptions: string
+  customizeComparison: string
+  sortBy: string
+  sortOrder: string
+  ascending: string
+  descending: string
+  viewMode: string
+  carousel: string
+  sideBySide: string
+  baseline: string
+  showLess: string
+  showMore: string
+  loadCalculation: string
+  created: string
+  at: string
+  weightPerUnit: string
+  costPerKg: string
+  
+  // Project Management & Dashboard
+  manageConstructionProjects: string
+  newProject: string
+  totalProjects: string
+  activeProjects: string
+  totalInvestment: string
+  budget: string
+  completionRate: string
+  workforceOverview: string
+  totalLaborHours: string
+  machineHours: string
+  laborCosts: string
+  searchProjects: string
+  allStatuses: string
+  lastUpdated: string
+  generalCalculations: string
+  overview: string
+  tasks: string
+  materials: string
+  timeline: string
+  progressOverview: string
+  overallProgress: string
+  taskManagement: string
+  addTask: string
+  noTasks: string
+  createFirstTask: string
+  rectangularBars: string
+  presets: string
+    calculationComparison: string
+  weight: string
+  actions: string
+  costWeight: string
 }
 
 export const translations: Record<Language, Translations> = {
   en: {
     // App title and navigation
-    appTitle: "Professional Metal Calculator",
+    appTitle: "SteelForge Pro",
     appSubtitle: "Calculate weights for structural profiles and materials",
     
     // Tabs
@@ -419,6 +615,14 @@ export const translations: Record<Language, Translations> = {
     breakdown: "Breakdown",
     advanced: "Advanced",
     settings: "Settings",
+    
+          // New tabs and navigation
+      projects: "Projects",
+      workforce: "Workforce", 
+      workers: "Workers",
+      machinery: "Machinery",
+      journal: "Journal",
+      historyAndCompare: "History & Compare",
     
     // Settings
     settingsTitle: "Settings",
@@ -433,9 +637,9 @@ export const translations: Record<Language, Translations> = {
     industrialOrange: "Industrial Orange",
     structuralGray: "Structural Gray",
     copperBronze: "Copper Bronze",
-    language: "Language",
-    units: "Units",
-    defaultLengthUnit: "Default Length Unit",
+          language: "Language",
+      unitsSettings: "Units",
+      defaultLengthUnit: "Default Length Unit",
     defaultWeightUnit: "Default Weight Unit",
     
     // Material and Profile Selection
@@ -533,6 +737,96 @@ export const translations: Record<Language, Translations> = {
     recent: "Recent",
     allSizes: "All Sizes",
     allOptions: "All Options",
+    
+    // Projects
+    projectName: "Project Name",
+    projectDescription: "Project Description",
+    createProject: "Create Project",
+    editProject: "Edit Project",
+    deleteProject: "Delete Project",
+    viewProject: "View Project",
+    noProject: "No Project",
+    selectProject: "Select Project",
+    generalHistory: "General History",
+    allProjects: "All Projects",
+    projectDetails: "Project Details",
+    projectMaterials: "Project Materials",
+    projectTimeline: "Project Timeline",
+    projectTasks: "Project Tasks",
+    projectStatus: "Project Status",
+    projectProgress: "Project Progress",
+    addCalculation: "Add Calculation",
+    moveToProject: "Move to Project",
+    projectCreated: "Project Created",
+    projectUpdated: "Project Updated",
+    projectDeleted: "Project Deleted",
+    
+    // Workforce
+    workersManagement: "Workers Management",
+    machineryManagement: "Machinery Management",
+    dailyJournal: "Daily Journal",
+    addWorker: "Add Worker",
+    addMachinery: "Add Machinery",
+    workerName: "Worker Name",
+    hourlyRate: "Hourly Rate",
+    specialization: "Specialization",
+    machineryName: "Machinery Name",
+    machineryType: "Machinery Type",
+    operatingCost: "Operating Cost",
+    hoursWorked: "Hours Worked",
+    totalHours: "Total Hours",
+    journalEntry: "Journal Entry",
+    timesheet: "Timesheet",
+    workLog: "Work Log",
+    
+    // History & Compare
+    filterHistory: "Filter History",
+    searchHistory: "Search History",
+    compareCalculations: "Compare Calculations",
+    addToComparison: "Add to Comparison",
+    removeFromComparison: "Remove from Comparison",
+    comparisonLimit: "Comparison Limit",
+    narrowDownHistory: "Narrow Down History",
+    clearFilters: "Clear Filters",
+    resetFilters: "Reset Filters",
+    showAll: "Show All",
+    dateRange: "Date Range",
+    materialType: "Material Type",
+    profileType: "Profile Type",
+    lastWeek: "Last Week",
+    lastMonth: "Last Month",
+    lastThreeMonths: "Last Three Months",
+    lastSixMonths: "Last Six Months",
+    thisWeek: "This Week",
+    thisMonth: "This Month",
+    
+    // Bulk operations
+    bulkEntry: "Bulk Entry",
+    bulkSelect: "Bulk Select",
+    selectAll: "Select All",
+    deselectAll: "Deselect All",
+    applyToSelected: "Apply to Selected",
+    defaultHours: "Default Hours",
+    
+    // Templates
+    template: "Template",
+    templates: "Templates",
+    saveTemplate: "Save Template",
+    deleteTemplate: "Delete Template",
+    applyTemplate: "Apply Template",
+    templateName: "Template Name",
+    createTemplate: "Create Template",
+    
+    // View modes
+    quickMode: "Quick Mode",
+    dailyMode: "Daily Mode",
+    projectMode: "Project Mode",
+    
+    // Navigation
+    previousDay: "Previous Day",
+    nextDay: "Next Day",
+    today: "Today",
+    goToToday: "Go to Today",
     
     // Errors and validation
     calculationError: "Calculation Error",
@@ -810,7 +1104,118 @@ export const translations: Record<Language, Translations> = {
     info: "Info",
     warning: "Warning",
     error: "Error",
-    success: "Success"
+    success: "Success",
+    
+    // Missing keys for UI elements
+    update: "Update",
+    custom: "Custom",
+    editMode: "Edit Mode",
+    cancelEdit: "Cancel Edit",
+    addNotes: "Add Notes",
+    addNotesOptional: "Add Notes (Optional)",
+    addNotesPlaceholder: "Add notes here...",
+    defaults: "Defaults",
+    units: "Units",
+    selectProjectOptional: "Select Project (Optional)",
+    calculationUpdated: "Calculation Updated",
+    addedToComparison: "Added to Comparison",
+    calculationAddedToComparison: "Calculation Added to Comparison",
+    comparisonLimitReached: "Comparison Limit Reached",
+    movedTo: "Moved To",
+    editingCalculation: "Editing Calculation",
+    clickUpdateToSave: "Click Update to Save",
+    calculationDeleted: "Calculation Deleted",
+    calculationRemoved: "Calculation Removed",
+    deleteFailed: "Delete Failed",
+    editCancelled: "Edit Cancelled",
+    returnedToNormalMode: "Returned to Normal Mode",
+    updatedIn: "Updated In",
+    pcs: "pcs",
+    
+    // New strings to translate  
+    crossSectionView: "Cross-Section View",
+    steelVersatileDesc: "Steel is the most versatile construction material with excellent availability for all profile types.",
+    noCalculationsSelected: "No calculations selected",
+    noCalculationsSelectedForComparison: "No calculations selected for comparison",
+    selectCalculationsFromHistory: "Select calculations from history",
+    calculationHistoryTitle: "Calculation History",
+    searchCalculations: "Search Calculations",
+    allProjects: "All Projects",
+    allTime: "All Time",
+    allMaterials: "All Materials",
+    allProfileTypes: "All Profile Types",
+    clearAll: "Clear All",
+    applyFilters: "Apply Filters",
+    baseline: "Baseline",
+    loadCalculation: "Load Calculation", 
+    sortBy: "Sort by",
+    narrowDownHistory: "Narrow Down History",
+    exportSuccessful: "Export Successful",
+    exportedCalculations: "Exported Calculations",
+    
+    // Mobile history and comparison translations
+    noCalculationsInHistory: "No calculations in history",
+    startCreatingCalculations: "Start by creating some calculations to see them here",
+    releaseToRefresh: "Release to refresh",
+    pullToRefresh: "Pull to refresh",
+    filterCalculations: "Filter Calculations",
+    filters: "Filters",
+    calculationDetails: "Calculation Details",
+    comparison: "Comparison",
+    comparisonOptions: "Comparison Options",
+    customizeComparison: "Customize how calculations are compared",
+    sortBy: "Sort by",
+    sortOrder: "Sort order",
+    ascending: "Ascending",
+    descending: "Descending",
+    viewMode: "View mode",
+    carousel: "Carousel",
+    sideBySide: "Side-by-Side",
+    baseline: "Baseline",
+    showLess: "Show Less",
+    showMore: "Show More", 
+    loadCalculation: "Load Calculation",
+    created: "Created",
+    at: "at",
+    weightPerUnit: "Weight per unit",
+    costPerKg: "Cost per kg",
+    stainlessLimitedDesc: "Corrosion resistant with limited profile selection for specialized applications.",
+    
+    // Project Management & Dashboard
+    manageConstructionProjects: "Manage Construction Projects",
+    newProject: "New Project",
+    totalProjects: "Total Projects",
+    activeProjects: "Active Projects",
+    totalInvestment: "Total Investment",
+    budget: "Budget",
+    completionRate: "Completion Rate",
+    workforceOverview: "Workforce Overview",
+    totalLaborHours: "Total Labor Hours",
+    machineHours: "Machine Hours",
+    laborCosts: "Labor Costs",
+    searchProjects: "Search Projects",
+    allStatuses: "All Statuses",
+    lastUpdated: "Last Updated",
+    generalCalculations: "General Calculations",
+    editProject: "Edit Project",
+    overview: "Overview",
+    tasks: "Tasks",
+    materials: "Materials",
+    timeline: "Timeline",
+    progressOverview: "Progress Overview",
+    overallProgress: "Overall Progress",
+    taskManagement: "Task Management",
+    addTask: "Add Task",
+    noTasks: "No Tasks",
+    createFirstTask: "Create First Task",
+    rectangularBars: "Rectangular Bars",
+    presets: "Presets",
+    calculationComparison: "Calculation Comparison",
+    weight: "Weight",
+    cost: "Cost",
+    quantity: "Quantity",
+    actions: "Actions",
+    projects: "Projects"
   },
   
   bs: {
@@ -826,6 +1231,14 @@ export const translations: Record<Language, Translations> = {
     advanced: "Napredno",
     settings: "Postavke",
     
+          // New tabs and navigation
+      projects: "Projekti",
+      workforce: "Radna Snaga", 
+      workers: "Radnici",
+      machinery: "Mašine",
+      journal: "Dnevnik",
+      historyAndCompare: "Historija i Poređenje",
+    
     // Settings
     settingsTitle: "Postavke",
     appearance: "Izgled",
@@ -840,7 +1253,7 @@ export const translations: Record<Language, Translations> = {
     structuralGray: "Strukturna Siva",
     copperBronze: "Bakar Bronza",
     language: "Jezik",
-    units: "Jedinice",
+    unitsSettings: "Jedinice",
     defaultLengthUnit: "Zadana jedinica dužine",
     defaultWeightUnit: "Zadana jedinica težine",
     
@@ -939,6 +1352,97 @@ export const translations: Record<Language, Translations> = {
     recent: "Nedavni",
     allSizes: "Sve Veličine",
     allOptions: "Sve Opcije",
+    
+    // Projects
+    projectName: "Naziv Projekta",
+    projectDescription: "Opis Projekta",
+    createProject: "Kreiraj Projekt",
+    editProject: "Uredi Projekt",
+    deleteProject: "Obriši Projekt",
+    viewProject: "Pogledaj Projekt",
+    noProject: "Nema Projekta",
+    selectProject: "Odaberite Projekt",
+    generalHistory: "Opća Historija",
+    allProjects: "Svi Projekti",
+    projectDetails: "Detalji Projekta",
+    projectMaterials: "Materijali Projekta",
+    projectTimeline: "Vremenski Plan Projekta",
+    projectTasks: "Zadaci Projekta",
+    projectStatus: "Status Projekta",
+    projectProgress: "Napredak Projekta",
+    addCalculation: "Dodaj Izračun",
+    moveToProject: "Premjesti u Projekt",
+    projectCreated: "Projekt Kreiran",
+    projectUpdated: "Projekt Ažuriran",
+    projectDeleted: "Projekt Obrišen",
+    
+    // Workforce
+    workersManagement: "Upravljanje Radnicima",
+    machineryManagement: "Upravljanje Mašinama",
+    dailyJournal: "Dnevni Dnevnik",
+    addWorker: "Dodaj Radnika",
+    addMachinery: "Dodaj Mašinu",
+    workerName: "Ime Radnika",
+    hourlyRate: "Satnica",
+    specialization: "Specijalizacija",
+    machineryName: "Ime Mašine",
+    machineryType: "Tip Mašine",
+    operatingCost: "Operativni Trošak",
+    hoursWorked: "Radnih Sati",
+    totalHours: "Ukupno Radnih Sati",
+    totalCost: "Ukupna Cijena",
+    journalEntry: "Unos u Dnevnik",
+    timesheet: "Raspored",
+    workLog: "Dnevnik Rada",
+    
+    // History & Compare
+    filterHistory: "Filter Historije",
+    searchHistory: "Pretraži Historiju",
+    compareCalculations: "Poredi Izračune",
+    addToComparison: "Dodaj u Poredjenje",
+    removeFromComparison: "Ukloni iz Poredjenja",
+    comparisonLimit: "Granica Poredjenja",
+    narrowDownHistory: "Ogranici Historiju",
+    clearFilters: "Očisti Filteri",
+    resetFilters: "Resetuj Filteri",
+    showAll: "Pokaži Sve",
+    dateRange: "Raspon Datuma",
+    materialType: "Tip Materijala",
+    profileType: "Tip Profila",
+    lastWeek: "Prošla Nedjelja",
+    lastMonth: "Prošli Mjesec",
+    lastThreeMonths: "Prošla Tri Mjeseca",
+    lastSixMonths: "Prošla Šest Mjeseci",
+    thisWeek: "Ova Nedjelja",
+    thisMonth: "Ovaj Mjesec",
+    
+    // Bulk operations
+    bulkEntry: "Masovni Unos",
+    bulkSelect: "Masovni Odabir",
+    selectAll: "Odaberi Sve",
+    deselectAll: "Ukloni Odabir",
+    applyToSelected: "Primijeni na Odabrano",
+    defaultHours: "Zadani Satni",
+    
+    // Templates
+    template: "Šablon",
+    templates: "Šabloni",
+    saveTemplate: "Sačuvaj Šablon",
+    deleteTemplate: "Obriši Šablon",
+    applyTemplate: "Primijeni Šablon",
+    templateName: "Naziv Šablona",
+    createTemplate: "Kreiraj Šablon",
+    
+    // View modes
+    quickMode: "Brzi Mod",
+    dailyMode: "Dnevni Mod",
+    projectMode: "Projektni Mod",
+    
+    // Navigation
+    previousDay: "Prethodni Dan",
+    nextDay: "Slijedeći Dan",
+    today: "Danas",
+    goToToday: "Idi na Danas",
     
     // Errors and validation
     calculationError: "Greška u Izračunu",
@@ -1216,7 +1720,119 @@ export const translations: Record<Language, Translations> = {
     info: "Informacije",
     warning: "Upozorenje",
     error: "Greška",
-    success: "Uspjeh"
+    success: "Uspjeh",
+    
+    // Missing keys for UI elements
+    update: "Ažuriraj",
+    custom: "Prilagođeno",
+    editMode: "Režim Uređivanja",
+    cancelEdit: "Otkaži Uređivanje",
+    addNotes: "Dodaj Bilješke",
+    addNotesOptional: "Dodaj Bilješke (Opcionalno)",
+    addNotesPlaceholder: "Dodaj bilješke ovdje...",
+    defaults: "Zadane Vrijednosti",
+    units: "Jedinice",
+    selectProjectOptional: "Select Project (Optional)",
+    calculationUpdated: "Calculation Updated",
+    addedToComparison: "Added to Comparison",
+    calculationAddedToComparison: "Calculation Added to Comparison",
+    comparisonLimitReached: "Comparison Limit Reached",
+    movedTo: "Moved To",
+    editingCalculation: "Editing Calculation",
+    clickUpdateToSave: "Click Update to Save",
+    calculationDeleted: "Calculation Deleted",
+    calculationRemoved: "Calculation Removed",
+    deleteFailed: "Delete Failed",
+    editCancelled: "Edit Cancelled",
+    returnedToNormalMode: "Returned to Normal Mode",
+    updatedIn: "Updated In",
+    pcs: "pcs",
+    
+         // New strings to translate  
+     crossSectionView: "Pregled Presjeka",
+     steelVersatileDesc: "Čelik je najsvestraniji građevinski materijal sa odličnom dostupnošću za sve tipove profila",
+     stainlessLimitedDesc: "Dostupnost nehrđajućeg čelika ograničena za velike strukturne sekcije zbog cijene",
+     noCalculationsSelected: "Nema odabranih izračuna",
+     noCalculationsSelectedForComparison: "Nema odabranih izračuna za poređenje",
+     selectCalculationsFromHistory: "Odaberite izračune iz Historije tab-a da ih poredite ovdje",
+     calculationHistoryTitle: "Historija Izračuna",
+     searchCalculations: "Pretraži izračune...",
+     allProjects: "Svi Projekti",
+     allTime: "Svo Vrijeme",
+     allMaterials: "Svi Materijali",
+     allProfileTypes: "Svi Tipovi Profila",
+     clearAll: "Obriši Sve",
+           applyFilters: "Primijeni Filtere",
+      baseline: "Bazna Linija",
+      loadCalculation: "Učitaj Izračun",
+      sortBy: "Sortiraj po",
+      narrowDownHistory: "Sužite istoriju izračuna",
+         exportSuccessful: "Izvoz Uspješan",
+    exportedCalculations: "Izvezeni izračuni",
+    
+    // Mobile history and comparison translations
+    noCalculationsInHistory: "Nema izračuna u historiji",
+    startCreatingCalculations: "Započnite kreiranje izračuna da biste ih vidjeli ovdje",
+    releaseToRefresh: "Otpustite za osvježavanje",
+    pullToRefresh: "Povucite za osvježavanje",
+    filterCalculations: "Filtriraj Izračune",
+    filters: "Filteri",
+    calculationDetails: "Detalji Izračuna",
+    comparison: "Poređenje",
+    comparisonOptions: "Opcije Poređenja",
+    customizeComparison: "Prilagodite kako se izračuni porede",
+    sortBy: "Sortiraj po",
+    sortOrder: "Redoslijed sortiranja",
+    ascending: "Rastući",
+    descending: "Opadajući",
+    viewMode: "Način prikaza",
+    carousel: "Karusel",
+    sideBySide: "Jedan pored drugog",
+    baseline: "Osnova",
+    showLess: "Prikaži manje",
+    showMore: "Prikaži više",
+    loadCalculation: "Učitaj Izračun",
+    created: "Kreiran",
+    at: "u",
+    weightPerUnit: "Težina po jedinici",
+    costPerKg: "Cijena po kg",
+    stainlessLimitedDesc: "Otporan na koroziju sa ograničenim izborom profila za specijalizirane primjene.",
+    
+    // Project Management & Dashboard
+    manageConstructionProjects: "Manage Construction Projects",
+    newProject: "New Project",
+    totalProjects: "Total Projects",
+    activeProjects: "Active Projects",
+    totalInvestment: "Total Investment",
+    budget: "Budget",
+    completionRate: "Completion Rate",
+    workforceOverview: "Workforce Overview",
+    totalLaborHours: "Total Labor Hours",
+    machineHours: "Machine Hours",
+    laborCosts: "Labor Costs",
+    searchProjects: "Search Projects",
+    allStatuses: "All Statuses",
+    lastUpdated: "Last Updated",
+    generalCalculations: "General Calculations",
+    editProject: "Edit Project",
+    overview: "Overview",
+    tasks: "Tasks",
+    materials: "Materials",
+    timeline: "Timeline",
+    progressOverview: "Progress Overview",
+    overallProgress: "Overall Progress",
+    taskManagement: "Task Management",
+    addTask: "Add Task",
+    noTasks: "No Tasks",
+    createFirstTask: "Create First Task",
+    rectangularBars: "Rectangular Bars",
+    presets: "Presets",
+    calculationComparison: "Calculation Comparison",
+    weight: "Weight",
+    cost: "Cost",
+    quantity: "Quantity",
+    actions: "Actions",
+    projects: "Projects"
   }
 }
 

@@ -33,6 +33,7 @@ import {
   Maximize2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/contexts/i18n-context'
 import type { Calculation } from '@/lib/types'
 
 interface MobileCalculationComparisonProps {
@@ -51,10 +52,10 @@ interface ComparisonMetric {
   important?: boolean
 }
 
-const COMPARISON_METRICS: ComparisonMetric[] = [
+const createComparisonMetrics = (t: any): ComparisonMetric[] => [
   {
     key: 'weight',
-    label: 'Weight per unit',
+    label: t('weightPerUnit'),
     getValue: (calc) => calc.weight || 0,
     format: (value) => `${Number(value).toFixed(2)}`,
     unit: 'kg',
@@ -62,7 +63,7 @@ const COMPARISON_METRICS: ComparisonMetric[] = [
   },
   {
     key: 'totalWeight',
-    label: 'Total Weight',
+    label: t('totalWeight'),
     getValue: (calc) => calc.totalWeight || calc.weight || 0,
     format: (value) => `${Number(value).toFixed(2)}`,
     unit: 'kg',
@@ -70,14 +71,14 @@ const COMPARISON_METRICS: ComparisonMetric[] = [
   },
   {
     key: 'crossSectionalArea',
-    label: 'Area',
+    label: t('crossSectionalArea'),
     getValue: (calc) => calc.crossSectionalArea || 0,
     format: (value) => `${Number(value).toFixed(2)}`,
     unit: 'cm²'
   },
   {
     key: 'totalCost',
-    label: 'Total Cost',
+    label: t('totalCost'),
     getValue: (calc) => calc.totalCost || 0,
     format: (value) => `$${Number(value).toFixed(2)}`,
     unit: '',
@@ -85,14 +86,14 @@ const COMPARISON_METRICS: ComparisonMetric[] = [
   },
   {
     key: 'unitCost',
-    label: 'Unit Cost',
+    label: t('unitCost'),
     getValue: (calc) => calc.unitCost || 0,
     format: (value) => `$${Number(value).toFixed(2)}`,
     unit: ''
   },
   {
     key: 'costPerKg',
-    label: 'Cost per kg',
+    label: t('costPerKg'),
     getValue: (calc) => {
       const totalCost = calc.totalCost || 0
       const totalWeight = calc.totalWeight || calc.weight || 0
@@ -109,11 +110,14 @@ export function MobileCalculationComparison({
   onRemoveFromComparison,
   onLoadCalculation
 }: MobileCalculationComparisonProps) {
+  const { t } = useI18n()
   const [sortBy, setSortBy] = useState<string>('weight')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [activeCard, setActiveCard] = useState(0)
   const [viewMode, setViewMode] = useState<'carousel' | 'side-by-side'>('carousel')
   const [showAllMetrics, setShowAllMetrics] = useState(false)
+
+  const COMPARISON_METRICS = createComparisonMetrics(t)
 
   const compareCalculations = calculations.filter(calc => 
     selectedCalculations.has(calc.id)
@@ -165,9 +169,9 @@ export function MobileCalculationComparison({
       <Card className="backdrop-blur-sm bg-card/90 border-primary/10">
         <CardContent className="text-center py-12">
           <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold mb-2">No calculations selected</h3>
+          <h3 className="text-lg font-semibold mb-2">{t('noCalculationsSelected')}</h3>
           <p className="text-muted-foreground">
-            Select calculations from the History tab to compare them here
+            {t('selectCalculationsFromHistory')}
           </p>
         </CardContent>
       </Card>
@@ -181,7 +185,7 @@ export function MobileCalculationComparison({
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
-            Calculation Details
+            {t('calculationDetails')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -203,7 +207,7 @@ export function MobileCalculationComparison({
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
-            Comparison
+            {t('comparison')}
             <Badge variant="secondary">{selectedCalculations.size}/5</Badge>
           </CardTitle>
           
@@ -216,15 +220,15 @@ export function MobileCalculationComparison({
               </SheetTrigger>
               <SheetContent side="bottom">
                 <SheetHeader>
-                  <SheetTitle>Comparison Options</SheetTitle>
+                  <SheetTitle>{t('comparisonOptions')}</SheetTitle>
                   <SheetDescription>
-                    Customize how calculations are compared
+                    {t('customizeComparison')}
                   </SheetDescription>
                 </SheetHeader>
                 
                 <div className="space-y-4 mt-6">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Sort by</label>
+                    <label className="text-sm font-medium mb-2 block">{t('sortBy')}</label>
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger>
                         <SelectValue />
@@ -240,7 +244,7 @@ export function MobileCalculationComparison({
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Sort order</label>
+                    <label className="text-sm font-medium mb-2 block">{t('sortOrder')}</label>
                     <div className="flex gap-2">
                       <Button
                         variant={sortOrder === 'asc' ? 'default' : 'outline'}
@@ -248,7 +252,7 @@ export function MobileCalculationComparison({
                         onClick={() => setSortOrder('asc')}
                         className="flex-1"
                       >
-                        Ascending
+                        {t('ascending')}
                       </Button>
                       <Button
                         variant={sortOrder === 'desc' ? 'default' : 'outline'}
@@ -256,13 +260,13 @@ export function MobileCalculationComparison({
                         onClick={() => setSortOrder('desc')}
                         className="flex-1"
                       >
-                        Descending
+                        {t('descending')}
                       </Button>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">View mode</label>
+                    <label className="text-sm font-medium mb-2 block">{t('viewMode')}</label>
                     <div className="flex gap-2">
                       <Button
                         variant={viewMode === 'carousel' ? 'default' : 'outline'}
@@ -270,7 +274,7 @@ export function MobileCalculationComparison({
                         onClick={() => setViewMode('carousel')}
                         className="flex-1"
                       >
-                        Carousel
+                        {t('carousel')}
                       </Button>
                       <Button
                         variant={viewMode === 'side-by-side' ? 'default' : 'outline'}
@@ -279,7 +283,7 @@ export function MobileCalculationComparison({
                         className="flex-1"
                         disabled={sortedCalculations.length > 2}
                       >
-                        Side-by-Side
+                        {t('sideBySide')}
                       </Button>
                     </div>
                   </div>
@@ -365,7 +369,7 @@ export function MobileCalculationComparison({
         {sortedCalculations.length > 2 && viewMode === 'carousel' && (
           <div className="mt-4 p-3 bg-muted/30 rounded-lg">
             <p className="text-sm text-muted-foreground text-center">
-              Comparing {sortedCalculations.length} calculations • 
+{t('compareCalculations')} {sortedCalculations.length} • 
               Swipe or use arrows to navigate
             </p>
           </div>
@@ -397,7 +401,22 @@ function MobileComparisonCard({
   onToggleMetrics,
   compact = false
 }: MobileComparisonCardProps) {
+  const { t } = useI18n()
+  const COMPARISON_METRICS = createComparisonMetrics(t)
   const metricsToShow = showAllMetrics ? COMPARISON_METRICS : COMPARISON_METRICS.filter(m => m.important)
+  
+  const getDiffColor = (value: number, baseline: number) => {
+    const diff = ((value - baseline) / baseline) * 100
+    if (Math.abs(diff) < 1) return 'text-muted-foreground'
+    if (diff > 0) return 'text-green-600'
+    return 'text-red-600'
+  }
+
+  const getPercentageDiff = (value: number, baseline: number) => {
+    const diff = ((value - baseline) / baseline) * 100
+    const sign = diff > 0 ? '+' : ''
+    return `${sign}${diff.toFixed(1)}%`
+  }
 
   return (
     <Card className={cn("border-2", isBaseline && "border-primary/50 bg-primary/5")}>
@@ -406,7 +425,7 @@ function MobileComparisonCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               {isBaseline && (
-                <Badge variant="default" className="text-xs">Baseline</Badge>
+                <Badge variant="default" className="text-xs">{t('baseline')}</Badge>
               )}
               <h3 className="font-medium text-sm truncate">
                 {calculation.name || `${calculation.materialName} ${calculation.profileName}`}
@@ -414,7 +433,7 @@ function MobileComparisonCard({
             </div>
             <p className="text-xs text-muted-foreground line-clamp-1">
               {calculation.materialName} • {calculation.profileName}
-              {calculation.quantity && calculation.quantity > 1 && ` • Qty: ${calculation.quantity}`}
+              {calculation.quantity && calculation.quantity > 1 && ` • ${t('quantity')}: ${calculation.quantity}`}
             </p>
           </div>
           <Button
@@ -449,7 +468,6 @@ function MobileComparisonCard({
                 </div>
                 {!isBaseline && baselineNum > 0 && (
                   <div className="flex items-center justify-center gap-1 mt-1">
-                    {/* {getComparisonIcon(numValue, baselineNum)} */}
                     <span className={cn("text-xs", getDiffColor(numValue, baselineNum))}>
                       {getPercentageDiff(numValue, baselineNum)}
                     </span>
@@ -464,19 +482,19 @@ function MobileComparisonCard({
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={onLoad} className="flex-1">
             <Play className="h-4 w-4 mr-1" />
-            Load
+            {t('load')}
           </Button>
           {!compact && (
             <Button size="sm" variant="outline" onClick={onToggleMetrics} className="flex-1">
               <Maximize2 className="h-4 w-4 mr-1" />
-              {showAllMetrics ? 'Less' : 'More'}
+              {showAllMetrics ? t('showLess') : t('showMore')}
             </Button>
           )}
         </div>
 
         {/* Timestamp */}
         <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-          {calculation.timestamp.toLocaleDateString()} at {calculation.timestamp.toLocaleTimeString()}
+          {calculation.timestamp.toLocaleDateString()} {t('at')} {calculation.timestamp.toLocaleTimeString()}
         </div>
       </CardContent>
     </Card>
@@ -497,6 +515,8 @@ function MobileCalculationDetailCard({
   showAllMetrics: boolean
   onToggleMetrics: () => void
 }) {
+  const { t } = useI18n()
+  const COMPARISON_METRICS = createComparisonMetrics(t)
   const metricsToShow = showAllMetrics ? COMPARISON_METRICS : COMPARISON_METRICS.filter(m => m.important)
 
   return (
@@ -509,7 +529,7 @@ function MobileCalculationDetailCard({
           </h3>
           <p className="text-sm text-muted-foreground line-clamp-2">
             {calculation.materialName} • {calculation.profileName}
-            {calculation.quantity && calculation.quantity > 1 && ` • Qty: ${calculation.quantity}`}
+            {calculation.quantity && calculation.quantity > 1 && ` • ${t('quantity')}: ${calculation.quantity}`}
           </p>
         </div>
         <Button
@@ -543,17 +563,17 @@ function MobileCalculationDetailCard({
       <div className="flex gap-2">
         <Button onClick={onLoad} className="flex-1">
           <Play className="h-4 w-4 mr-2" />
-          Load Calculation
+          {t('loadCalculation')}
         </Button>
         <Button variant="outline" onClick={onToggleMetrics}>
           <Maximize2 className="h-4 w-4 mr-2" />
-          {showAllMetrics ? 'Show Less' : 'Show More'}
+          {showAllMetrics ? t('showLess') : t('showMore')}
         </Button>
       </div>
 
       {/* Timestamp */}
       <div className="text-sm text-muted-foreground text-center pt-3 border-t">
-        Created: {calculation.timestamp.toLocaleDateString()} at {calculation.timestamp.toLocaleTimeString()}
+        {t('created')}: {calculation.timestamp.toLocaleDateString()} {t('at')} {calculation.timestamp.toLocaleTimeString()}
       </div>
     </div>
   )

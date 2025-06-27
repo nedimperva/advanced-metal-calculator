@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, useMemo } from "react"
+import React, { useState, useCallback, useMemo, useEffect } from "react"
 import { Input, UnitInput } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -20,7 +20,9 @@ import {
   Copy,
   Zap,
   Hash,
-  MoreHorizontal
+  MoreHorizontal,
+  Clock,
+  ArrowRight
 } from "lucide-react"
 import { validateDimension, type ValidationResult } from "@/lib/validation"
 import { InlineLoading } from "@/components/loading-states"
@@ -38,6 +40,7 @@ import {
   ResultsSkeleton, 
   DimensionInputsSkeleton 
 } from "@/components/loading-states"
+import { useI18n } from '@/contexts/i18n-context'
 
 interface EnhancedInputProps {
   label: string
@@ -463,7 +466,7 @@ export function parseFraction(input: string): number | null {
 }
 
 // Common dimension presets for different profile types
-export const DIMENSION_PRESETS = {
+const DIMENSION_PRESETS = {
   hea: {
     name: "HEA European I-Beams",
     presets: [
@@ -496,8 +499,9 @@ export const DIMENSION_PRESETS = {
       { name: "HEB 300", h: 300, b: 300, tw: 11, tf: 19 }
     ]
   },
-  rectangular: {
+  rectangularBar: {
     name: "Rectangular Bars",
+    description: "presets",
     presets: [
       { name: "10x20mm", width: 10, height: 20 },
       { name: "15x30mm", width: 15, height: 30 },
@@ -602,6 +606,7 @@ export function FractionInput({
   dimension,
   ...props
 }: FractionInputProps) {
+  const { t } = useI18n()
   const [showFractionHelper, setShowFractionHelper] = useState(false)
   const [rawValue, setRawValue] = useState(value)
 
@@ -754,7 +759,9 @@ export function FractionInput({
               </PopoverTrigger>
               <PopoverContent className="w-80" align="end">
                 <div className="space-y-3">
-                  <div className="text-sm font-medium">{presets.name}</div>
+                  <div className="text-sm font-medium">
+                    {profileType === 'rectangularBar' ? (t('rectangularBars') || 'Rectangular Bars') : presets.name}
+                  </div>
                   <div className="max-h-48 overflow-y-auto space-y-1">
                     {presets.presets.map((preset) => (
                       <div
@@ -798,10 +805,21 @@ interface DimensionPresetsProps {
 }
 
 export function DimensionPresets({ profileType, onApplyPreset, className }: DimensionPresetsProps) {
+  const { t } = useI18n()
   const presets = DIMENSION_PRESETS[profileType as keyof typeof DIMENSION_PRESETS]
   
   if (!presets) {
     return null
+  }
+
+  // Get translated name for the preset category
+  const getPresetName = (profileType: string) => {
+    switch(profileType) {
+      case 'rectangularBar':
+        return t('rectangularBars') || 'Rectangular Bars'
+      default:
+        return presets.name
+    }
   }
 
   return (
@@ -809,8 +827,8 @@ export function DimensionPresets({ profileType, onApplyPreset, className }: Dime
       <CardContent className="p-4">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium">{presets.name}</h3>
-            <Badge variant="outline">{presets.presets.length} presets</Badge>
+            <h3 className="text-sm font-medium">{getPresetName(profileType)}</h3>
+            <Badge variant="outline">{presets.presets.length} {t('presets') || 'presets'}</Badge>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">

@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useProjects } from '@/contexts/project-context'
+import { useI18n } from '@/contexts/i18n-context'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { type Calculation } from '@/lib/types'
@@ -76,25 +77,25 @@ interface ComparisonMetric {
   unit: string
 }
 
-// Comparison metrics
-const COMPARISON_METRICS: ComparisonMetric[] = [
+// Helper function to create comparison metrics with translations
+const createComparisonMetrics = (t: any): ComparisonMetric[] => [
   {
     key: 'weight',
-    label: 'Weight',
+    label: t('weight'),
     unit: 'kg',
     getValue: (calc) => calc.totalWeight || calc.weight || 0,
     format: (value) => `${Number(value).toFixed(2)} kg`
   },
   {
     key: 'cost',
-    label: 'Cost', 
+    label: t('cost'), 
     unit: '$',
     getValue: (calc) => calc.totalCost || 0,
     format: (value) => `$${Number(value).toFixed(2)}`
   },
   {
     key: 'quantity',
-    label: 'Quantity',
+    label: t('quantity'),
     unit: 'pcs',
     getValue: (calc) => calc.quantity || 1,
     format: (value) => `${value} pcs`
@@ -132,6 +133,7 @@ function MobileCalculationCard({
   onDelete, 
   projects
 }: MobileCalculationCardProps) {
+  const { t } = useI18n()
   const [showActions, setShowActions] = useState(false)
 
   return (
@@ -166,7 +168,7 @@ function MobileCalculationCard({
           
           {calculation.quantity && calculation.quantity > 1 && (
             <div className="text-center p-2 bg-muted/50 rounded">
-              <div className="text-xs text-muted-foreground">Quantity</div>
+              <div className="text-xs text-muted-foreground">{t('quantity')}</div>
               <div className="font-semibold text-sm">{calculation.quantity}</div>
             </div>
           )}
@@ -268,6 +270,7 @@ export function CalculationHistory({
   onAddToComparison,
   onDeleteCalculation
 }: CalculationHistoryProps) {
+  const { t } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   const { projects = [] } = useProjects()
   
@@ -462,7 +465,7 @@ export function CalculationHistory({
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <Archive className="h-5 w-5 text-primary" />
-              {isMobile ? 'History' : 'Calculation History'}
+              {isMobile ? t('history') : t('calculationHistoryTitle')}
               <Badge variant="secondary">{filteredCalculations.length}</Badge>
             </CardTitle>
             <Button
@@ -471,7 +474,7 @@ export function CalculationHistory({
               onClick={exportCalculations}
             >
               <Download className="h-4 w-4 mr-2" />
-              {isMobile ? '' : 'Export'}
+              {isMobile ? '' : t('export')}
             </Button>
           </div>
         </CardHeader>
@@ -481,7 +484,7 @@ export function CalculationHistory({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search calculations..."
+              placeholder={t('searchCalculations')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-10 pr-10"
@@ -515,7 +518,7 @@ export function CalculationHistory({
                   <SheetHeader>
                     <SheetTitle>Filter Calculations</SheetTitle>
                     <SheetDescription>
-                      Narrow down your calculation history
+                      {t('narrowDownHistory')}
                     </SheetDescription>
                   </SheetHeader>
                   
@@ -527,10 +530,10 @@ export function CalculationHistory({
                         onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, projectId: value }))}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="All Projects" />
+                          <SelectValue placeholder={t('allProjects')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Projects</SelectItem>
+                          <SelectItem value="all">{t('allProjects')}</SelectItem>
                           <SelectItem value="none">No Project</SelectItem>
                           {projects.map((project: any) => (
                             <SelectItem key={project.id} value={project.id}>
@@ -548,10 +551,10 @@ export function CalculationHistory({
                         onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, dateRange: value as any }))}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="All Time" />
+                          <SelectValue placeholder={t('allTime')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Time</SelectItem>
+                          <SelectItem value="all">{t('allTime')}</SelectItem>
                           <SelectItem value="today">Today</SelectItem>
                           <SelectItem value="week">This Week</SelectItem>
                           <SelectItem value="month">This Month</SelectItem>
@@ -566,10 +569,10 @@ export function CalculationHistory({
                         onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, materialType: value }))}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="All Materials" />
+                          <SelectValue placeholder={t('allMaterials')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Materials</SelectItem>
+                          <SelectItem value="all">{t('allMaterials')}</SelectItem>
                           {uniqueMaterials.map(material => (
                             <SelectItem key={material} value={material}>
                               {material}
@@ -650,11 +653,11 @@ export function CalculationHistory({
                 onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, projectId: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All Projects" />
+                  <SelectValue placeholder={t('allProjects')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
-                  <SelectItem value="none">No Project (General History)</SelectItem>
+                  <SelectItem value="all">{t('allProjects')}</SelectItem>
+                  <SelectItem value="none">{t('noProject')} ({t('generalHistory')})</SelectItem>
                   {projects.map((project: any) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
@@ -668,13 +671,13 @@ export function CalculationHistory({
                 onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, dateRange: value as any }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All Time" />
+                  <SelectValue placeholder={t('allTime')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="all">{t('allTime')}</SelectItem>
+                  <SelectItem value="today">{t('today')}</SelectItem>
+                  <SelectItem value="week">{t('thisWeek')}</SelectItem>
+                  <SelectItem value="month">{t('thisMonth')}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -683,10 +686,10 @@ export function CalculationHistory({
                 onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, materialType: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All Materials" />
+                  <SelectValue placeholder={t('allMaterials')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Materials</SelectItem>
+                  <SelectItem value="all">{t('allMaterials')}</SelectItem>
                   {uniqueMaterials.map(material => (
                     <SelectItem key={material} value={material}>
                       {material}
@@ -710,7 +713,7 @@ export function CalculationHistory({
                 })
                 setSearchInput('')
               }} className="mt-2">
-                Clear Filters
+                {t('clearFilters')}
               </Button>
             </div>
           )}
@@ -745,7 +748,7 @@ export function CalculationHistory({
                           <Badge variant="outline">
                             {calc.totalWeight ? `${calc.totalWeight.toFixed(2)} kg` : `${calc.weight?.toFixed(2)} kg`}
                           </Badge>
-                          {calc.totalCost && (
+                          {calc.totalCost && calc.totalCost > 0 && (
                             <Badge variant="outline" className="text-green-600">
                               ${calc.totalCost.toFixed(2)}
                             </Badge>
@@ -795,6 +798,9 @@ function MobileComparisonCard({
   onLoadCalculation, 
   onRemoveFromComparison 
 }: MobileComparisonCardProps) {
+  const { t } = useI18n()
+  const COMPARISON_METRICS = createComparisonMetrics(t)
+  
   const getComparisonIcon = (value: number, baselineValue: number) => {
     const diff = ((value - baselineValue) / baselineValue) * 100
     if (Math.abs(diff) < 1) return <Equal className="h-3 w-3 text-muted-foreground" />
@@ -870,7 +876,7 @@ function MobileComparisonCard({
             className="w-full"
           >
             <Play className="h-4 w-4 mr-2" />
-            Load Calculation
+            {t('load')} {t('calculator')}
           </Button>
         )}
       </CardContent>
@@ -885,9 +891,12 @@ export function CalculationComparison({
   onRemoveFromComparison,
   onLoadCalculation
 }: CalculationComparisonProps) {
+  const { t } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   const [sortBy, setSortBy] = useState<string>('weight')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  
+  const COMPARISON_METRICS = createComparisonMetrics(t)
 
   const compareCalculations = calculations.filter(calc => 
     selectedCalculations.has(calc.id)
@@ -924,10 +933,8 @@ export function CalculationComparison({
       <Card className="backdrop-blur-sm bg-card/90 border-primary/10">
         <CardContent className="text-center py-8">
           <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p className="text-muted-foreground">No calculations selected for comparison</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Select calculations from the History tab to compare them here
-          </p>
+          <h3 className="text-lg font-semibold mb-2">{t('noCalculationsSelectedForComparison')}</h3>
+          <p>{t('selectCalculationsFromHistory')}</p>
         </CardContent>
       </Card>
     )
@@ -942,7 +949,7 @@ export function CalculationComparison({
         )}>
           <CardTitle className="text-lg flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
-            {isMobile ? 'Compare' : 'Calculation Comparison'}
+            {isMobile ? t('compare') : t('calculationComparison')}
             <Badge variant="secondary">{selectedCalculations.size}/5</Badge>
           </CardTitle>
           <div className={cn("flex items-center gap-2", isMobile && "w-full")}>
@@ -991,15 +998,12 @@ export function CalculationComparison({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-2 font-medium">Calculation</th>
-                    {COMPARISON_METRICS.map(metric => (
-                      <th key={metric.key} className="text-center p-2 font-medium min-w-[120px]">
-                        {metric.label}
-                        <br />
-                        <span className="text-xs text-muted-foreground">{metric.unit}</span>
-                      </th>
-                    ))}
-                    <th className="text-center p-2 font-medium">Actions</th>
+                    <th className="text-left p-2 font-medium">{t('calculator')}</th>
+                    <th className="text-center p-2 font-medium">{t('weight')}<br/>kg</th>
+                    <th className="text-center p-2 font-medium">{t('cost')}<br/>$</th>
+                    <th className="text-center p-2 font-medium">{t('quantity')}<br/>pcs</th>
+                    <th className="text-center p-2 font-medium">Cost/{t('weight')}<br/>$/kg</th>
+                    <th className="text-center p-2 font-medium">{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1017,7 +1021,7 @@ export function CalculationComparison({
                             </div>
                             {calculation.quantity && calculation.quantity > 1 && (
                               <div className="text-xs text-muted-foreground">
-                                Qty: {calculation.quantity}
+                                {t('quantity')}: {calculation.quantity}
                               </div>
                             )}
                           </div>

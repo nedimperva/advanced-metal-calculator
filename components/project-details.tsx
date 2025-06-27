@@ -78,6 +78,7 @@ import {
 import { ProjectStatus, type Project } from '@/lib/types'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 interface ProjectDetailsProps {
   project: Project
@@ -98,6 +99,7 @@ export default function ProjectDetails({
 }: ProjectDetailsProps) {
   // Router no longer needed - navigation handled by parent
   const { updateProject, deleteProject } = useProjects()
+  const { t, language } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   
   // Local state
@@ -375,7 +377,7 @@ export default function ProjectDetails({
                   )}
                 >
                   <Edit className="h-4 w-4 mr-2" />
-                  Edit
+{language === 'bs' ? 'Izmijeni' : 'Edit'}
                 </Button>
                 
                 {/* More Actions Dropdown */}
@@ -426,13 +428,13 @@ export default function ProjectDetails({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <BarChart3 className="h-5 w-5" />
-              Progress Overview
+{language === 'bs' ? 'Pregled Progresa' : 'Progress Overview'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium">Overall Progress</span>
+                <span className="text-sm font-medium">{language === 'bs' ? 'Ukupan Progres' : 'Overall Progress'}</span>
                 <span className="text-sm text-muted-foreground">
                   {progress.completionPercentage.toFixed(1)}%
                 </span>
@@ -446,28 +448,78 @@ export default function ProjectDetails({
             )}>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="text-lg font-bold text-green-600">
-                  {progress.materialsCompleted}
+                  {progress.materialsInstalled}
                 </div>
-                <div className="text-xs text-muted-foreground">Completed</div>
+                <div className="text-xs text-muted-foreground">{language === 'bs' ? 'Završeno' : 'Completed'}</div>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="text-lg font-bold text-yellow-600">
                   {progress.materialsInProgress}
                 </div>
-                <div className="text-xs text-muted-foreground">In Progress</div>
+                <div className="text-xs text-muted-foreground">{language === 'bs' ? 'U Toku' : 'In Progress'}</div>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="text-lg font-bold text-blue-600">
                   {progress.materialsPending}
                 </div>
-                <div className="text-xs text-muted-foreground">Pending</div>
+                <div className="text-xs text-muted-foreground">{language === 'bs' ? 'Na Čekanju' : 'Pending'}</div>
               </div>
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="text-lg font-bold text-foreground">
                   {progress.totalMaterials}
                 </div>
-                <div className="text-xs text-muted-foreground">Total</div>
+                <div className="text-xs text-muted-foreground">{language === 'bs' ? 'Ukupno' : 'Total'}</div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Workforce Summary */}
+      {costs && costs.workforceBreakdown && costs.workforceBreakdown.daysWorked > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Users className="h-5 w-5" />
+{language === 'bs' ? 'Pregled Radne Snage' : 'Workforce Summary'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className={cn(
+              "grid gap-3",
+              isMobile ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-4"
+            )}>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-lg font-bold text-blue-600">
+                  {costs.workforceBreakdown.totalLaborHours.toFixed(1)}h
+                </div>
+                <div className="text-xs text-muted-foreground">{language === 'bs' ? 'Radni Sati' : 'Labor Hours'}</div>
+              </div>
+              <div className="text-center p-3 bg-orange-50 rounded-lg">
+                <div className="text-lg font-bold text-orange-600">
+                  {costs.workforceBreakdown.totalMachineryHours.toFixed(1)}h
+                </div>
+                <div className="text-xs text-muted-foreground">{language === 'bs' ? 'Sati Mašina' : 'Machine Hours'}</div>
+              </div>
+              <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-lg font-bold text-green-600">
+                  {costs.workforceBreakdown.uniqueWorkers}
+                </div>
+                <div className="text-xs text-muted-foreground">{language === 'bs' ? 'Radnici' : 'Workers'}</div>
+              </div>
+              <div className="text-center p-3 bg-purple-50 rounded-lg">
+                <div className="text-lg font-bold text-purple-600">
+                  {costs.workforceBreakdown.daysWorked}
+                </div>
+                <div className="text-xs text-muted-foreground">Work Days</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between pt-3 border-t">
+              <span className="text-sm text-muted-foreground">Average Daily Cost</span>
+              <span className="font-medium">
+                ${costs.workforceBreakdown.averageDailyCost.toFixed(2)}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -483,7 +535,7 @@ export default function ProjectDetails({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <FileText className="h-5 w-5" />
-              Project Information
+{language === 'bs' ? 'Informacije o Projektu' : 'Project Information'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -516,7 +568,7 @@ export default function ProjectDetails({
             <div className="flex items-start gap-3">
               <Calendar className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
               <div>
-                <Label className="text-sm text-muted-foreground">Created</Label>
+                                  <Label className="text-sm text-muted-foreground">{language === 'bs' ? 'Kreirano' : 'Created'}</Label>
                 <p className="font-medium">
                   {new Date(project.createdAt).toLocaleDateString()}
                 </p>
@@ -568,7 +620,7 @@ export default function ProjectDetails({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <DollarSign className="h-5 w-5" />
-              Budget Tracking
+{language === 'bs' ? 'Budžet i Troškovi' : 'Budget & Costs'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -587,9 +639,9 @@ export default function ProjectDetails({
                 {costs && (
                   <>
                     <div className="flex justify-between items-center mb-2">
-                      <Label className="text-sm text-muted-foreground">Spent</Label>
+                      <Label className="text-sm text-muted-foreground">Total Spent</Label>
                       <span className="font-medium">
-                        ${costs.totalCost.toLocaleString()} {project.currency}
+                        ${costs.totalActualCost.toLocaleString()} {project.currency}
                       </span>
                     </div>
                     
@@ -599,7 +651,7 @@ export default function ProjectDetails({
                         "font-medium",
                         costs.budgetUtilization > 100 ? "text-destructive" : "text-green-600"
                       )}>
-                        ${(project.totalBudget - costs.totalCost).toLocaleString()} {project.currency}
+                        ${costs.remainingBudget.toLocaleString()} {project.currency}
                       </span>
                     </div>
                     
@@ -627,18 +679,45 @@ export default function ProjectDetails({
               </div>
             )}
             
+            {/* Cost Breakdown */}
+            {costs && (
+              <div className="space-y-3 pt-4 border-t">
+                <Label className="text-sm font-medium">{language === 'bs' ? 'Raspored Troškova' : 'Cost Breakdown'}</Label>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex justify-between items-center p-2 bg-blue-50 rounded">
+                    <span className="text-sm text-blue-700">{language === 'bs' ? 'Materijali' : 'Materials'}</span>
+                    <span className="font-medium text-blue-700">
+                      ${costs.totalMaterialCost.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-green-50 rounded">
+                    <span className="text-sm text-green-700">{language === 'bs' ? 'Rad' : 'Labor'}</span>
+                    <span className="font-medium text-green-700">
+                      ${costs.totalLaborCost.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-orange-50 rounded">
+                    <span className="text-sm text-orange-700">{language === 'bs' ? 'Mašine' : 'Machinery'}</span>
+                    <span className="font-medium text-orange-700">
+                      ${costs.totalMachineryCost.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
               <div className="text-center">
                 <div className="text-lg font-bold text-foreground">
                   {project.materials?.length || 0}
                 </div>
-                <div className="text-xs text-muted-foreground">Materials</div>
+                <div className="text-xs text-muted-foreground">{language === 'bs' ? 'Materijali' : 'Materials'}</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-bold text-foreground">
                   {project.calculationIds?.length || 0}
                 </div>
-                <div className="text-xs text-muted-foreground">Calculations</div>
+                <div className="text-xs text-muted-foreground">{language === 'bs' ? 'Izračuni' : 'Calculations'}</div>
               </div>
             </div>
           </CardContent>
@@ -651,7 +730,7 @@ export default function ProjectDetails({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
               <FileText className="h-5 w-5" />
-              Notes
+{language === 'bs' ? 'Napomene' : 'Notes'}
             </CardTitle>
             <Button 
               variant="outline" 
@@ -660,7 +739,7 @@ export default function ProjectDetails({
               className={cn(isMobile && "h-10")}
             >
               <Edit className="h-4 w-4 mr-2" />
-              Edit Notes
+{language === 'bs' ? 'Izmijeni Napomene' : 'Edit Notes'}
             </Button>
           </div>
         </CardHeader>
@@ -671,7 +750,7 @@ export default function ProjectDetails({
             </div>
           ) : (
             <p className="text-muted-foreground italic text-sm">
-              No notes added yet. Click "Edit Notes" to add project notes.
+{language === 'bs' ? 'Još nema dodanih napomena. Kliknite "Izmijeni Napomene" da dodajte napomene projekta.' : 'No notes added yet. Click "Edit Notes" to add project notes.'}
             </p>
           )}
         </CardContent>

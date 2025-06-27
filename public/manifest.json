@@ -1,7 +1,7 @@
 {
-  "name": "Professional Metal Weight Calculator",
-  "short_name": "Metal Calc Pro",
-  "description": "Calculate weights for structural steel profiles, aluminum alloys, and other metals with professional accuracy.",
+  "name": "SteelForge Pro - Steel Fabrication Management",
+  "short_name": "SteelForge Pro",
+  "description": "Professional steel fabrication management platform with project management, workforce tracking, calculations, and timeline management for construction professionals.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

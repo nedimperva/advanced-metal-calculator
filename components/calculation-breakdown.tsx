@@ -29,6 +29,7 @@ interface CalculationBreakdownProps {
   structuralProperties: StructuralProperties
   weight: number
   weightUnit: string
+  materialName?: string
   temperatureEffects?: {
     originalDensity: number
     adjustedDensity: number
@@ -148,6 +149,7 @@ export function CalculationBreakdown({
   structuralProperties,
   weight,
   weightUnit,
+  materialName,
   temperatureEffects
 }: CalculationBreakdownProps) {
   const [expandedSteps, setExpandedSteps] = React.useState<Set<string>>(new Set(['step1']))
@@ -447,7 +449,7 @@ export function CalculationBreakdown({
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Material</div>
-              <div className="font-medium">{materialData.name}</div>
+              <div className="font-medium">{materialName || materialData.name}</div>
               <div className="text-xs text-blue-600 dark:text-blue-400">
                 Yield: {materialData.yieldStrength} MPa | Density: {materialData.density} g/cm³
               </div>

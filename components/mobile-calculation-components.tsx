@@ -46,6 +46,7 @@ import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
 import type { Calculation } from '@/lib/types'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 // Mobile History Component
 interface MobileCalculationHistoryProps {
@@ -71,6 +72,7 @@ export function MobileCalculationHistory({
   onAddToComparison,
   onDeleteCalculation
 }: MobileCalculationHistoryProps) {
+  const { t } = useI18n()
   const [historyFilters, setHistoryFilters] = useState<HistoryFilters>({
     projectId: 'all',
     search: '',
@@ -273,11 +275,11 @@ export function MobileCalculationHistory({
                     onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, projectId: value }))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="All Projects" />
+                      <SelectValue placeholder={t('allProjects')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Projects</SelectItem>
-                      <SelectItem value="none">No Project</SelectItem>
+                      <SelectItem value="all">{t('allProjects')}</SelectItem>
+                      <SelectItem value="none">{t('noProject')}</SelectItem>
                       {projects.map(project => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
@@ -339,6 +341,7 @@ function MobileCalculationCard({
   onAddToComparison, 
   onDelete
 }: MobileCalculationCardProps) {
+  const { t } = useI18n()
   const [showActions, setShowActions] = useState(false)
 
   return (
@@ -373,7 +376,7 @@ function MobileCalculationCard({
           
           {calculation.quantity && calculation.quantity > 1 && (
             <div className="text-center p-2 bg-muted/50 rounded">
-              <div className="text-xs text-muted-foreground">Quantity</div>
+              <div className="text-xs text-muted-foreground">{t('quantity')}</div>
               <div className="font-semibold text-sm">{calculation.quantity}</div>
             </div>
           )}
@@ -439,6 +442,7 @@ export function MobileCalculationComparison({
   onRemoveFromComparison,
   onLoadCalculation
 }: MobileCalculationComparisonProps) {
+  const { t } = useI18n()
   const [activeCard, setActiveCard] = useState(0)
 
   const compareCalculations = calculations.filter(calc => 
@@ -450,9 +454,9 @@ export function MobileCalculationComparison({
       <Card className="backdrop-blur-sm bg-card/90 border-primary/10">
         <CardContent className="text-center py-12">
           <BarChart3 className="h-16 w-16 mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold mb-2">No calculations selected</h3>
+          <h3 className="text-lg font-semibold mb-2">{t('noCalculationsSelected')}</h3>
           <p className="text-muted-foreground">
-            Select calculations from History to compare
+            {t('selectCalculationsFromHistory')}
           </p>
         </CardContent>
       </Card>
