@@ -211,7 +211,7 @@ export function MobileResults({
           {setQuantity && setPricePerUnit && (
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div>
-                <Label htmlFor="mobile-quantity" className="text-xs">Quantity</Label>
+                <Label htmlFor="mobile-quantity" className="text-xs">{t('quantity')}</Label>
                 <UnitInput
                   id="mobile-quantity"
                   unit="pcs"

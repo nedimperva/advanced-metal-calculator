@@ -814,8 +814,12 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
   defaultVisible = false,
   size = 'medium'
 }) => {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const [isVisible, setIsVisible] = React.useState(defaultVisible)
+  
+  // Simple translation for Show/Hide
+  const showText = language === 'bs' ? 'Prikaži' : 'Show'
+  const hideText = language === 'bs' ? 'Sakrij' : 'Hide'
 
   const renderProfile = () => {
     const props: BaseProfileProps = {
@@ -886,7 +890,7 @@ export const CrossSectionViewer: React.FC<CrossSectionViewerProps> = ({
           className="text-xs h-8"
         >
           {isVisible ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-          {isVisible ? 'Hide' : 'Show'}
+          {isVisible ? hideText : showText}
         </Button>
       </div>
       

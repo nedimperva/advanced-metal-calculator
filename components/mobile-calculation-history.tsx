@@ -318,8 +318,8 @@ export function MobileCalculationHistory({
       <Card className="backdrop-blur-sm bg-card/90 border-primary/10">
         <CardContent className="text-center py-12">
           <Archive className="h-16 w-16 mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold mb-2">No calculations in history</h3>
-          <p className="text-muted-foreground">Start by creating some calculations to see them here</p>
+          <h3 className="text-lg font-semibold mb-2">{t('noCalculationsInHistory')}</h3>
+          <p className="text-muted-foreground">{t('startCreatingCalculations')}</p>
         </CardContent>
       </Card>
     )
@@ -336,10 +336,10 @@ export function MobileCalculationHistory({
           {pullDistance > 80 ? (
             <div className="text-primary text-sm font-medium flex items-center gap-2">
               <RefreshCw className="h-4 w-4" />
-              Release to refresh
+              {t('releaseToRefresh')}
             </div>
           ) : (
-            <div className="text-muted-foreground text-sm">Pull to refresh</div>
+            <div className="text-muted-foreground text-sm">{t('pullToRefresh')}</div>
           )}
         </div>
       )}
@@ -349,7 +349,7 @@ export function MobileCalculationHistory({
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <Archive className="h-5 w-5 text-primary" />
-              History
+              {t('history')}
               <Badge variant="secondary">{filteredCalculations.length}</Badge>
             </CardTitle>
             <Button
@@ -358,7 +358,7 @@ export function MobileCalculationHistory({
               onClick={exportCalculations}
             >
               <Download className="h-4 w-4 mr-2" />
-              Export
+              {t('export')}
             </Button>
           </div>
         </CardHeader>
@@ -391,7 +391,7 @@ export function MobileCalculationHistory({
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="flex-1">
                   <Filter className="h-4 w-4 mr-2" />
-                  Filters
+                  {t('filters')}
                   {hasActiveFilters && (
                     <Badge variant="secondary" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
                       !
@@ -401,9 +401,9 @@ export function MobileCalculationHistory({
               </SheetTrigger>
               <SheetContent side="bottom" className="max-h-[80vh]">
                 <SheetHeader>
-                  <SheetTitle>Filter Calculations</SheetTitle>
+                  <SheetTitle>{t('filterCalculations')}</SheetTitle>
                   <SheetDescription>
-                    Narrow down your calculation history
+                    {t('narrowDownHistory')}
                   </SheetDescription>
                 </SheetHeader>
                 
@@ -418,8 +418,8 @@ export function MobileCalculationHistory({
                         <SelectValue placeholder={t('allProjects')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Projects</SelectItem>
-                        <SelectItem value="none">No Project</SelectItem>
+                        <SelectItem value="all">{t('allProjects')}</SelectItem>
+                        <SelectItem value="none">{t('noProject')}</SelectItem>
                         {projects.map(project => (
                           <SelectItem key={project.id} value={project.id}>
                             {project.name}
@@ -430,7 +430,7 @@ export function MobileCalculationHistory({
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Date Range</label>
+                    <label className="text-sm font-medium mb-2 block">{t('dateRange')}</label>
                     <Select
                       value={historyFilters.dateRange || 'all'}
                       onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, dateRange: value as any }))}
@@ -439,16 +439,16 @@ export function MobileCalculationHistory({
                         <SelectValue placeholder={t('allTime')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Time</SelectItem>
-                        <SelectItem value="today">Today</SelectItem>
-                        <SelectItem value="week">This Week</SelectItem>
-                        <SelectItem value="month">This Month</SelectItem>
+                        <SelectItem value="all">{t('allTime')}</SelectItem>
+                        <SelectItem value="today">{t('today')}</SelectItem>
+                        <SelectItem value="week">{t('thisWeek')}</SelectItem>
+                        <SelectItem value="month">{t('thisMonth')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Material</label>
+                    <label className="text-sm font-medium mb-2 block">{t('material')}</label>
                     <Select
                       value={historyFilters.materialType || 'all'}
                       onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, materialType: value }))}
@@ -457,7 +457,7 @@ export function MobileCalculationHistory({
                         <SelectValue placeholder={t('allMaterials')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Materials</SelectItem>
+                        <SelectItem value="all">{t('allMaterials')}</SelectItem>
                         {uniqueMaterials.map(material => (
                           <SelectItem key={material} value={material}>
                             {material}
@@ -468,16 +468,16 @@ export function MobileCalculationHistory({
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Profile Type</label>
+                    <label className="text-sm font-medium mb-2 block">{t('profileType')}</label>
                     <Select
                       value={historyFilters.profileType || 'all'}
                       onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, profileType: value }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="All Profile Types" />
+                        <SelectValue placeholder={t('allProfileTypes')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Profile Types</SelectItem>
+                        <SelectItem value="all">{t('allProfileTypes')}</SelectItem>
                         {uniqueProfileTypes.map(type => (
                           <SelectItem key={type} value={type}>
                             {type}
@@ -493,21 +493,25 @@ export function MobileCalculationHistory({
                       onClick={clearFilters}
                       className="flex-1"
                     >
-                      Clear All
+                      {t('clearAll')}
                     </Button>
                     <Button 
                       onClick={() => setShowFilters(false)}
                       className="flex-1"
                     >
-                      Apply Filters
+                      {t('applyFilters')}
                     </Button>
                   </div>
                 </div>
               </SheetContent>
             </Sheet>
-
+            
             {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+              >
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -552,7 +556,7 @@ export function MobileCalculationHistory({
               <Archive className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p className="text-muted-foreground">No calculations match your filters</p>
               <Button variant="outline" onClick={clearFilters} className="mt-2">
-                Clear Filters
+                {t('clearFilters')}
               </Button>
             </div>
           )}
@@ -590,6 +594,7 @@ function MobileCalculationCard({
   onSwipeMove,
   onSwipeEnd
 }: MobileCalculationCardProps) {
+  const { t } = useI18n()
   const [showActions, setShowActions] = useState(false)
 
   return (
@@ -658,7 +663,7 @@ function MobileCalculationCard({
             
             {calculation.quantity && calculation.quantity > 1 && (
               <div className="text-center p-2 bg-muted/50 rounded">
-                <div className="text-xs text-muted-foreground">Quantity</div>
+                <div className="text-xs text-muted-foreground">{t('quantity')}</div>
                 <div className="font-semibold text-sm">{calculation.quantity}</div>
               </div>
             )}

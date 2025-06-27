@@ -12,6 +12,7 @@ import { LoadingSpinner } from '@/components/loading-states'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 import { updateTimelineEvent, type StoredTimelineEvent } from '@/lib/timeline-storage'
 import { ProjectStatus, type ProjectTask } from '@/lib/types'
 import { PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS } from '@/lib/project-utils'
@@ -34,6 +35,7 @@ export function TimelineEventEditModal({
   onDelete,
   availableTasks = []
 }: TimelineEventEditModalProps) {
+  const { t } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   const [isLoading, setIsLoading] = useState(false)
   
@@ -227,12 +229,12 @@ export function TimelineEventEditModal({
                 />
               </div>
               <div>
-                <Label>Quantity</Label>
+                <Label>{t('quantity')}</Label>
                 <Input
                   type="number"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="Quantity"
+                  placeholder={t('quantity')}
                   className={cn(isMobile && "text-base h-12")}
                 />
               </div>

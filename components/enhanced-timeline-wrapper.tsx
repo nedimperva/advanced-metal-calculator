@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { useI18n } from '@/contexts/i18n-context'
 import type { Project, ProjectTask } from '@/lib/types'
 
 interface EnhancedTimelineWrapperProps {
@@ -17,6 +18,7 @@ interface EnhancedTimelineWrapperProps {
 }
 
 export function EnhancedTimelineWrapper({ project, projectTasks = [] }: EnhancedTimelineWrapperProps) {
+  const { t } = useI18n()
   const { events, addEvent, editEvent, removeEvent, refreshEvents, isLoading } = useTimelineEvents(project, projectTasks)
   const [editingEvent, setEditingEvent] = useState<StoredTimelineEvent | null>(null)
   const isMobile = useMediaQuery("(max-width: 767px)")
@@ -255,7 +257,7 @@ export function EnhancedTimelineWrapper({ project, projectTasks = [] }: Enhanced
                               <div><strong>Supplier:</strong> {event.materialInfo.supplier}</div>
                             )}
                             {event.materialInfo.quantity && (
-                              <div><strong>Quantity:</strong> {event.materialInfo.quantity}</div>
+                              <div><strong>{t('quantity')}:</strong> {event.materialInfo.quantity}</div>
                             )}
                             {event.materialInfo.cost && (
                               <div><strong>Cost:</strong> ${event.materialInfo.cost.toFixed(2)}</div>

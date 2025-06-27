@@ -345,12 +345,12 @@ function AddEventModal({
                 />
               </div>
               <div>
-                <Label>Quantity</Label>
+                <Label>{t('quantity')}</Label>
                 <Input
                   type="number"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="Quantity"
+                  placeholder={t('quantity')}
                   className={cn(isMobile && "text-base h-12")}
                 />
               </div>
@@ -773,8 +773,8 @@ function TimelineEventItem({
                 )}
                 {event.materialInfo.quantity && (
                   <div>
-                    <span className="text-muted-foreground">Quantity:</span>
-                    <p className="font-medium">{event.materialInfo.quantity}</p>
+                                    <span className="text-muted-foreground">{t('quantity')}:</span>
+                <p className="font-medium">{event.materialInfo.quantity}</p>
                   </div>
                 )}
                 {event.materialInfo.cost && (

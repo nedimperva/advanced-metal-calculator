@@ -125,6 +125,7 @@ interface CalculationCardProps {
 }
 
 function CalculationCard({ calculation, project, onEdit, onRemove, isMobile }: CalculationCardProps) {
+  const { t } = useI18n()
   return (
     <Card className="hover:bg-muted/30 transition-colors">
       <CardContent className={cn(
@@ -167,7 +168,7 @@ function CalculationCard({ calculation, project, onEdit, onRemove, isMobile }: C
                 isMobile ? "text-xs" : "text-sm"
               )}>
                 {calculation.materialName} • {calculation.profileName} • {calculation.dimensions?.length || '?'}m
-                {calculation.quantity && calculation.quantity > 1 && ` • Qty: ${calculation.quantity}`}
+                {calculation.quantity && calculation.quantity > 1 && ` • ${t('quantity')}: ${calculation.quantity}`}
               </div>
               
               {calculation.notes && (

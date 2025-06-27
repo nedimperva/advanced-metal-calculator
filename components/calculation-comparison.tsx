@@ -77,25 +77,25 @@ interface ComparisonMetric {
   unit: string
 }
 
-// Comparison metrics
-const COMPARISON_METRICS: ComparisonMetric[] = [
+// Helper function to create comparison metrics with translations
+const createComparisonMetrics = (t: any): ComparisonMetric[] => [
   {
     key: 'weight',
-    label: 'Weight',
+    label: t('weight'),
     unit: 'kg',
     getValue: (calc) => calc.totalWeight || calc.weight || 0,
     format: (value) => `${Number(value).toFixed(2)} kg`
   },
   {
     key: 'cost',
-    label: 'Cost', 
+    label: t('cost'), 
     unit: '$',
     getValue: (calc) => calc.totalCost || 0,
     format: (value) => `$${Number(value).toFixed(2)}`
   },
   {
     key: 'quantity',
-    label: 'Quantity',
+    label: t('quantity'),
     unit: 'pcs',
     getValue: (calc) => calc.quantity || 1,
     format: (value) => `${value} pcs`
@@ -133,6 +133,7 @@ function MobileCalculationCard({
   onDelete, 
   projects
 }: MobileCalculationCardProps) {
+  const { t } = useI18n()
   const [showActions, setShowActions] = useState(false)
 
   return (
@@ -167,7 +168,7 @@ function MobileCalculationCard({
           
           {calculation.quantity && calculation.quantity > 1 && (
             <div className="text-center p-2 bg-muted/50 rounded">
-              <div className="text-xs text-muted-foreground">Quantity</div>
+              <div className="text-xs text-muted-foreground">{t('quantity')}</div>
               <div className="font-semibold text-sm">{calculation.quantity}</div>
             </div>
           )}
@@ -652,11 +653,11 @@ export function CalculationHistory({
                 onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, projectId: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All Projects" />
+                  <SelectValue placeholder={t('allProjects')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
-                  <SelectItem value="none">No Project (General History)</SelectItem>
+                  <SelectItem value="all">{t('allProjects')}</SelectItem>
+                  <SelectItem value="none">{t('noProject')} ({t('generalHistory')})</SelectItem>
                   {projects.map((project: any) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
@@ -670,13 +671,13 @@ export function CalculationHistory({
                 onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, dateRange: value as any }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All Time" />
+                  <SelectValue placeholder={t('allTime')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="all">{t('allTime')}</SelectItem>
+                  <SelectItem value="today">{t('today')}</SelectItem>
+                  <SelectItem value="week">{t('thisWeek')}</SelectItem>
+                  <SelectItem value="month">{t('thisMonth')}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -685,10 +686,10 @@ export function CalculationHistory({
                 onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, materialType: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All Materials" />
+                  <SelectValue placeholder={t('allMaterials')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Materials</SelectItem>
+                  <SelectItem value="all">{t('allMaterials')}</SelectItem>
                   {uniqueMaterials.map(material => (
                     <SelectItem key={material} value={material}>
                       {material}
@@ -712,7 +713,7 @@ export function CalculationHistory({
                 })
                 setSearchInput('')
               }} className="mt-2">
-                Clear Filters
+                {t('clearFilters')}
               </Button>
             </div>
           )}
@@ -797,6 +798,9 @@ function MobileComparisonCard({
   onLoadCalculation, 
   onRemoveFromComparison 
 }: MobileComparisonCardProps) {
+  const { t } = useI18n()
+  const COMPARISON_METRICS = createComparisonMetrics(t)
+  
   const getComparisonIcon = (value: number, baselineValue: number) => {
     const diff = ((value - baselineValue) / baselineValue) * 100
     if (Math.abs(diff) < 1) return <Equal className="h-3 w-3 text-muted-foreground" />
@@ -872,7 +876,7 @@ function MobileComparisonCard({
             className="w-full"
           >
             <Play className="h-4 w-4 mr-2" />
-            Load Calculation
+            {t('load')} {t('calculator')}
           </Button>
         )}
       </CardContent>
@@ -891,6 +895,8 @@ export function CalculationComparison({
   const isMobile = useMediaQuery("(max-width: 767px)")
   const [sortBy, setSortBy] = useState<string>('weight')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  
+  const COMPARISON_METRICS = createComparisonMetrics(t)
 
   const compareCalculations = calculations.filter(calc => 
     selectedCalculations.has(calc.id)
@@ -992,7 +998,7 @@ export function CalculationComparison({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-2 font-medium">Calculation</th>
+                    <th className="text-left p-2 font-medium">{t('calculator')}</th>
                     <th className="text-center p-2 font-medium">{t('weight')}<br/>kg</th>
                     <th className="text-center p-2 font-medium">{t('cost')}<br/>$</th>
                     <th className="text-center p-2 font-medium">{t('quantity')}<br/>pcs</th>
@@ -1015,7 +1021,7 @@ export function CalculationComparison({
                             </div>
                             {calculation.quantity && calculation.quantity > 1 && (
                               <div className="text-xs text-muted-foreground">
-                                Qty: {calculation.quantity}
+                                {t('quantity')}: {calculation.quantity}
                               </div>
                             )}
                           </div>

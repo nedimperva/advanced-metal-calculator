@@ -534,9 +534,39 @@ export interface Translations {
   allProjects: string
   allTime: string
   allMaterials: string
+  allProfileTypes: string
+  clearAll: string
+  applyFilters: string
   narrowDownHistory: string
   exportSuccessful: string
   exportedCalculations: string
+  
+  // Mobile history and comparison translations
+  noCalculationsInHistory: string
+  startCreatingCalculations: string
+  releaseToRefresh: string
+  pullToRefresh: string
+  filterCalculations: string
+  filters: string
+  calculationDetails: string
+  comparison: string
+  comparisonOptions: string
+  customizeComparison: string
+  sortBy: string
+  sortOrder: string
+  ascending: string
+  descending: string
+  viewMode: string
+  carousel: string
+  sideBySide: string
+  baseline: string
+  showLess: string
+  showMore: string
+  loadCalculation: string
+  created: string
+  at: string
+  weightPerUnit: string
+  costPerKg: string
   
   // Project Management & Dashboard
   manageConstructionProjects: string
@@ -566,9 +596,10 @@ export interface Translations {
   createFirstTask: string
   rectangularBars: string
   presets: string
-  calculationComparison: string
+    calculationComparison: string
   weight: string
-      actions: string
+  actions: string
+  costWeight: string
 }
 
 export const translations: Record<Language, Translations> = {
@@ -1112,9 +1143,43 @@ export const translations: Record<Language, Translations> = {
     allProjects: "All Projects",
     allTime: "All Time",
     allMaterials: "All Materials",
+    allProfileTypes: "All Profile Types",
+    clearAll: "Clear All",
+    applyFilters: "Apply Filters",
+    baseline: "Baseline",
+    loadCalculation: "Load Calculation", 
+    sortBy: "Sort by",
     narrowDownHistory: "Narrow Down History",
     exportSuccessful: "Export Successful",
     exportedCalculations: "Exported Calculations",
+    
+    // Mobile history and comparison translations
+    noCalculationsInHistory: "No calculations in history",
+    startCreatingCalculations: "Start by creating some calculations to see them here",
+    releaseToRefresh: "Release to refresh",
+    pullToRefresh: "Pull to refresh",
+    filterCalculations: "Filter Calculations",
+    filters: "Filters",
+    calculationDetails: "Calculation Details",
+    comparison: "Comparison",
+    comparisonOptions: "Comparison Options",
+    customizeComparison: "Customize how calculations are compared",
+    sortBy: "Sort by",
+    sortOrder: "Sort order",
+    ascending: "Ascending",
+    descending: "Descending",
+    viewMode: "View mode",
+    carousel: "Carousel",
+    sideBySide: "Side-by-Side",
+    baseline: "Baseline",
+    showLess: "Show Less",
+    showMore: "Show More", 
+    loadCalculation: "Load Calculation",
+    created: "Created",
+    at: "at",
+    weightPerUnit: "Weight per unit",
+    costPerKg: "Cost per kg",
+    stainlessLimitedDesc: "Corrosion resistant with limited profile selection for specialized applications.",
     
     // Project Management & Dashboard
     manageConstructionProjects: "Manage Construction Projects",
@@ -1695,10 +1760,44 @@ export const translations: Record<Language, Translations> = {
      allProjects: "Svi Projekti",
      allTime: "Svo Vrijeme",
      allMaterials: "Svi Materijali",
-     narrowDownHistory: "Sužite istoriju izračuna",
-     exportSuccessful: "Izvoz Uspješan",
-     exportedCalculations: "Izvezeni izračuni",
-     
+     allProfileTypes: "Svi Tipovi Profila",
+     clearAll: "Obriši Sve",
+           applyFilters: "Primijeni Filtere",
+      baseline: "Bazna Linija",
+      loadCalculation: "Učitaj Izračun",
+      sortBy: "Sortiraj po",
+      narrowDownHistory: "Sužite istoriju izračuna",
+         exportSuccessful: "Izvoz Uspješan",
+    exportedCalculations: "Izvezeni izračuni",
+    
+    // Mobile history and comparison translations
+    noCalculationsInHistory: "Nema izračuna u historiji",
+    startCreatingCalculations: "Započnite kreiranje izračuna da biste ih vidjeli ovdje",
+    releaseToRefresh: "Otpustite za osvježavanje",
+    pullToRefresh: "Povucite za osvježavanje",
+    filterCalculations: "Filtriraj Izračune",
+    filters: "Filteri",
+    calculationDetails: "Detalji Izračuna",
+    comparison: "Poređenje",
+    comparisonOptions: "Opcije Poređenja",
+    customizeComparison: "Prilagodite kako se izračuni porede",
+    sortBy: "Sortiraj po",
+    sortOrder: "Redoslijed sortiranja",
+    ascending: "Rastući",
+    descending: "Opadajući",
+    viewMode: "Način prikaza",
+    carousel: "Karusel",
+    sideBySide: "Jedan pored drugog",
+    baseline: "Osnova",
+    showLess: "Prikaži manje",
+    showMore: "Prikaži više",
+    loadCalculation: "Učitaj Izračun",
+    created: "Kreiran",
+    at: "u",
+    weightPerUnit: "Težina po jedinici",
+    costPerKg: "Cijena po kg",
+    stainlessLimitedDesc: "Otporan na koroziju sa ograničenim izborom profila za specijalizirane primjene.",
+    
     // Project Management & Dashboard
     manageConstructionProjects: "Manage Construction Projects",
     newProject: "New Project",
