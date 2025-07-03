@@ -273,7 +273,7 @@ export default function ProjectDashboard({
             <div className="text-destructive mb-4">
               <FolderOpen className="h-12 w-12 mx-auto" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Failed to Load Projects</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('failedToLoadProjects')}</h3>
             <p className="text-muted-foreground mb-4">{error}</p>
             <Button onClick={refreshProjects}>
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -291,7 +291,7 @@ export default function ProjectDashboard({
       {showHeader && (
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('projects')}</h1>
             <p className="text-lg text-muted-foreground mb-6">
               {t('manageConstructionProjects')}
             </p>
@@ -382,7 +382,7 @@ export default function ProjectDashboard({
           {/* Workforce Stats */}
           {statistics.workforceStats.projectsWithWorkforce > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-3">Workforce Overview</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('workforceOverview')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card>
                   <CardContent className="p-4">
@@ -435,7 +435,7 @@ export default function ProjectDashboard({
                       <div>
                         <p className="text-sm text-muted-foreground">{t('activeProjects')}</p>
                         <p className="text-2xl font-bold">{statistics.workforceStats.projectsWithWorkforce}</p>
-                        <p className="text-xs text-muted-foreground">with workforce</p>
+                        <p className="text-xs text-muted-foreground">{t('withWorkforce')}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -472,7 +472,7 @@ export default function ProjectDashboard({
             <SelectValue placeholder={t('allStatuses')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="all">{t('allStatuses')}</SelectItem>
             {statusOptions.map((status) => (
               <SelectItem key={status.value} value={status.value}>
                 {status.label}

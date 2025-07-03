@@ -37,6 +37,7 @@ import {
   type ProjectStatistics
 } from '@/lib/project-utils'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 // Context interfaces
 interface ProjectContextState {
@@ -134,6 +135,7 @@ interface ProjectProviderProps {
 
 export function ProjectProvider({ children }: ProjectProviderProps) {
   const [state, setState] = useState<ProjectContextState>(initialState)
+  const { t } = useI18n()
 
   // Helper function to update state
   const updateState = useCallback((updates: Partial<ProjectContextState>) => {
@@ -170,8 +172,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         error: error instanceof Error ? error.message : 'Failed to initialize projects'
       })
       toast({
-        title: "Initialization Error",
-        description: "Failed to initialize project system. Please refresh the page.",
+        title: t('initializationError'),
+        description: t('initializationErrorDesc'),
         variant: "destructive"
       })
     }
@@ -213,16 +215,16 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       await refreshProjects()
       
       toast({
-        title: "Project Created",
-        description: `Successfully created project "${projectData.name}"`
+        title: t('projectCreatedSuccess'),
+        description: `${t('projectCreatedSuccess')} "${projectData.name}"`
       })
       
       return projectId
     } catch (error) {
       console.error('Failed to create project:', error)
       toast({
-        title: "Creation Failed",
-        description: error instanceof Error ? error.message : "Failed to create project",
+        title: t('creationFailed'),
+        description: error instanceof Error ? error.message : t('creationFailed'),
         variant: "destructive"
       })
       throw error
@@ -246,14 +248,14 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       }
       
       toast({
-        title: "Project Updated",
-        description: `Successfully updated project "${project.name}"`
+        title: t('projectUpdatedSuccess'),
+        description: `${t('projectUpdatedSuccess')} "${project.name}"`
       })
     } catch (error) {
       console.error('Failed to update project:', error)
       toast({
-        title: "Update Failed",
-        description: error instanceof Error ? error.message : "Failed to update project",
+        title: t('updateFailed'),
+        description: error instanceof Error ? error.message : t('updateFailed'),
         variant: "destructive"
       })
       throw error
@@ -273,14 +275,14 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       }
       
       toast({
-        title: "Project Deleted",
-        description: project ? `Successfully deleted project "${project.name}"` : "Project deleted"
+        title: t('projectDeletedSuccess'),
+        description: project ? `${t('projectDeletedSuccess')} "${project.name}"` : t('projectDeletedSuccess')
       })
     } catch (error) {
       console.error('Failed to delete project:', error)
       toast({
-        title: "Deletion Failed",
-        description: error instanceof Error ? error.message : "Failed to delete project",
+        title: t('deletionFailed'),
+        description: error instanceof Error ? error.message : t('deletionFailed'),
         variant: "destructive"
       })
       throw error
@@ -303,8 +305,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     } catch (error) {
       console.error('Failed to select project:', error)
       toast({
-        title: "Selection Failed",
-        description: "Failed to load project details",
+        title: t('selectionFailed'),
+        description: t('selectionFailedDesc'),
         variant: "destructive"
       })
       throw error
@@ -331,16 +333,16 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       })
       
       toast({
-        title: "Material Added",
-        description: "Successfully added material to project"
+        title: t('materialAddedSuccess'),
+        description: t('materialAddedSuccess')
       })
       
       return materialId
     } catch (error) {
       console.error('Failed to add material:', error)
       toast({
-        title: "Addition Failed",
-        description: error instanceof Error ? error.message : "Failed to add material",
+        title: t('additionFailed'),
+        description: error instanceof Error ? error.message : t('additionFailed'),
         variant: "destructive"
       })
       throw error
@@ -367,14 +369,14 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       }
       
       toast({
-        title: "Status Updated",
-        description: `Material status updated to ${status}`
+        title: t('statusUpdatedSuccess'),
+        description: `${t('statusUpdatedSuccess')} ${status}`
       })
     } catch (error) {
       console.error('Failed to update material status:', error)
       toast({
-        title: "Update Failed",
-        description: error instanceof Error ? error.message : "Failed to update material status",
+        title: t('updateFailed'),
+        description: error instanceof Error ? error.message : t('failedToUpdateStatus'),
         variant: "destructive"
       })
       throw error
@@ -388,16 +390,16 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       await refreshProjects() // This will also refresh allCalculations
       
       toast({
-        title: "Calculation Saved",
-        description: "Successfully saved calculation"
+        title: t('calculationSavedSuccess'),
+        description: t('calculationSavedSuccess')
       })
       
       return calculationId
     } catch (error) {
       console.error('Failed to save calculation:', error)
       toast({
-        title: "Save Failed",
-        description: error instanceof Error ? error.message : "Failed to save calculation",
+        title: t('savingError'),
+        description: error instanceof Error ? error.message : t('failedToSaveTask'),
         variant: "destructive"
       })
       throw error
@@ -410,14 +412,14 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       await refreshProjects()
       
       toast({
-        title: "Calculation Updated",
-        description: "Successfully updated calculation"
+        title: t('calculationUpdatedSuccess'),
+        description: t('calculationUpdatedSuccess')
       })
     } catch (error) {
       console.error('Failed to update calculation:', error)
       toast({
-        title: "Update Failed",
-        description: error instanceof Error ? error.message : "Failed to update calculation",
+        title: t('updateFailed'),
+        description: error instanceof Error ? error.message : t('updateFailed'),
         variant: "destructive"
       })
       throw error
@@ -430,14 +432,14 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       await refreshProjects()
       
       toast({
-        title: "Calculation Deleted",
-        description: "Successfully deleted calculation"
+        title: t('calculationDeletedSuccess'),
+        description: t('calculationDeletedSuccess')
       })
     } catch (error) {
       console.error('Failed to delete calculation:', error)
       toast({
-        title: "Deletion Failed",
-        description: error instanceof Error ? error.message : "Failed to delete calculation",
+        title: t('deletionFailed'),
+        description: error instanceof Error ? error.message : t('deletionFailed'),
         variant: "destructive"
       })
       throw error
@@ -456,14 +458,14 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       await refreshProjects()
       
       toast({
-        title: "Calculation Moved",
-        description: "Successfully moved calculation to project"
+        title: t('calculationMovedSuccess'),
+        description: t('calculationMovedSuccess')
       })
     } catch (error) {
       console.error('Failed to move calculation:', error)
       toast({
-        title: "Move Failed",
-        description: error instanceof Error ? error.message : "Failed to move calculation",
+        title: t('updateFailed'),
+        description: error instanceof Error ? error.message : t('updateFailed'),
         variant: "destructive"
       })
       throw error

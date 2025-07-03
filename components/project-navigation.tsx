@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
+import { useI18n } from '@/contexts/i18n-context'
 import { PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS } from '@/lib/project-utils'
 import type { Project } from '@/lib/types'
 
@@ -62,6 +63,7 @@ export function ProjectNavigation({
 }: ProjectNavigationProps) {
   // Router and pathname no longer needed - navigation handled by parent
   const { deleteProject } = useProjects()
+  const { t } = useI18n()
 
   // Handle navigation actions
   const handleBack = () => {
@@ -97,7 +99,7 @@ export function ProjectNavigation({
   }
 
   const handleDelete = async () => {
-    if (project && confirm(`Are you sure you want to delete "${project.name}"?`)) {
+            if (project && confirm(t('confirmDeleteProject'))) {
       try {
         await deleteProject(project.id)
         // Navigation will be handled by parent component
