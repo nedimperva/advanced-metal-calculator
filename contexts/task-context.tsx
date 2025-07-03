@@ -22,6 +22,7 @@ import {
   type SortDirection 
 } from '@/lib/task-utils'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 // ============================================================================
 // CONTEXT STATE TYPES
@@ -167,6 +168,7 @@ interface TaskProviderProps {
 }
 
 export function TaskProvider({ children, initialProjectId }: TaskProviderProps) {
+  const { t } = useI18n()
   const [state, dispatch] = useReducer(taskReducer, {
     tasks: [],
     loading: false,
@@ -210,8 +212,8 @@ export function TaskProvider({ children, initialProjectId }: TaskProviderProps) 
       dispatch({ type: 'ADD_TASK', payload: newTask })
       
       toast({
-        title: "Task Created",
-        description: `Successfully created task "${taskData.name}"`,
+        title: t('taskCreatedSuccess'),
+        description: `${t('taskCreatedSuccess')} "${taskData.name}"`,
       })
       
       return taskId
@@ -220,7 +222,7 @@ export function TaskProvider({ children, initialProjectId }: TaskProviderProps) 
       dispatch({ type: 'SET_ERROR', payload: errorMessage })
       
       toast({
-        title: "Creation Failed",
+        title: t('creationFailed'),
         description: errorMessage,
         variant: "destructive"
       })
@@ -247,15 +249,15 @@ export function TaskProvider({ children, initialProjectId }: TaskProviderProps) 
       dispatch({ type: 'UPDATE_TASK', payload: task })
       
       toast({
-        title: "Task Updated",
-        description: `Successfully updated task "${task.name}"`,
+        title: t('taskUpdatedSuccess'),
+        description: `${t('taskUpdatedSuccess')} "${task.name}"`,
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update task'
       dispatch({ type: 'SET_ERROR', payload: errorMessage })
       
       toast({
-        title: "Update Failed",
+        title: t('updateFailed'),
         description: errorMessage,
         variant: "destructive"
       })
@@ -275,15 +277,15 @@ export function TaskProvider({ children, initialProjectId }: TaskProviderProps) 
       dispatch({ type: 'DELETE_TASK', payload: taskId })
       
       toast({
-        title: "Task Deleted",
-        description: `Successfully deleted task "${task?.name || 'Unknown'}"`,
+        title: t('taskDeletedSuccess'),
+        description: `${t('taskDeletedSuccess')} "${task?.name || 'Unknown'}"`,
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete task'
       dispatch({ type: 'SET_ERROR', payload: errorMessage })
       
       toast({
-        title: "Delete Failed",
+        title: t('deletionFailed'),
         description: errorMessage,
         variant: "destructive"
       })
@@ -310,7 +312,7 @@ export function TaskProvider({ children, initialProjectId }: TaskProviderProps) 
       dispatch({ type: 'SET_ERROR', payload: errorMessage })
       
       toast({
-        title: "Load Failed",
+        title: t('loadFailed'),
         description: errorMessage,
         variant: "destructive"
       })

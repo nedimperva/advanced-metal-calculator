@@ -596,10 +596,150 @@ export interface Translations {
   createFirstTask: string
   rectangularBars: string
   presets: string
-    calculationComparison: string
+  calculationComparison: string
   weight: string
   actions: string
   costWeight: string
+  
+  // Toast notification titles and messages
+  initializationError: string
+  initializationErrorDesc: string
+  creationFailed: string
+  updateFailed: string
+  deletionFailed: string
+  selectionFailed: string
+  selectionFailedDesc: string
+  additionFailed: string
+  loadFailed: string
+  refreshFailed: string
+  refreshFailedDesc: string
+  
+  // Success messages
+  projectCreatedSuccess: string
+  projectUpdatedSuccess: string
+  projectDeletedSuccess: string
+  materialAddedSuccess: string
+  statusUpdatedSuccess: string
+  calculationSavedSuccess: string
+  calculationUpdatedSuccess: string
+  calculationDeletedSuccess: string
+  calculationMovedSuccess: string
+  taskCreatedSuccess: string
+  taskUpdatedSuccess: string
+  taskDeletedSuccess: string
+  taskSavedSuccess: string
+  workerUpdatedSuccess: string
+  machineryUpdatedSuccess: string
+  timelineEventAdded: string
+  timelineEventUpdated: string
+  timelineEventDeleted: string
+  
+  // Error messages  
+  failedToLoadProjects: string
+  failedToDeleteProjects: string
+  failedToUpdateStatus: string
+  failedToLoadMachinery: string
+  failedToUpdateMachinery: string
+  failedToLoadWorkers: string
+  failedToUpdateWorker: string
+  failedToLoadTasks: string
+  failedToSaveTask: string
+  failedToDeleteTask: string
+  failedToUpdateTaskStatus: string
+  failedToSaveWorkLog: string
+  failedToLoadAnalytics: string
+  failedToSaveNotes: string
+  failedToShareProject: string
+  failedToExportProject: string
+  failedToCopyLink: string
+  failedToAddTimelineEvent: string
+  failedToLoadTimesheet: string
+  failedToSaveBulkEntry: string
+  failedToDuplicateTimesheet: string
+  failedToSaveTimesheet: string
+  failedToLoadWorkforceData: string
+  failedToCreateFromTemplate: string
+  failedToSaveWorker: string
+  failedToSaveMachinery: string
+  failedToAddCalculations: string
+  failedToRemoveCalculation: string
+  failedToRefreshHistory: string
+  
+  // Confirmation dialogs
+  confirmDeleteCalculation: string
+  confirmDeleteProject: string
+  confirmDeleteTimelineEvent: string
+  confirmDeleteTask: string
+  confirmDeleteMaterial: string
+  
+  // UI Labels and text
+  toggleTheme: string
+  toggleSidebar: string
+  breadcrumb: string
+  deleteProjects: string
+  removeFromProject: string
+  crossSectionNotAvailable: string
+  inactive: string
+  serialNumber: string
+  noMachineryFound: string
+  noWorkersFound: string
+  workDays: string
+  averageDailyCost: string
+  editProjectNotes: string
+  shareProject: string
+  projectLink: string
+  eventType: string
+  projectStart: string
+  checkpoint: string
+  importance: string
+  addTimelineEvent: string
+  attachedFiles: string
+  projectActions: string
+  switchProject: string
+  calculationName: string
+  withWorkforce: string
+  
+  // Mobile specific
+  moreActions: string
+  swipeHint: string
+  noMatchingCalculations: string
+  
+  // Additional missing
+  workersDatabase: string
+  machineryDatabase: string
+  manageWorkforceDatabase: string
+  manageEquipmentMachinery: string
+  activeMachinery: string
+  activeWorkers: string
+  taskBoard: string
+  schedule: string
+  entryTotal: string
+  hoursLogged: string
+  avgWorkers: string
+  weeklyAvg: string
+  workType: string
+  loadingTasks: string
+  loadingWorkLogs: string
+  loadingWorkforceData: string
+  
+  // Form validation and messages
+  theseWillBeUsedAsDefaults: string
+  pleaseWait: string
+  
+  // Cross-section and technical
+  crossSection: string
+  momentOfInertiaShort: string
+  sectionModulusShort: string
+  radiusOfGyrationShort: string
+  additionalProperties: string
+  
+  // Supplier and tracking
+  supplier: string
+  trackingNumber: string
+  deliveryDocuments: string
+  
+  // View modes and options
+  listView: string
 }
 
 export const translations: Record<Language, Translations> = {
@@ -1215,7 +1355,256 @@ export const translations: Record<Language, Translations> = {
     cost: "Cost",
     quantity: "Quantity",
     actions: "Actions",
-    projects: "Projects"
+    projects: "Projects",
+    
+    // Toast notification titles and messages
+    initializationError: "Initialization Error",
+    initializationErrorDesc: "Failed to initialize the application. Please try again.",
+    creationFailed: "Creation Failed",
+    updateFailed: "Update Failed",
+    deletionFailed: "Deletion Failed",
+    selectionFailed: "Selection Failed",
+    selectionFailedDesc: "Failed to select the required data. Please try again.",
+    additionFailed: "Addition Failed",
+    loadFailed: "Load Failed",
+    refreshFailed: "Refresh Failed",
+    refreshFailedDesc: "Failed to refresh the data. Please try again.",
+    
+    // Success messages
+    projectCreatedSuccess: "Project created successfully",
+    projectUpdatedSuccess: "Project updated successfully",
+    projectDeletedSuccess: "Project deleted successfully",
+    materialAddedSuccess: "Material added successfully",
+    statusUpdatedSuccess: "Status updated successfully",
+    calculationSavedSuccess: "Calculation saved successfully",
+    calculationUpdatedSuccess: "Calculation updated successfully",
+    calculationDeletedSuccess: "Calculation deleted successfully",
+    calculationMovedSuccess: "Calculation moved successfully",
+    taskCreatedSuccess: "Task created successfully",
+    taskUpdatedSuccess: "Task updated successfully",
+    taskDeletedSuccess: "Task deleted successfully",
+    taskSavedSuccess: "Task saved successfully",
+    workerUpdatedSuccess: "Worker updated successfully",
+    machineryUpdatedSuccess: "Machinery updated successfully",
+    timelineEventAdded: "Timeline event added successfully",
+    timelineEventUpdated: "Timeline event updated successfully",
+    timelineEventDeleted: "Timeline event deleted successfully",
+    
+    // Error messages  
+    failedToLoadProjects: "Failed to load projects",
+    failedToDeleteProjects: "Failed to delete projects",
+    failedToUpdateStatus: "Failed to update status",
+    failedToLoadMachinery: "Failed to load machinery",
+    failedToUpdateMachinery: "Failed to update machinery",
+    failedToLoadWorkers: "Failed to load workers",
+    failedToUpdateWorker: "Failed to update worker",
+    failedToLoadTasks: "Failed to load tasks",
+    failedToSaveTask: "Failed to save task",
+    failedToDeleteTask: "Failed to delete task",
+    failedToUpdateTaskStatus: "Failed to update task status",
+    failedToSaveWorkLog: "Failed to save work log",
+    failedToLoadAnalytics: "Failed to load analytics",
+    failedToSaveNotes: "Failed to save notes",
+    failedToShareProject: "Failed to share project",
+    failedToExportProject: "Failed to export project",
+    failedToCopyLink: "Failed to copy link",
+    failedToAddTimelineEvent: "Failed to add timeline event",
+    failedToLoadTimesheet: "Failed to load timesheet",
+    failedToSaveBulkEntry: "Failed to save bulk entry",
+    failedToDuplicateTimesheet: "Failed to duplicate timesheet",
+    failedToSaveTimesheet: "Failed to save timesheet",
+    failedToLoadWorkforceData: "Failed to load workforce data",
+    failedToCreateFromTemplate: "Failed to create from template",
+    failedToSaveWorker: "Failed to save worker",
+    failedToSaveMachinery: "Failed to save machinery",
+    failedToAddCalculations: "Failed to add calculations",
+    failedToRemoveCalculation: "Failed to remove calculation",
+    failedToRefreshHistory: "Failed to refresh history",
+    
+    // Confirmation dialogs
+    confirmDeleteCalculation: "Are you sure you want to delete this calculation?",
+    confirmDeleteProject: "Are you sure you want to delete this project?",
+    confirmDeleteTimelineEvent: "Are you sure you want to delete this timeline event?",
+    confirmDeleteTask: "Are you sure you want to delete this task?",
+    confirmDeleteMaterial: "Are you sure you want to delete this material?",
+    
+         // UI Labels and text
+     toggleTheme: "Toggle Theme",
+     toggleSidebar: "Toggle Sidebar",
+     breadcrumb: "Breadcrumb",
+     deleteProjects: "Delete Projects",
+     removeFromProject: "Remove from Project",
+     crossSectionNotAvailable: "Cross-section not available",
+     inactive: "Inactive",
+     serialNumber: "Serial Number",
+     noMachineryFound: "No machinery found",
+     noWorkersFound: "No workers found",
+     workDays: "Work Days",
+     averageDailyCost: "Average Daily Cost",
+     editProjectNotes: "Edit Project Notes",
+     shareProject: "Share Project",
+     projectLink: "Project Link",
+     eventType: "Event Type",
+     projectStart: "Project Start",
+     checkpoint: "Checkpoint",
+     importance: "Importance",
+     addTimelineEvent: "Add Timeline Event",
+     attachedFiles: "Attached Files",
+     projectActions: "Project Actions",
+     switchProject: "Switch Project",
+     calculationName: "Calculation Name",
+     withWorkforce: "With Workforce",
+     
+     // Mobile specific
+     moreActions: "More Actions",
+     swipeHint: "Swipe to load more",
+     noMatchingCalculations: "No matching calculations",
+     
+     // Additional missing
+     workersDatabase: "Workers Database",
+     machineryDatabase: "Machinery Database",
+     manageWorkforceDatabase: "Manage Workforce Database",
+     manageEquipmentMachinery: "Manage Equipment Machinery",
+     activeMachinery: "Active Machinery",
+     activeWorkers: "Active Workers",
+     taskBoard: "Task Board",
+     schedule: "Schedule",
+     entryTotal: "Entry Total",
+     hoursLogged: "Hours Logged",
+     avgWorkers: "Average Workers",
+     weeklyAvg: "Weekly Average",
+     workType: "Work Type",
+     loadingTasks: "Loading Tasks",
+     loadingWorkLogs: "Loading Work Logs",
+     loadingWorkforceData: "Loading Workforce Data",
+     
+     // Form validation and messages
+     theseWillBeUsedAsDefaults: "These will be used as defaults",
+     pleaseWait: "Please wait",
+     
+     // Cross-section and technical
+     crossSection: "Cross-section",
+     momentOfInertiaShort: "Moment of Inertia",
+     sectionModulusShort: "Section Modulus",
+     radiusOfGyrationShort: "Radius of Gyration",
+     additionalProperties: "Additional Properties",
+     
+     // Supplier and tracking
+     supplier: "Supplier",
+     trackingNumber: "Tracking Number",
+     deliveryDocuments: "Delivery Documents",
+     
+           // View modes and options
+      listView: "List View",
+      costWeight: "Cost by Weight",
+
+      // Status labels
+      planning: "Planning",
+      active: "Active",
+      onHold: "On Hold",
+      completed: "Completed",
+      cancelled: "Cancelled",
+      pending: "Pending",
+      ordered: "Ordered",
+      shipped: "Shipped",
+      arrived: "Arrived",
+      installed: "Installed",
+
+      // Missing toast notification keys
+      historyRefreshed: "History Refreshed",
+      refreshFailed: "Refresh Failed",
+      exportSuccessful: "Export Successful",
+      machineryStatusChanged: "Machinery Status Changed",
+      workerStatusChanged: "Worker Status Changed",
+      notesSavedSuccess: "Notes Saved Successfully",
+      linkCopiedSuccess: "Link Copied to Clipboard",
+      shareFailed: "Share Failed",
+      exportCompleteSuccess: "Export Complete",
+      exportFailed: "Export Failed",
+      eventAddedSuccess: "Event Added Successfully",
+      addFailed: "Add Failed",
+      invalidCalculation: "Invalid Calculation",
+      projectNameRequired: "Project Name Required",
+      templateSavedSuccess: "Template Saved",
+      bulkEntrySavedSuccess: "Bulk Entry Saved",
+      duplicateFailed: "Duplicate Failed",
+      timesheetDuplicatedSuccess: "Timesheet Duplicated",
+      entrySavedSuccess: "Entry Saved",
+      calculationError: "Calculation Error",
+      cannotSave: "Cannot Save",
+      cannotExport: "Cannot Export",
+      cannotShare: "Cannot Share",
+      calculationUpdated: "Calculation Updated",
+      enhancedCalculationExported: "Enhanced Calculation Exported",
+      custom: "Custom",
+      profileAutoCorrect: "Profile Auto-Corrected",
+      compatibilityIssue: "Compatibility Issue",
+      projectsDeletedSuccess: "Projects Deleted Successfully",
+      statusUpdateSuccess: "Status Updated Successfully",
+      deleteProjects: "Delete Projects",
+      confirmDeleteMultipleProjects: "Are you sure you want to delete",
+      actionCannotBeUndone: "This action cannot be undone",
+      deleting: "Deleting",
+      name: "Name",
+      createdDate: "Created Date",
+      lastUpdated: "Last Updated",
+      status: "Status",
+      tryAgain: "Try Again",
+      of: "of",
+      projectsSelected: "projects selected",
+      changeStatus: "Change Status",
+      updateStatus: "Update Status",
+      deleteSelected: "Delete Selected",
+      noProjectsFound: "No Projects Found",
+      noProjectsMatchFilters: "No projects match your current filters",
+      getStartedFirstProject: "Get started by creating your first project",
+      createFirstProject: "Create First Project",
+      browseTemplates: "Browse Templates",
+      clear: "Clear",
+
+      // Worker and Machinery Forms
+      workerUpdatedSuccess: "Worker Updated Successfully",
+      workerAddedSuccess: "Worker Added Successfully", 
+      failedToSaveWorker: "Failed to save worker information",
+      editWorker: "Edit Worker",
+      addNewWorker: "Add New Worker",
+      updateWorkerInformation: "Update worker information and skills",
+      addNewWorkerDescription: "Add a new worker to your workforce database",
+      pleaseFixFollowingErrors: "Please fix the following errors",
+      basicInformation: "Basic Information",
+      fullName: "Full Name",
+      employeeId: "Employee ID",
+      hourlyRate: "Hourly Rate",
+      hourlyRateUsd: "Hourly Rate * ($)",
+      skillsSpecializations: "Skills & Specializations",
+      selectedSkills: "Selected Skills",
+      contactInformation: "Contact Information",
+      phoneNumber: "Phone Number", 
+      emailAddress: "Email Address",
+      address: "Address",
+      additionalNotes: "Additional Notes",
+      updating: "Updating",
+      adding: "Adding",
+      updateWorker: "Update Worker",
+      addWorker: "Add Worker",
+      
+      // Machinery
+      machineryUpdatedSuccess: "Machinery Updated Successfully",
+      machineryAddedSuccess: "Machinery Added Successfully",
+      failedToSaveMachinery: "Failed to save machinery information", 
+      editMachinery: "Edit Machinery",
+      addNewMachinery: "Add New Machinery",
+      updateMachineryInformation: "Update machinery information",
+      addNewMachineryDescription: "Add new machinery to your equipment database",
+      machineryName: "Machinery Name",
+      model: "Model",
+      serialNumber: "Serial Number",
+      manufacturer: "Manufacturer", 
+      yearManufactured: "Year Manufactured",
+      machineryType: "Machinery Type",
+      specifications: "Specifications",
+      updateMachinery: "Update Machinery",
+      addMachinery: "Add Machinery"
   },
   
   bs: {
@@ -1832,7 +2221,256 @@ export const translations: Record<Language, Translations> = {
     cost: "Cijena",
     quantity: "Količina",
     actions: "Akcije",
-    projects: "Projekti"
+    projects: "Projekti",
+    
+    // Toast notification titles and messages
+    initializationError: "Greška Priječenja",
+    initializationErrorDesc: "Nije uspjelo pokretanje aplikacije. Molimo pokušajte ponovno.",
+    creationFailed: "Neuspješno Kreiranje",
+    updateFailed: "Neuspješno Ažuriranje",
+    deletionFailed: "Neuspješno Brisanje",
+    selectionFailed: "Neuspješno Odabiranje",
+    selectionFailedDesc: "Nije uspjelo odabrati potrebne podatke. Molimo pokušajte ponovno.",
+    additionFailed: "Neuspješno Dodavanje",
+    loadFailed: "Neuspješno Učitavanje",
+    refreshFailed: "Neuspješno Osvježavanje",
+    refreshFailedDesc: "Nije uspjelo osvježiti podatke. Molimo pokušajte ponovno.",
+    
+    // Success messages
+    projectCreatedSuccess: "Projekt uspješno kreiran",
+    projectUpdatedSuccess: "Projekt uspješno ažuriran",
+    projectDeletedSuccess: "Projekt uspješno obrisan",
+    materialAddedSuccess: "Materijal uspješno dodan",
+    statusUpdatedSuccess: "Status uspješno ažuriran",
+    calculationSavedSuccess: "Izračun uspješno sačuvan",
+    calculationUpdatedSuccess: "Izračun uspješno ažuriran",
+    calculationDeletedSuccess: "Izračun uspješno obrisan",
+    calculationMovedSuccess: "Izračun uspješno premješten",
+    taskCreatedSuccess: "Zadatak uspješno kreiran",
+    taskUpdatedSuccess: "Zadatak uspješno ažuriran",
+    taskDeletedSuccess: "Zadatak uspješno obrisan",
+    taskSavedSuccess: "Zadatak uspješno sačuvan",
+    workerUpdatedSuccess: "Radnik uspješno ažuriran",
+    machineryUpdatedSuccess: "Mašina uspješno ažurirana",
+    timelineEventAdded: "Događaj uspješno dodan",
+    timelineEventUpdated: "Događaj uspješno ažuriran",
+    timelineEventDeleted: "Događaj uspješno obrisan",
+    
+    // Error messages  
+    failedToLoadProjects: "Nije uspjelo učitavanje projekata",
+    failedToDeleteProjects: "Nije uspjelo brisanje projekata",
+    failedToUpdateStatus: "Nije uspjelo ažuriranje statusa",
+    failedToLoadMachinery: "Nije uspjelo učitavanje mašina",
+    failedToUpdateMachinery: "Nije uspjelo ažuriranje mašina",
+    failedToLoadWorkers: "Nije uspjelo učitavanje radnika",
+    failedToUpdateWorker: "Nije uspjelo ažuriranje radnika",
+    failedToLoadTasks: "Nije uspjelo učitavanje zadataka",
+    failedToSaveTask: "Nije uspjelo sačuvanje zadatka",
+    failedToDeleteTask: "Nije uspjelo brisanje zadatka",
+    failedToUpdateTaskStatus: "Nije uspjelo ažuriranje statusa zadatka",
+    failedToSaveWorkLog: "Nije uspjelo sačuvanje dnevnika rada",
+    failedToLoadAnalytics: "Nije uspjelo učitavanje analize",
+    failedToSaveNotes: "Nije uspjelo sačuvanje bilješki",
+    failedToShareProject: "Nije uspjelo dijeljenje projekta",
+    failedToExportProject: "Nije uspjelo izvoz projekta",
+    failedToCopyLink: "Nije uspjelo kopiranje linka",
+    failedToAddTimelineEvent: "Nije uspjelo dodavanje događaja",
+    failedToLoadTimesheet: "Nije uspjelo učitavanje rasporeda",
+    failedToSaveBulkEntry: "Nije uspjelo sačuvanje masovnog unosa",
+    failedToDuplicateTimesheet: "Nije uspjelo dupliciranje rasporeda",
+    failedToSaveTimesheet: "Nije uspjelo sačuvanje rasporeda",
+    failedToLoadWorkforceData: "Nije uspjelo učitavanje podataka o radnoj snazi",
+    failedToCreateFromTemplate: "Nije uspjelo kreiranje iz template-a",
+    failedToSaveWorker: "Nije uspjelo sačuvanje radnika",
+    failedToSaveMachinery: "Nije uspjelo sačuvanje mašine",
+         failedToAddCalculations: "Nije uspjelo dodavanje izračuna",
+     failedToRemoveCalculation: "Nije uspjelo uklanjanje izračuna",
+     failedToRefreshHistory: "Nije uspjelo osvježavanje historije",
+
+     // Status labels
+     planning: "Planiranje",
+     active: "Aktivan",
+     onHold: "Pauziran",
+     completed: "Završen",
+     cancelled: "Otkazan",
+     pending: "Na čekanju",
+     ordered: "Naručen",
+     shipped: "Poslat",
+     arrived: "Stigao",
+     installed: "Instaliran",
+
+     // Missing toast notification keys
+     historyRefreshed: "Historija osvježena",
+     refreshFailed: "Osvježavanje neuspješno",
+     exportSuccessful: "Export uspješan",
+     machineryStatusChanged: "Status strojeva promijenjen",
+     workerStatusChanged: "Status radnika promijenjen",
+     notesSavedSuccess: "Bilješke uspješno snimljene",
+     linkCopiedSuccess: "Link kopiran u clipboard",
+     shareFailed: "Dijeljenje neuspješno",
+     exportCompleteSuccess: "Export završen",
+     exportFailed: "Export neuspješan",
+     eventAddedSuccess: "Događaj uspješno dodan",
+     addFailed: "Dodavanje neuspješno",
+     invalidCalculation: "Nevaljan izračun",
+     projectNameRequired: "Ime projekta obavezno",
+     templateSavedSuccess: "Predložak snimljen",
+     bulkEntrySavedSuccess: "Grupni unos snimljen",
+     duplicateFailed: "Kopiranje neuspješno",
+     timesheetDuplicatedSuccess: "Timesheet kopiran",
+     entrySavedSuccess: "Unos snimljen",
+     calculationError: "Greška u izračunu",
+     cannotSave: "Nije moguće snimiti",
+     cannotExport: "Nije moguće eksportovati",
+     cannotShare: "Nije moguće dijeliti",
+     calculationUpdated: "Izračun ažuriran",
+     enhancedCalculationExported: "Kompletan izračun eksportovan",
+     custom: "Prilagođen",
+     profileAutoCorrect: "Profil automatski ispravljen",
+     compatibilityIssue: "Problem kompatibilnosti",
+     projectsDeletedSuccess: "Projekti uspješno obrisani",
+     statusUpdateSuccess: "Status uspješno ažuriran",
+     deleteProjects: "Obriši Projekte",
+     confirmDeleteMultipleProjects: "Jeste li sigurni da želite obrisati",
+     actionCannotBeUndone: "Ova akcija se ne može poništiti",
+     deleting: "Brisanje",
+     name: "Ime",
+     createdDate: "Datum kreiranja",
+     lastUpdated: "Zadnje ažuriranje",
+     status: "Status",
+     tryAgain: "Pokušaj ponovo",
+     of: "od",
+     projectsSelected: "projekata izabrano",
+     changeStatus: "Promijeni status",
+     updateStatus: "Ažuriraj status",
+     deleteSelected: "Obriši izabrane",
+     noProjectsFound: "Nema pronađenih projekata",
+     noProjectsMatchFilters: "Nema projekata koji odgovaraju trenutnim filterima",
+     getStartedFirstProject: "Počnite kreiranjem prvog projekta",
+     createFirstProject: "Kreiraj prvi projekt",
+     browseTemplates: "Pregledaj predloške",
+     clear: "Očisti",
+
+     // Worker and Machinery Forms
+     workerUpdatedSuccess: "Radnik uspješno ažuriran",
+     workerAddedSuccess: "Radnik uspješno dodan",
+     failedToSaveWorker: "Neuspješno snimanje informacija o radniku",
+     editWorker: "Uredi radnika",
+     addNewWorker: "Dodaj novog radnika",
+     updateWorkerInformation: "Ažuriraj informacije o radniku i vještine",
+     addNewWorkerDescription: "Dodaj novog radnika u bazu radne snage",
+     pleaseFixFollowingErrors: "Molimo ispravite sljedeće greške",
+     basicInformation: "Osnovne informacije",
+     fullName: "Puno ime",
+     employeeId: "ID zaposlenog",
+     hourlyRate: "Satnica",
+     hourlyRateUsd: "Satnica * ($)",
+     skillsSpecializations: "Vještine i specijalizacije",
+     selectedSkills: "Izabrane vještine",
+     contactInformation: "Kontakt informacije",
+     phoneNumber: "Broj telefona",
+     emailAddress: "Email adresa",
+     address: "Adresa",
+     additionalNotes: "Dodatne bilješke",
+     updating: "Ažuriranje",
+     adding: "Dodavanje",
+     updateWorker: "Ažuriraj radnika",
+     addWorker: "Dodaj radnika",
+     
+     // Machinery
+     machineryUpdatedSuccess: "Stroj uspješno ažuriran",
+     machineryAddedSuccess: "Stroj uspješno dodan",
+     failedToSaveMachinery: "Neuspješno snimanje informacija o stroju",
+     editMachinery: "Uredi stroj",
+     addNewMachinery: "Dodaj novi stroj",
+     updateMachineryInformation: "Ažuriraj informacije o stroju",
+     addNewMachineryDescription: "Dodaj novi stroj u bazu opreme",
+     machineryName: "Naziv stroja",
+     model: "Model",
+     serialNumber: "Serijski broj",
+     manufacturer: "Proizvođač",
+     yearManufactured: "Godina proizvodnje",
+     machineryType: "Tip stroja",
+     specifications: "Specifikacije",
+     updateMachinery: "Ažuriraj stroj",
+     addMachinery: "Dodaj stroj",
+     
+     // Confirmation dialogs
+     confirmDeleteCalculation: "Jeste li sigurni da želite obrisati ovaj izračun?",
+     confirmDeleteProject: "Jeste li sigurni da želite obrisati ovaj projekt?",
+     confirmDeleteTimelineEvent: "Jeste li sigurni da želite obrisati ovaj događaj?",
+     confirmDeleteTask: "Jeste li sigurni da želite obrisati ovaj zadatak?",
+     confirmDeleteMaterial: "Jeste li sigurni da želite obrisati ovaj materijal?",
+     
+     // UI Labels and text
+     toggleTheme: "Prebaci Temu",
+     toggleSidebar: "Prebaci Bočnu Traku",
+     breadcrumb: "Navigacijski put",
+     deleteProjects: "Obriši Projekte",
+     removeFromProject: "Ukloni iz Projekta",
+     crossSectionNotAvailable: "Presjek nije dostupan",
+     inactive: "Neaktivan",
+     serialNumber: "Serijski broj",
+     noMachineryFound: "Nema pronađenih mašina",
+     noWorkersFound: "Nema pronađenih radnika",
+     workDays: "Radni dani",
+     averageDailyCost: "Prosječni dnevni trošak",
+     editProjectNotes: "Uredi bilješke projekta",
+     shareProject: "Podijeli projekt",
+     projectLink: "Link projekta",
+     eventType: "Tip događaja",
+     projectStart: "Početak projekta",
+     checkpoint: "Kontrolna tačka",
+     importance: "Važnost",
+     addTimelineEvent: "Dodaj događaj",
+     attachedFiles: "Priložene datoteke",
+     projectActions: "Akcije projekta",
+     switchProject: "Prebaci projekt",
+     calculationName: "Naziv izračuna",
+     withWorkforce: "sa radnom snagom",
+     
+     // Mobile specific
+     moreActions: "Više akcija",
+     swipeHint: "Povucite za učitavanje više",
+     noMatchingCalculations: "Nema odgovarajućih izračuna",
+     
+     // Additional missing
+     workersDatabase: "Baza radnika",
+     machineryDatabase: "Baza mašina",
+     manageWorkforceDatabase: "Upravljanje bazom radne snage",
+     manageEquipmentMachinery: "Upravljanje opremom i mašinama",
+     activeMachinery: "Aktivne mašine",
+     activeWorkers: "Aktivni radnici",
+     taskBoard: "Tabla zadataka",
+     schedule: "Raspored",
+     entryTotal: "Ukupno unosa",
+     hoursLogged: "Uneseni sati",
+     avgWorkers: "Prosječno radnika",
+     weeklyAvg: "Sedmični prosjek",
+     workType: "Tip rada",
+     loadingTasks: "Učitavam zadatke",
+     loadingWorkLogs: "Učitavam dnevnike rada",
+     loadingWorkforceData: "Učitavam podatke o radnoj snazi",
+     
+     // Form validation and messages
+     theseWillBeUsedAsDefaults: "Ovo će biti korišćeno kao zadane vrijednosti",
+     pleaseWait: "Molimo sačekajte",
+     
+     // Cross-section and technical
+     crossSection: "Presjek",
+     momentOfInertiaShort: "Moment inercije",
+     sectionModulusShort: "Modul presjeka",
+     radiusOfGyrationShort: "Polumjer žiracije",
+     additionalProperties: "Dodatna svojstva",
+     
+     // Supplier and tracking
+     supplier: "Dobavljač",
+     trackingNumber: "Broj praćenja",
+     deliveryDocuments: "Dokumenti isporuke",
+     
+     // View modes and options
+     listView: "Lista prikaz",
+     costWeight: "Cijena po težini"
   }
 }
 

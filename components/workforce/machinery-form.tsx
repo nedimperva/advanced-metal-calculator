@@ -39,6 +39,7 @@ import {
   updateMachinery
 } from '@/lib/database'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 interface MachineryFormProps {
   machinery?: Machinery | null
@@ -53,6 +54,7 @@ export default function MachineryForm({
   onClose,
   onSave
 }: MachineryFormProps) {
+  const { t } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
@@ -129,8 +131,8 @@ export default function MachineryForm({
         }
         await updateMachinery(updatedMachinery)
         toast({
-          title: "Machinery Updated",
-          description: `${formData.name} has been updated successfully.`
+          title: t('machineryUpdatedSuccess'),
+          description: `${formData.name} ${t('machineryUpdatedSuccess')}.`
         })
       } else {
         await createMachinery({
@@ -139,8 +141,8 @@ export default function MachineryForm({
           isActive: true
         })
         toast({
-          title: "Machinery Added",
-          description: `${formData.name} has been added to the machinery database.`
+          title: t('machineryAddedSuccess'),
+          description: `${formData.name} ${t('machineryAddedSuccess')}.`
         })
       }
       
@@ -149,8 +151,8 @@ export default function MachineryForm({
     } catch (error) {
       console.error('Failed to save machinery:', error)
       toast({
-        title: "Save Failed",
-        description: "Failed to save machinery information.",
+        title: t('savingError'),
+        description: t('failedToSaveMachinery'),
         variant: "destructive"
       })
     } finally {
@@ -167,16 +169,16 @@ export default function MachineryForm({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wrench className="h-5 w-5" />
-            {machinery ? 'Edit Machinery' : 'Add New Machinery'}
+            {machinery ? t('editMachinery') : t('addNewMachinery')}
           </DialogTitle>
           <DialogDescription>
-            {machinery ? 'Update machinery information and specifications.' : 'Add new machinery or equipment to your database.'}
+            {machinery ? t('updateMachineryInformation') : t('addNewMachineryDescription')}
           </DialogDescription>
         </DialogHeader>
 
         {errors.length > 0 && (
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
-            <p className="text-sm font-medium text-destructive mb-2">Please fix the following errors:</p>
+            <p className="text-sm font-medium text-destructive mb-2">{t('pleaseFixFollowingErrors')}:</p>
             <ul className="list-disc list-inside space-y-1">
               {errors.map((error, index) => (
                 <li key={index} className="text-sm text-destructive">{error}</li>
@@ -189,7 +191,7 @@ export default function MachineryForm({
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="name">Machinery Name *</Label>
+              <Label htmlFor="name">{t('machineryName')} *</Label>
               <Input
                 id="name"
                 value={formData.name}
@@ -199,7 +201,7 @@ export default function MachineryForm({
               />
             </div>
             <div>
-              <Label htmlFor="type">Type *</Label>
+              <Label htmlFor="type">{t('machineryType')} *</Label>
               <Select
                 value={formData.type}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as MachineryType }))}
@@ -220,7 +222,7 @@ export default function MachineryForm({
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="model">Model</Label>
+              <Label htmlFor="model">{t('model')}</Label>
               <Input
                 id="model"
                 value={formData.model}
@@ -230,7 +232,7 @@ export default function MachineryForm({
               />
             </div>
             <div>
-              <Label htmlFor="serialNumber">Serial Number</Label>
+              <Label htmlFor="serialNumber">{t('serialNumber')}</Label>
               <Input
                 id="serialNumber"
                 value={formData.serialNumber}
@@ -242,7 +244,7 @@ export default function MachineryForm({
           </div>
 
           <div>
-            <Label htmlFor="hourlyRate">Hourly Rate * ($)</Label>
+            <Label htmlFor="hourlyRate">{t('hourlyRateUsd')}</Label>
             <Input
               id="hourlyRate"
               type="number"
@@ -385,14 +387,14 @@ export default function MachineryForm({
             onClick={onClose}
             className={cn(isMobile && "w-full")}
           >
-            Cancel
+            {t('cancel')}
           </Button>
           <Button 
             onClick={handleSave}
             disabled={loading}
             className={cn(isMobile && "w-full")}
           >
-            {loading ? 'Saving...' : (machinery ? 'Update Machinery' : 'Add Machinery')}
+            {loading ? `${t('adding')}...` : (machinery ? t('updateMachinery') : t('addMachinery'))}
           </Button>
         </DialogFooter>
       </DialogContent>

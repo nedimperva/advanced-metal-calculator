@@ -3,7 +3,7 @@ import { ProjectStatus, MaterialStatus } from './types'
 import { getAllProjects, getProjectMaterials, getProjectCalculations, getDailyJournalTimesheetByDate } from './database'
 import { startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
 
-// Project status management functions
+// Legacy hardcoded labels - keep for compatibility but use localized functions instead
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   [ProjectStatus.PLANNING]: 'Planning',
   [ProjectStatus.ACTIVE]: 'Active',
@@ -36,6 +36,30 @@ export const MATERIAL_STATUS_COLORS: Record<MaterialStatus, string> = {
   [MaterialStatus.ARRIVED]: 'green',
   [MaterialStatus.INSTALLED]: 'emerald',
   [MaterialStatus.CANCELLED]: 'red'
+}
+
+// Localized status label functions
+export function getProjectStatusLabel(status: ProjectStatus, t: (key: string) => string): string {
+  const statusMap: Record<ProjectStatus, string> = {
+    [ProjectStatus.PLANNING]: t('planning'),
+    [ProjectStatus.ACTIVE]: t('active'),
+    [ProjectStatus.ON_HOLD]: t('onHold'),
+    [ProjectStatus.COMPLETED]: t('completed'),
+    [ProjectStatus.CANCELLED]: t('cancelled')
+  }
+  return statusMap[status] || status
+}
+
+export function getMaterialStatusLabel(status: MaterialStatus, t: (key: string) => string): string {
+  const statusMap: Record<MaterialStatus, string> = {
+    [MaterialStatus.PENDING]: t('pending'),
+    [MaterialStatus.ORDERED]: t('ordered'),
+    [MaterialStatus.SHIPPED]: t('shipped'),
+    [MaterialStatus.ARRIVED]: t('arrived'),
+    [MaterialStatus.INSTALLED]: t('installed'),
+    [MaterialStatus.CANCELLED]: t('cancelled')
+  }
+  return statusMap[status] || status
 }
 
 // Status workflow validation

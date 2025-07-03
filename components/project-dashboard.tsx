@@ -62,6 +62,7 @@ import { cn } from '@/lib/utils'
 import { 
   PROJECT_STATUS_LABELS, 
   PROJECT_STATUS_COLORS,
+  getProjectStatusLabel,
   type ProjectSortField 
 } from '@/lib/project-utils'
 import { ProjectStatus, type Project } from '@/lib/types'
@@ -211,14 +212,14 @@ export default function ProjectDashboard({
       setSelectedProjects(new Set())
       setShowBulkDeleteDialog(false)
       toast({
-        title: "Projects Deleted",
-        description: `Successfully deleted ${selectedProjects.size} projects`,
+        title: t('projectsDeletedSuccess'),
+        description: `${t('projectsDeletedSuccess')} ${selectedProjects.size} ${t('projects')}`,
       })
     } catch (error) {
       console.error('Failed to delete projects:', error)
       toast({
-        title: "Delete Failed",
-        description: "Failed to delete some projects",
+        title: t('deletionFailed'),
+        description: t('deletionFailed'),
         variant: "destructive"
       })
     } finally {
@@ -232,15 +233,15 @@ export default function ProjectDashboard({
       // This would require implementing updateProject with status change
       // For now, just show a toast
       toast({
-        title: "Status Update",
-        description: `Status change for ${selectedProjects.size} projects is not yet implemented`,
+        title: t('statusUpdateSuccess'),
+        description: `${t('statusUpdateSuccess')} ${selectedProjects.size} ${t('projects')}`,
       })
       setSelectedProjects(new Set())
     } catch (error) {
       console.error('Failed to update project statuses:', error)
       toast({
-        title: "Update Failed",
-        description: "Failed to update project statuses",
+        title: t('updateFailed'),
+        description: t('updateFailed'),
         variant: "destructive"
       })
     } finally {
@@ -250,18 +251,18 @@ export default function ProjectDashboard({
 
   // Sort options
   const sortOptions: { value: ProjectSortField; label: string }[] = [
-    { value: 'name', label: 'Name' },
-    { value: 'createdAt', label: 'Created Date' },
-    { value: 'updatedAt', label: 'Last Updated' },
-    { value: 'deadline', label: 'Deadline' },
-    { value: 'status', label: 'Status' },
-    { value: 'budget', label: 'Budget' }
+    { value: 'name', label: t('name') },
+    { value: 'createdAt', label: t('createdDate') },
+    { value: 'updatedAt', label: t('lastUpdated') },
+    { value: 'deadline', label: t('deadline') },
+    { value: 'status', label: t('status') },
+    { value: 'budget', label: t('budget') }
   ]
 
   // Status filter options
   const statusOptions = Object.values(ProjectStatus).map(status => ({
     value: status,
-    label: PROJECT_STATUS_LABELS[status],
+    label: getProjectStatusLabel(status, (key: string) => t(key as any)),
     color: PROJECT_STATUS_COLORS[status]
   }))
 
@@ -273,11 +274,11 @@ export default function ProjectDashboard({
             <div className="text-destructive mb-4">
               <FolderOpen className="h-12 w-12 mx-auto" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Failed to Load Projects</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('failedToLoadProjects')}</h3>
             <p className="text-muted-foreground mb-4">{error}</p>
             <Button onClick={refreshProjects}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
+              {t('tryAgain')}
             </Button>
           </CardContent>
         </Card>
@@ -291,7 +292,7 @@ export default function ProjectDashboard({
       {showHeader && (
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('projects')}</h1>
             <p className="text-lg text-muted-foreground mb-6">
               {t('manageConstructionProjects')}
             </p>
@@ -382,7 +383,7 @@ export default function ProjectDashboard({
           {/* Workforce Stats */}
           {statistics.workforceStats.projectsWithWorkforce > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-3">Workforce Overview</h3>
+              <h3 className="text-lg font-semibold mb-3">{t('workforceOverview')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card>
                   <CardContent className="p-4">
@@ -435,7 +436,7 @@ export default function ProjectDashboard({
                       <div>
                         <p className="text-sm text-muted-foreground">{t('activeProjects')}</p>
                         <p className="text-2xl font-bold">{statistics.workforceStats.projectsWithWorkforce}</p>
-                        <p className="text-xs text-muted-foreground">with workforce</p>
+                        <p className="text-xs text-muted-foreground">{t('withWorkforce')}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -472,7 +473,7 @@ export default function ProjectDashboard({
             <SelectValue placeholder={t('allStatuses')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="all">{t('allStatuses')}</SelectItem>
             {statusOptions.map((status) => (
               <SelectItem key={status.value} value={status.value}>
                 {status.label}
@@ -536,7 +537,7 @@ export default function ProjectDashboard({
         {(searchTerm || filters.status) && (
           <Button variant="outline" onClick={clearFilters}>
             <Filter className="h-4 w-4 mr-2" />
-            Clear
+            {t('clear')}
           </Button>
         )}
       </div>
@@ -552,7 +553,7 @@ export default function ProjectDashboard({
                   onCheckedChange={handleSelectAll}
                 />
                 <span className="text-sm font-medium">
-                  {selectedProjects.size} of {filteredProjects.length} projects selected
+                  {selectedProjects.size} {t('of')} {filteredProjects.length} {t('projectsSelected')}
                 </span>
               </div>
               
@@ -560,11 +561,11 @@ export default function ProjectDashboard({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
-                      Change Status
+                      {t('changeStatus')}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuLabel>Update Status</DropdownMenuLabel>
+                    <DropdownMenuLabel>{t('updateStatus')}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {statusOptions.map((status) => (
                       <DropdownMenuItem 
@@ -584,7 +585,7 @@ export default function ProjectDashboard({
                   disabled={bulkActionLoading}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Selected
+                  {t('deleteSelected')}
                 </Button>
               </div>
             </div>
@@ -606,22 +607,22 @@ export default function ProjectDashboard({
             <Card>
               <CardContent className="p-12 text-center">
                 <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">No Projects Found</h3>
+                <h3 className="text-lg font-semibold mb-2">{t('noProjectsFound')}</h3>
                 <p className="text-muted-foreground mb-4">
                   {searchTerm || filters.status 
-                    ? "No projects match your current filters."
-                    : "Get started by creating your first project."
+                    ? t('noProjectsMatchFilters')
+                    : t('getStartedFirstProject')
                   }
                 </p>
                 {!searchTerm && !filters.status && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
                     <Button onClick={handleCreateProject}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Create First Project
+                      {t('createFirstProject')}
                     </Button>
                     <Button variant="outline" onClick={handleViewTemplates}>
                       <Layers className="h-4 w-4 mr-2" />
-                      Browse Templates
+                      {t('browseTemplates')}
                     </Button>
                   </div>
                 )}
@@ -668,14 +669,14 @@ export default function ProjectDashboard({
       <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Projects</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteProjects')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {selectedProjects.size} projects? 
-              This action cannot be undone and will also delete all associated materials and calculations.
+              {t('confirmDeleteMultipleProjects')} {selectedProjects.size} {t('projects')}? 
+              {t('actionCannotBeUndone')}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -684,10 +685,10 @@ export default function ProjectDashboard({
               {bulkActionLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  Deleting...
+                  {t('deleting')}...
                 </>
               ) : (
-                'Delete Projects'
+                t('deleteProjects')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

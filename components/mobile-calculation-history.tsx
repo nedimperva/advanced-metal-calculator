@@ -737,7 +737,7 @@ function MobileCalculationCard({
                 size="sm" 
                 variant="destructive" 
                 onClick={() => {
-                  if (window.confirm(`Delete "${calculation.name || 'this calculation'}"?`)) {
+                  if (window.confirm(t('confirmDeleteCalculation'))) {
                     onDelete()
                   }
                 }}

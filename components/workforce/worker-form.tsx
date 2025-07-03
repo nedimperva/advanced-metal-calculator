@@ -37,6 +37,7 @@ import {
   updateWorker
 } from '@/lib/database'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/contexts/i18n-context'
 
 interface WorkerFormProps {
   worker?: Worker | null
@@ -51,6 +52,7 @@ export default function WorkerForm({
   onClose,
   onSave
 }: WorkerFormProps) {
+  const { t } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
@@ -130,8 +132,8 @@ export default function WorkerForm({
         }
         await updateWorker(updatedWorker)
         toast({
-          title: "Worker Updated",
-          description: `${formData.name} has been updated successfully.`
+          title: t('workerUpdatedSuccess'),
+          description: `${formData.name} ${t('workerUpdatedSuccess')}.`
         })
       } else {
         // Create new worker
@@ -140,8 +142,8 @@ export default function WorkerForm({
           isActive: true
         })
         toast({
-          title: "Worker Added",
-          description: `${formData.name} has been added to the workforce.`
+          title: t('workerAddedSuccess'),
+          description: `${formData.name} ${t('workerAddedSuccess')}.`
         })
       }
       
@@ -149,11 +151,11 @@ export default function WorkerForm({
       onClose()
     } catch (error) {
       console.error('Failed to save worker:', error)
-      toast({
-        title: "Save Failed",
-        description: "Failed to save worker information.",
-        variant: "destructive"
-      })
+              toast({
+          title: t('savingError'),
+          description: t('failedToSaveWorker'),
+          variant: "destructive"
+        })
     } finally {
       setLoading(false)
     }
@@ -168,10 +170,10 @@ export default function WorkerForm({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            {worker ? 'Edit Worker' : 'Add New Worker'}
+            {worker ? t('editWorker') : t('addNewWorker')}
           </DialogTitle>
           <DialogDescription>
-            {worker ? 'Update worker information and skills.' : 'Add a new worker to your workforce database.'}
+            {worker ? t('updateWorkerInformation') : t('addNewWorkerDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,7 +184,7 @@ export default function WorkerForm({
               <div className="flex items-center gap-2 mb-2">
                 <AlertCircle className="h-4 w-4 text-destructive" />
                 <span className="text-sm font-medium text-destructive">
-                  Please fix the following errors:
+                  {t('pleaseFixFollowingErrors')}:
                 </span>
               </div>
               <ul className="list-disc list-inside space-y-1">
@@ -200,12 +202,12 @@ export default function WorkerForm({
           {/* Basic Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Basic Information</CardTitle>
+              <CardTitle className="text-lg">{t('basicInformation')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name">Full Name *</Label>
+                  <Label htmlFor="name">{t('fullName')} *</Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -215,7 +217,7 @@ export default function WorkerForm({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="employeeId">Employee ID</Label>
+                  <Label htmlFor="employeeId">{t('employeeId')}</Label>
                   <Input
                     id="employeeId"
                     value={formData.employeeId}
@@ -377,7 +379,7 @@ export default function WorkerForm({
             onClick={onClose}
             className={cn(isMobile && "w-full")}
           >
-            Cancel
+            {t('cancel')}
           </Button>
           <Button 
             onClick={handleSave}
@@ -387,10 +389,10 @@ export default function WorkerForm({
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                {worker ? 'Updating...' : 'Adding...'}
+                {worker ? t('updating') : t('adding')}...
               </>
             ) : (
-              worker ? 'Update Worker' : 'Add Worker'
+              worker ? t('updateWorker') : t('addWorker')
             )}
           </Button>
         </DialogFooter>
