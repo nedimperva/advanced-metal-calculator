@@ -5,10 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "prestart": "node prestart.mjs",
-    "start": "NODE_ENV=production node server.js",
+    "start": "cross-env NODE_ENV=production node server.js",
     "start:next": "next start -H 0.0.0.0 -p ${PORT:-10000}",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prestart": ""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -43,11 +43,13 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
+    "cross-env": "^7.0.3",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
+    "next-pwa": "^5.6.0",
     "next-themes": "latest",
     "react": "^18.3.1",
     "react-day-picker": "9.4.3",
