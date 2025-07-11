@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import type { Project, ProjectMaterial, Calculation } from '@/lib/types'
+import type { Project, ProjectMaterial } from '@/lib/types'
 import { ProjectStatus, MaterialStatus } from '@/lib/types'
 import {
   initializeDatabase,
@@ -13,12 +13,7 @@ import {
   getProjectsByStatus,
   addMaterialToProject as dbAddMaterialToProject,
   updateMaterialStatus as dbUpdateMaterialStatus,
-  getProjectMaterials,
-  getProjectCalculations,
-  saveCalculation as dbSaveCalculation,
-  getAllCalculations,
-  updateCalculation as dbUpdateCalculation,
-  deleteCalculation as dbDeleteCalculation
+  getProjectMaterials
 } from '@/lib/database'
 import {
   filterProjects,
@@ -59,10 +54,8 @@ interface ProjectContextState {
   // Statistics
   statistics: ProjectStatistics | null
   
-  // Materials and calculations
+  // Materials
   projectMaterials: Record<string, ProjectMaterial[]>
-  projectCalculations: Record<string, Calculation[]>
-  allCalculations: Calculation[]
 }
 
 interface ProjectContextActions {
@@ -83,13 +76,6 @@ interface ProjectContextActions {
   addMaterialToProject: (material: Omit<ProjectMaterial, 'id'>) => Promise<string>
   updateMaterialStatus: (materialId: string, status: MaterialStatus, notes?: string) => Promise<void>
   getProjectMaterials: (projectId: string) => Promise<ProjectMaterial[]>
-  
-  // Calculation management
-  saveCalculation: (calculation: Omit<Calculation, 'id' | 'timestamp'>) => Promise<string>
-  updateCalculation: (calculation: Calculation) => Promise<void>
-  deleteCalculation: (calculationId: string) => Promise<void>
-  getProjectCalculations: (projectId: string) => Promise<Calculation[]>
-  moveCalculationToProject: (calculationId: string, projectId: string) => Promise<void>
   
   // Filtering and search
   setFilters: (filters: Partial<ProjectFilters>) => void
@@ -124,9 +110,7 @@ const initialState: ProjectContextState = {
   sortField: 'updatedAt',
   sortDirection: 'desc',
   statistics: null,
-  projectMaterials: {},
-  projectCalculations: {},
-  allCalculations: []
+  projectMaterials: {}
 }
 
 interface ProjectProviderProps {
@@ -151,9 +135,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       await initializeDatabase()
       
       // Load initial data
-      const [projects, calculations, statistics] = await Promise.all([
+      const [projects, statistics] = await Promise.all([
         dbGetAllProjects(),
-        getAllCalculations(),
         calculateProjectStatistics()
       ])
       
@@ -161,7 +144,6 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         isInitialized: true,
         isLoading: false,
         projects,
-        allCalculations: calculations,
         statistics
       })
       
@@ -183,15 +165,13 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const refreshProjects = useCallback(async () => {
     try {
       updateState({ isLoading: true })
-      const [projects, calculations, statistics] = await Promise.all([
+      const [projects, statistics] = await Promise.all([
         dbGetAllProjects(),
-        getAllCalculations(),
         calculateProjectStatistics()
       ])
       updateState({
         isLoading: false,
         projects,
-        allCalculations: calculations,
         statistics
       })
     } catch (error) {
@@ -383,94 +363,6 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     }
   }, [state.projectMaterials, updateState])
 
-  // Calculation management
-  const saveCalculation = useCallback(async (calculation: Omit<Calculation, 'id' | 'timestamp'>) => {
-    try {
-      const calculationId = await dbSaveCalculation(calculation)
-      await refreshProjects() // This will also refresh allCalculations
-      
-      toast({
-        title: t('calculationSavedSuccess'),
-        description: t('calculationSavedSuccess')
-      })
-      
-      return calculationId
-    } catch (error) {
-      console.error('Failed to save calculation:', error)
-      toast({
-        title: t('savingError'),
-        description: error instanceof Error ? error.message : t('failedToSaveTask'),
-        variant: "destructive"
-      })
-      throw error
-    }
-  }, [refreshProjects])
-
-  const updateCalculation = useCallback(async (calculation: Calculation) => {
-    try {
-      await dbUpdateCalculation(calculation)
-      await refreshProjects()
-      
-      toast({
-        title: t('calculationUpdatedSuccess'),
-        description: t('calculationUpdatedSuccess')
-      })
-    } catch (error) {
-      console.error('Failed to update calculation:', error)
-      toast({
-        title: t('updateFailed'),
-        description: error instanceof Error ? error.message : t('updateFailed'),
-        variant: "destructive"
-      })
-      throw error
-    }
-  }, [refreshProjects])
-
-  const deleteCalculation = useCallback(async (calculationId: string) => {
-    try {
-      await dbDeleteCalculation(calculationId)
-      await refreshProjects()
-      
-      toast({
-        title: t('calculationDeletedSuccess'),
-        description: t('calculationDeletedSuccess')
-      })
-    } catch (error) {
-      console.error('Failed to delete calculation:', error)
-      toast({
-        title: t('deletionFailed'),
-        description: error instanceof Error ? error.message : t('deletionFailed'),
-        variant: "destructive"
-      })
-      throw error
-    }
-  }, [refreshProjects])
-
-  const moveCalculationToProject = useCallback(async (calculationId: string, projectId: string) => {
-    try {
-      const calculation = state.allCalculations.find(c => c.id === calculationId)
-      if (!calculation) {
-        throw new Error('Calculation not found')
-      }
-
-      const updatedCalculation = { ...calculation, projectId }
-      await dbUpdateCalculation(updatedCalculation)
-      await refreshProjects()
-      
-      toast({
-        title: t('calculationMovedSuccess'),
-        description: t('calculationMovedSuccess')
-      })
-    } catch (error) {
-      console.error('Failed to move calculation:', error)
-      toast({
-        title: t('updateFailed'),
-        description: error instanceof Error ? error.message : t('updateFailed'),
-        variant: "destructive"
-      })
-      throw error
-    }
-  }, [state.allCalculations, refreshProjects])
 
   // Filtering and search
   const setFilters = useCallback((filters: Partial<ProjectFilters>) => {
@@ -561,20 +453,6 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     return materials
   }, [state.projectMaterials, updateState])
 
-  const getProjectCalculationsWrapper = useCallback(async (projectId: string) => {
-    if (state.projectCalculations[projectId]) {
-      return state.projectCalculations[projectId]
-    }
-    
-    const calculations = await getProjectCalculations(projectId)
-    updateState({
-      projectCalculations: {
-        ...state.projectCalculations,
-        [projectId]: calculations
-      }
-    })
-    return calculations
-  }, [state.projectCalculations, updateState])
 
   // Initialize on mount
   useEffect(() => {
@@ -599,11 +477,6 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     addMaterialToProject,
     updateMaterialStatus,
     getProjectMaterials: getProjectMaterialsWrapper,
-    saveCalculation,
-    updateCalculation,
-    deleteCalculation,
-    getProjectCalculations: getProjectCalculationsWrapper,
-    moveCalculationToProject,
     setFilters,
     setSearchTerm,
     setSorting,

@@ -8,6 +8,10 @@ import { I18nProvider } from "@/contexts/i18n-context"
 import { ColorThemeProvider } from "@/contexts/color-theme-context"
 import { ProjectProvider } from "@/contexts/project-context"
 import { TaskProvider } from "@/contexts/task-context"
+import { CalculationProvider } from "@/contexts/calculation-context"
+import { MaterialProvider } from "@/contexts/material-context"
+import { MaterialCatalogProvider } from "@/contexts/material-catalog-context"
+import { OfflineIndicator } from "@/components/offline-indicator"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -34,20 +38,34 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="prefetch" href="/manifest.json" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta httpEquiv="Cache-Control" content="public, max-age=31536000, immutable" />
+      </head>
       <body className={inter.className}>
         <I18nProvider>
           <ThemeProvider>
             <ColorThemeProvider>
-              <ProjectProvider>
-                <TaskProvider>
-                  <div className="min-h-screen bg-background text-foreground antialiased">
-                    <ErrorBoundary>
-                      {children}
-                      <Toaster />
-                    </ErrorBoundary>
-                  </div>
-                </TaskProvider>
-              </ProjectProvider>
+              <CalculationProvider>
+                <MaterialProvider>
+                  <MaterialCatalogProvider>
+                    <ProjectProvider>
+                      <TaskProvider>
+                      <div className="min-h-screen bg-background text-foreground antialiased">
+                        <ErrorBoundary>
+                          {children}
+                          <Toaster />
+                          <OfflineIndicator />
+                        </ErrorBoundary>
+                      </div>
+                      </TaskProvider>
+                    </ProjectProvider>
+                  </MaterialCatalogProvider>
+                </MaterialProvider>
+              </CalculationProvider>
             </ColorThemeProvider>
           </ThemeProvider>
         </I18nProvider>

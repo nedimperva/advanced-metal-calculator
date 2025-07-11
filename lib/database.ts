@@ -11,13 +11,17 @@ import type {
   DailyTimesheet,
   DailyJournalTimesheet,
   JournalWorkerEntry,
-  JournalMachineryEntry
+  JournalMachineryEntry,
+  DispatchNote,
+  DispatchMaterial,
+  MaterialCatalog,
+  MaterialTemplate
 } from './types'
-import { ProjectStatus, MaterialStatus } from './types'
+import { ProjectStatus, MaterialStatus, ProjectMaterialStatus, ProjectMaterialSource, DispatchStatus, DispatchMaterialStatus } from './types'
 
 // Database configuration
 const DB_NAME = 'MetalCalculatorDB'
-const DB_VERSION = 4
+const DB_VERSION = 8 // Phase 5: Performance optimizations with composite indexes
 
 // Store names
 export const STORES = {
@@ -33,6 +37,12 @@ export const STORES = {
   MACHINERY: 'machinery',
   PROJECT_ASSIGNMENTS: 'projectAssignments',
   DAILY_TIMESHEETS: 'dailyTimesheets',
+  // Dispatch and material tracking stores
+  DISPATCH_NOTES: 'dispatchNotes',
+  DISPATCH_MATERIALS: 'dispatchMaterials',
+  // Material catalog stores (Phase 2)
+  MATERIAL_CATALOG: 'materialCatalog',
+  MATERIAL_TEMPLATES: 'materialTemplates',
   SETTINGS: 'settings'
 } as const
 
@@ -50,11 +60,117 @@ export interface DatabaseSchema {
   machinery: Machinery
   projectAssignments: ProjectAssignment
   dailyTimesheets: DailyTimesheet
+  // Dispatch and material tracking schema
+  dispatchNotes: DispatchNote
+  dispatchMaterials: DispatchMaterial
+  // Material catalog schema (Phase 2)
+  materialCatalog: MaterialCatalog
+  materialTemplates: MaterialTemplate
   settings: { key: string; value: any }
 }
 
 // Database connection
 let dbInstance: IDBDatabase | null = null
+
+// ============================================================================
+// PERFORMANCE OPTIMIZATION FUNCTIONS (PHASE 5)
+// ============================================================================
+
+/**
+ * Batch query for project summary - optimized to fetch all related data in parallel
+ */
+export async function getProjectSummary(projectId: string): Promise<{
+  project: Project | null
+  materials: ProjectMaterial[]
+  tasks: ProjectTask[]
+  timesheets: DailyTimesheet[]
+  dispatchNotes: DispatchNote[]
+}> {
+  try {
+    const [project, materials, tasks, timesheets, dispatchNotes] = await Promise.all([
+      getProject(projectId),
+      getProjectMaterials(projectId),
+      getProjectTasks(projectId),
+      getProjectTimesheets(projectId),
+      getDispatchNotesByProject(projectId)
+    ])
+    
+    return { project, materials, tasks, timesheets, dispatchNotes }
+  } catch (error) {
+    console.error('Failed to get project summary:', error)
+    throw error
+  }
+}
+
+/**
+ * Optimized material search with composite indexes
+ */
+export async function searchProjectMaterialsOptimized(
+  projectId: string, 
+  filters: {
+    status?: ProjectMaterialStatus
+    source?: ProjectMaterialSource
+    materialName?: string
+    grade?: string
+  }
+): Promise<ProjectMaterial[]> {
+  const db = await getDatabase()
+  
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.PROJECT_MATERIALS], 'readonly')
+    const store = transaction.objectStore(STORES.PROJECT_MATERIALS)
+    
+    // Use composite index if both projectId and status are provided
+    if (filters.status) {
+      const index = store.index('projectId_status')
+      const request = index.getAll([projectId, filters.status])
+      
+      request.onsuccess = () => {
+        let results = request.result
+        
+        // Apply additional filters
+        if (filters.source) {
+          results = results.filter(m => m.source === filters.source)
+        }
+        if (filters.materialName) {
+          results = results.filter(m => 
+            m.materialName.toLowerCase().includes(filters.materialName!.toLowerCase())
+          )
+        }
+        if (filters.grade) {
+          results = results.filter(m => m.grade === filters.grade)
+        }
+        
+        resolve(results)
+      }
+      request.onerror = () => reject(request.error)
+    } else {
+      // Fall back to project index
+      const index = store.index('projectId')
+      const request = index.getAll(projectId)
+      
+      request.onsuccess = () => {
+        let results = request.result
+        
+        // Apply filters
+        if (filters.source) {
+          results = results.filter(m => m.source === filters.source)
+        }
+        if (filters.materialName) {
+          results = results.filter(m => 
+            m.materialName.toLowerCase().includes(filters.materialName!.toLowerCase())
+          )
+        }
+        if (filters.grade) {
+          results = results.filter(m => m.grade === filters.grade)
+        }
+        
+        resolve(results)
+      }
+      request.onerror = () => reject(request.error)
+    }
+  })
+}
 
 // Force database upgrade (for development/debugging)
 export async function forceDbUpgrade(): Promise<void> {
@@ -121,14 +237,28 @@ export async function initializeDatabase(): Promise<IDBDatabase> {
         calculationStore.createIndex('profileType', 'profileType', { unique: false })
       }
 
-      // Create project materials store
+      // Create project materials store (Enhanced Phase 3)
       if (!db.objectStoreNames.contains(STORES.PROJECT_MATERIALS)) {
         const materialStore = db.createObjectStore(STORES.PROJECT_MATERIALS, { keyPath: 'id' })
         materialStore.createIndex('projectId', 'projectId', { unique: false })
-        materialStore.createIndex('calculationId', 'calculationId', { unique: false })
+        materialStore.createIndex('materialCatalogId', 'materialCatalogId', { unique: false })
+        materialStore.createIndex('materialName', 'materialName', { unique: false })
+        materialStore.createIndex('profile', 'profile', { unique: false })
+        materialStore.createIndex('grade', 'grade', { unique: false })
         materialStore.createIndex('status', 'status', { unique: false })
+        materialStore.createIndex('source', 'source', { unique: false })
+        materialStore.createIndex('sourceId', 'sourceId', { unique: false })
+        materialStore.createIndex('supplier', 'supplier', { unique: false })
         materialStore.createIndex('orderDate', 'orderDate', { unique: false })
-        materialStore.createIndex('arrivalDate', 'arrivalDate', { unique: false })
+        materialStore.createIndex('deliveryDate', 'deliveryDate', { unique: false })
+        materialStore.createIndex('installationDate', 'installationDate', { unique: false })
+        materialStore.createIndex('location', 'location', { unique: false })
+        materialStore.createIndex('createdAt', 'createdAt', { unique: false })
+        materialStore.createIndex('updatedAt', 'updatedAt', { unique: false })
+        // Performance optimization: Composite indexes for common queries
+        materialStore.createIndex('projectId_status', ['projectId', 'status'], { unique: false })
+        materialStore.createIndex('projectId_source', ['projectId', 'source'], { unique: false })
+        materialStore.createIndex('materialName_grade', ['materialName', 'grade'], { unique: false })
       }
 
       // Create project tasks store
@@ -144,6 +274,9 @@ export async function initializeDatabase(): Promise<IDBDatabase> {
         taskStore.createIndex('scheduledEnd', 'scheduledEnd', { unique: false })
         taskStore.createIndex('createdAt', 'createdAt', { unique: false })
         taskStore.createIndex('updatedAt', 'updatedAt', { unique: false })
+        // Performance optimization: Composite indexes
+        taskStore.createIndex('projectId_status', ['projectId', 'status'], { unique: false })
+        taskStore.createIndex('projectId_priority', ['projectId', 'priority'], { unique: false })
       }
 
       // Create project milestones store
@@ -208,6 +341,65 @@ export async function initializeDatabase(): Promise<IDBDatabase> {
         timesheetStore.createIndex('projectId', 'projectId', { unique: false })
         timesheetStore.createIndex('date', 'date', { unique: false })
         timesheetStore.createIndex('createdAt', 'createdAt', { unique: false })
+      }
+
+      // Create dispatch notes store
+      if (!db.objectStoreNames.contains(STORES.DISPATCH_NOTES)) {
+        const dispatchStore = db.createObjectStore(STORES.DISPATCH_NOTES, { keyPath: 'id' })
+        dispatchStore.createIndex('projectId', 'projectId', { unique: false })
+        dispatchStore.createIndex('status', 'status', { unique: false })
+        dispatchStore.createIndex('date', 'date', { unique: false })
+        dispatchStore.createIndex('dispatchNumber', 'dispatchNumber', { unique: false })
+        dispatchStore.createIndex('supplier', 'supplier.name', { unique: false })
+        dispatchStore.createIndex('createdAt', 'createdAt', { unique: false })
+        dispatchStore.createIndex('expectedDeliveryDate', 'expectedDeliveryDate', { unique: false })
+        dispatchStore.createIndex('actualDeliveryDate', 'actualDeliveryDate', { unique: false })
+      }
+
+      // Create dispatch materials store
+      if (!db.objectStoreNames.contains(STORES.DISPATCH_MATERIALS)) {
+        const dispatchMaterialStore = db.createObjectStore(STORES.DISPATCH_MATERIALS, { keyPath: 'id' })
+        dispatchMaterialStore.createIndex('dispatchNoteId', 'dispatchNoteId', { unique: false })
+        dispatchMaterialStore.createIndex('materialType', 'materialType', { unique: false })
+        dispatchMaterialStore.createIndex('profile', 'profile', { unique: false })
+        dispatchMaterialStore.createIndex('grade', 'grade', { unique: false })
+        dispatchMaterialStore.createIndex('status', 'status', { unique: false })
+        dispatchMaterialStore.createIndex('location', 'location', { unique: false })
+        // Performance optimization: Composite indexes
+        dispatchMaterialStore.createIndex('materialType_grade', ['materialType', 'grade'], { unique: false })
+        dispatchMaterialStore.createIndex('status_location', ['status', 'location'], { unique: false })
+      }
+
+      // Create material catalog store (Phase 2)
+      if (!db.objectStoreNames.contains(STORES.MATERIAL_CATALOG)) {
+        const materialCatalogStore = db.createObjectStore(STORES.MATERIAL_CATALOG, { keyPath: 'id' })
+        materialCatalogStore.createIndex('name', 'name', { unique: false })
+        materialCatalogStore.createIndex('type', 'type', { unique: false })
+        materialCatalogStore.createIndex('category', 'category', { unique: false })
+        materialCatalogStore.createIndex('availability', 'availability', { unique: false })
+        materialCatalogStore.createIndex('supplier', 'supplier', { unique: false })
+        materialCatalogStore.createIndex('basePrice', 'basePrice', { unique: false })
+        materialCatalogStore.createIndex('createdAt', 'createdAt', { unique: false })
+        materialCatalogStore.createIndex('updatedAt', 'updatedAt', { unique: false })
+        materialCatalogStore.createIndex('tags', 'tags', { unique: false, multiEntry: true })
+        materialCatalogStore.createIndex('applications', 'applications', { unique: false, multiEntry: true })
+        materialCatalogStore.createIndex('standards', 'standards', { unique: false, multiEntry: true })
+        materialCatalogStore.createIndex('compatibleProfiles', 'compatibleProfiles', { unique: false, multiEntry: true })
+      }
+
+      // Create material templates store (Phase 2)
+      if (!db.objectStoreNames.contains(STORES.MATERIAL_TEMPLATES)) {
+        const materialTemplateStore = db.createObjectStore(STORES.MATERIAL_TEMPLATES, { keyPath: 'id' })
+        materialTemplateStore.createIndex('name', 'name', { unique: false })
+        materialTemplateStore.createIndex('materialCatalogId', 'materialCatalogId', { unique: false })
+        materialTemplateStore.createIndex('profile', 'profile', { unique: false })
+        materialTemplateStore.createIndex('grade', 'grade', { unique: false })
+        materialTemplateStore.createIndex('isPublic', 'isPublic', { unique: false })
+        materialTemplateStore.createIndex('createdAt', 'createdAt', { unique: false })
+        materialTemplateStore.createIndex('updatedAt', 'updatedAt', { unique: false })
+        materialTemplateStore.createIndex('usageCount', 'usageCount', { unique: false })
+        materialTemplateStore.createIndex('tags', 'tags', { unique: false, multiEntry: true })
+        materialTemplateStore.createIndex('createdBy', 'createdBy', { unique: false })
       }
 
       // Create settings store
@@ -379,45 +571,23 @@ export async function getProjectsByStatus(status: ProjectStatus): Promise<Projec
 }
 
 // Material-specific operations
-export async function addMaterialToProject(material: Omit<ProjectMaterial, 'id'>): Promise<string> {
-  const id = `material_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+// ============================================================================
+// ENHANCED PROJECT MATERIAL OPERATIONS (PHASE 3)
+// ============================================================================
+
+export async function createProjectMaterial(material: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const id = `pmat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
   
   const newMaterial: ProjectMaterial = {
     ...material,
-    id
+    id,
+    createdAt: now,
+    updatedAt: now
   }
 
   await createRecord(STORES.PROJECT_MATERIALS, newMaterial)
   return id
-}
-
-export async function updateMaterialStatus(materialId: string, status: MaterialStatus, notes?: string): Promise<void> {
-  const material = await getRecord(STORES.PROJECT_MATERIALS, materialId)
-  if (!material) {
-    throw new Error('Material not found')
-  }
-
-  const updatedMaterial: ProjectMaterial = {
-    ...material,
-    status,
-    notes: notes || material.notes
-  }
-
-  // Update status-specific dates
-  const now = new Date()
-  switch (status) {
-    case MaterialStatus.ORDERED:
-      updatedMaterial.orderDate = now
-      break
-    case MaterialStatus.ARRIVED:
-      updatedMaterial.arrivalDate = now
-      break
-    case MaterialStatus.INSTALLED:
-      updatedMaterial.installationDate = now
-      break
-  }
-
-  await updateRecord(STORES.PROJECT_MATERIALS, updatedMaterial)
 }
 
 export async function getProjectMaterials(projectId: string): Promise<ProjectMaterial[]> {
@@ -431,6 +601,224 @@ export async function getProjectMaterials(projectId: string): Promise<ProjectMat
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(new Error(`Failed to get project materials: ${request.error?.message}`))
   })
+}
+
+export async function getProjectMaterialById(id: string): Promise<ProjectMaterial | null> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.PROJECT_MATERIALS], 'readonly')
+    const store = transaction.objectStore(STORES.PROJECT_MATERIALS)
+    const request = store.get(id)
+
+    request.onsuccess = () => {
+      resolve(request.result || null)
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to get project material: ${request.error?.message}`))
+    }
+  })
+}
+
+export async function updateProjectMaterial(id: string, updates: Partial<Omit<ProjectMaterial, 'id' | 'createdAt'>>): Promise<void> {
+  const existing = await getProjectMaterialById(id)
+  if (!existing) {
+    throw new Error('Project material not found')
+  }
+
+  const updated: ProjectMaterial = {
+    ...existing,
+    ...updates,
+    updatedAt: new Date()
+  }
+
+  return await updateRecord(STORES.PROJECT_MATERIALS, updated)
+}
+
+export async function deleteProjectMaterial(id: string): Promise<void> {
+  return await deleteRecord(STORES.PROJECT_MATERIALS, id)
+}
+
+export async function updateProjectMaterialStatus(
+  materialId: string, 
+  status: ProjectMaterialStatus, 
+  notes?: string
+): Promise<void> {
+  const material = await getProjectMaterialById(materialId)
+  if (!material) {
+    throw new Error('Material not found')
+  }
+
+  const updates: Partial<ProjectMaterial> = {
+    status,
+    notes: notes || material.notes
+  }
+
+  // Update status-specific dates
+  const now = new Date()
+  switch (status) {
+    case ProjectMaterialStatus.ORDERED:
+      updates.orderDate = now
+      break
+    case ProjectMaterialStatus.DELIVERED:
+      updates.deliveryDate = now
+      break
+    case ProjectMaterialStatus.INSTALLED:
+      updates.installationDate = now
+      break
+  }
+
+  await updateProjectMaterial(materialId, updates)
+}
+
+export async function searchProjectMaterials(projectId: string, filters: {
+  status?: ProjectMaterialStatus[]
+  source?: ProjectMaterialSource[]
+  materialName?: string
+  profile?: string
+  grade?: string
+  supplier?: string
+}): Promise<ProjectMaterial[]> {
+  const allMaterials = await getProjectMaterials(projectId)
+  
+  return allMaterials.filter(material => {
+    // Status filter
+    if (filters.status && filters.status.length > 0 && !filters.status.includes(material.status)) {
+      return false
+    }
+
+    // Source filter
+    if (filters.source && filters.source.length > 0 && !filters.source.includes(material.source)) {
+      return false
+    }
+
+    // Material name filter
+    if (filters.materialName && !material.materialName.toLowerCase().includes(filters.materialName.toLowerCase())) {
+      return false
+    }
+
+    // Profile filter
+    if (filters.profile && !material.profile.toLowerCase().includes(filters.profile.toLowerCase())) {
+      return false
+    }
+
+    // Grade filter
+    if (filters.grade && !material.grade.toLowerCase().includes(filters.grade.toLowerCase())) {
+      return false
+    }
+
+    // Supplier filter
+    if (filters.supplier && (!material.supplier || !material.supplier.toLowerCase().includes(filters.supplier.toLowerCase()))) {
+      return false
+    }
+
+    return true
+  })
+}
+
+export async function getProjectMaterialsBySource(projectId: string, source: ProjectMaterialSource, sourceId?: string): Promise<ProjectMaterial[]> {
+  const allMaterials = await getProjectMaterials(projectId)
+  return allMaterials.filter(material => {
+    if (material.source !== source) return false
+    if (sourceId && material.sourceId !== sourceId) return false
+    return true
+  })
+}
+
+export async function createProjectMaterialFromCalculation(
+  projectId: string,
+  calculationId: string,
+  calculation: Calculation,
+  options: {
+    quantity?: number
+    supplier?: string
+    notes?: string
+    unitCost?: number
+  } = {}
+): Promise<string> {
+  const material: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
+    projectId,
+    materialCatalogId: undefined, // Not linked to catalog when from calculation
+    materialName: calculation.materialName,
+    profile: calculation.profileType,
+    grade: calculation.grade,
+    dimensions: Object.fromEntries(
+      Object.entries(calculation.dimensions).map(([key, value]) => [key, parseFloat(value.toString())])
+    ),
+    quantity: options.quantity || calculation.quantity || 1,
+    unitWeight: calculation.weight,
+    totalWeight: calculation.totalWeight || (calculation.weight * (options.quantity || calculation.quantity || 1)),
+    unitCost: options.unitCost || calculation.unitCost,
+    totalCost: calculation.totalCost,
+    lengthUnit: calculation.lengthUnit || 'm',
+    weightUnit: calculation.weightUnit || 'kg',
+    status: ProjectMaterialStatus.REQUIRED,
+    supplier: options.supplier,
+    notes: options.notes,
+    source: ProjectMaterialSource.CALCULATION,
+    sourceId: calculationId
+  }
+
+  return await createProjectMaterial(material)
+}
+
+export async function getProjectMaterialStatistics(projectId: string): Promise<{
+  totalMaterials: number
+  materialsByStatus: Record<ProjectMaterialStatus, number>
+  materialsBySource: Record<ProjectMaterialSource, number>
+  totalWeight: number
+  totalCost: number
+  averageUnitCost: number
+}> {
+  const materials = await getProjectMaterials(projectId)
+  
+  const stats = {
+    totalMaterials: materials.length,
+    materialsByStatus: {} as Record<ProjectMaterialStatus, number>,
+    materialsBySource: {} as Record<ProjectMaterialSource, number>,
+    totalWeight: 0,
+    totalCost: 0,
+    averageUnitCost: 0
+  }
+  
+  // Initialize counters
+  Object.values(ProjectMaterialStatus).forEach(status => {
+    stats.materialsByStatus[status] = 0
+  })
+  Object.values(ProjectMaterialSource).forEach(source => {
+    stats.materialsBySource[source] = 0
+  })
+  
+  // Calculate statistics
+  let totalCostableItems = 0
+  let totalUnitCost = 0
+  
+  materials.forEach(material => {
+    stats.materialsByStatus[material.status]++
+    stats.materialsBySource[material.source]++
+    stats.totalWeight += material.totalWeight
+    
+    if (material.totalCost) {
+      stats.totalCost += material.totalCost
+    }
+    
+    if (material.unitCost) {
+      totalUnitCost += material.unitCost
+      totalCostableItems++
+    }
+  })
+  
+  stats.averageUnitCost = totalCostableItems > 0 ? totalUnitCost / totalCostableItems : 0
+  
+  return stats
+}
+
+// Legacy support - keeping old function names for backward compatibility
+export async function addMaterialToProject(material: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  return await createProjectMaterial(material)
+}
+
+export async function updateMaterialStatus(materialId: string, status: ProjectMaterialStatus, notes?: string): Promise<void> {
+  return await updateProjectMaterialStatus(materialId, status, notes)
 }
 
 // Calculation-specific operations
@@ -1205,4 +1593,651 @@ export function calculateJournalTimesheetTotals(timesheet: DailyJournalTimesheet
     totalMachineryCost,
     totalCost
   }
+}
+
+// ============================================================================
+// DISPATCH NOTE OPERATIONS
+// ============================================================================
+
+export async function createDispatchNote(dispatchNote: Omit<DispatchNote, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  const id = `dispatch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  const newDispatchNote: DispatchNote = {
+    ...dispatchNote,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    materials: [],
+    inspectionRequired: dispatchNote.inspectionRequired || false,
+    inspectionCompleted: false
+  }
+
+  await createRecord(STORES.DISPATCH_NOTES, newDispatchNote)
+  return id
+}
+
+export async function updateDispatchNote(dispatchNote: DispatchNote): Promise<void> {
+  const updatedDispatchNote = {
+    ...dispatchNote,
+    updatedAt: new Date()
+  }
+  await updateRecord(STORES.DISPATCH_NOTES, updatedDispatchNote)
+}
+
+export async function getDispatchNote(id: string): Promise<DispatchNote | undefined> {
+  return await getRecord(STORES.DISPATCH_NOTES, id)
+}
+
+export async function getAllDispatchNotes(): Promise<DispatchNote[]> {
+  return await getAllRecords(STORES.DISPATCH_NOTES)
+}
+
+export async function getProjectDispatchNotes(projectId: string): Promise<DispatchNote[]> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.DISPATCH_NOTES], 'readonly')
+    const store = transaction.objectStore(STORES.DISPATCH_NOTES)
+    const index = store.index('projectId')
+    const request = index.getAll(projectId)
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(new Error(`Failed to get project dispatch notes: ${request.error?.message}`))
+  })
+}
+
+export async function deleteDispatchNote(id: string): Promise<void> {
+  // Delete associated materials first
+  const materials = await getDispatchMaterials(id)
+  for (const material of materials) {
+    await deleteRecord(STORES.DISPATCH_MATERIALS, material.id)
+  }
+  
+  // Delete the dispatch note
+  await deleteRecord(STORES.DISPATCH_NOTES, id)
+}
+
+export async function getDispatchNotesByStatus(status: DispatchStatus): Promise<DispatchNote[]> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.DISPATCH_NOTES], 'readonly')
+    const store = transaction.objectStore(STORES.DISPATCH_NOTES)
+    const index = store.index('status')
+    const request = index.getAll(status)
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(new Error(`Failed to get dispatch notes by status: ${request.error?.message}`))
+  })
+}
+
+// ============================================================================
+// DISPATCH MATERIAL OPERATIONS
+// ============================================================================
+
+export async function createDispatchMaterial(material: Omit<DispatchMaterial, 'id'>): Promise<string> {
+  const id = `dispatch_material_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  
+  const newMaterial: DispatchMaterial = {
+    ...material,
+    id,
+    status: material.status || 'pending' as DispatchMaterialStatus,
+    usageHistory: []
+  }
+
+  await createRecord(STORES.DISPATCH_MATERIALS, newMaterial)
+  
+  // Update the parent dispatch note to include this material
+  const dispatchNote = await getDispatchNote(material.dispatchNoteId)
+  if (dispatchNote) {
+    const updatedNote = {
+      ...dispatchNote,
+      materials: [...dispatchNote.materials, newMaterial],
+      updatedAt: new Date()
+    }
+    await updateRecord(STORES.DISPATCH_NOTES, updatedNote)
+  }
+  
+  return id
+}
+
+// Removed duplicate function - using the one with id/updates parameters instead
+
+export async function getDispatchMaterial(id: string): Promise<DispatchMaterial | undefined> {
+  return await getRecord(STORES.DISPATCH_MATERIALS, id)
+}
+
+export async function getDispatchMaterials(dispatchNoteId: string): Promise<DispatchMaterial[]> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.DISPATCH_MATERIALS], 'readonly')
+    const store = transaction.objectStore(STORES.DISPATCH_MATERIALS)
+    const index = store.index('dispatchNoteId')
+    const request = index.getAll(dispatchNoteId)
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(new Error(`Failed to get dispatch materials: ${request.error?.message}`))
+  })
+}
+
+export async function deleteDispatchMaterial(id: string): Promise<void> {
+  const material = await getDispatchMaterial(id)
+  if (material) {
+    // Remove from dispatch note
+    const dispatchNote = await getDispatchNote(material.dispatchNoteId)
+    if (dispatchNote) {
+      const updatedNote = {
+        ...dispatchNote,
+        materials: dispatchNote.materials.filter(m => m.id !== id),
+        updatedAt: new Date()
+      }
+      await updateRecord(STORES.DISPATCH_NOTES, updatedNote)
+    }
+  }
+  
+  await deleteRecord(STORES.DISPATCH_MATERIALS, id)
+}
+
+export async function bulkCreateDispatchMaterials(
+  dispatchNoteId: string, 
+  materials: Omit<DispatchMaterial, 'id' | 'dispatchNoteId'>[]
+): Promise<string[]> {
+  const materialIds: string[] = []
+  const newMaterials: DispatchMaterial[] = []
+  
+  for (const materialData of materials) {
+    const id = `dispatch_material_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    materialIds.push(id)
+    
+    const newMaterial: DispatchMaterial = {
+      ...materialData,
+      id,
+      dispatchNoteId,
+      status: materialData.status || 'pending' as DispatchMaterialStatus,
+      usageHistory: []
+    }
+    
+    newMaterials.push(newMaterial)
+    await createRecord(STORES.DISPATCH_MATERIALS, newMaterial)
+  }
+  
+  // Update the parent dispatch note to include all materials
+  const dispatchNote = await getDispatchNote(dispatchNoteId)
+  if (dispatchNote) {
+    const updatedNote = {
+      ...dispatchNote,
+      materials: [...dispatchNote.materials, ...newMaterials],
+      updatedAt: new Date()
+    }
+    await updateRecord(STORES.DISPATCH_NOTES, updatedNote)
+  }
+  
+  return materialIds
+}
+
+export async function updateDispatchMaterialStatus(
+  materialId: string, 
+  status: DispatchMaterialStatus, 
+  notes?: string
+): Promise<void> {
+  const material = await getDispatchMaterial(materialId)
+  if (!material) {
+    throw new Error('Dispatch material not found')
+  }
+
+  const updatedMaterial: DispatchMaterial = {
+    ...material,
+    status,
+    notes: notes || material.notes
+  }
+
+  // Add to usage history if status indicates usage
+  if (status === 'used' || status === 'allocated') {
+    const historyEntry = {
+      date: new Date(),
+      quantityUsed: status === 'used' ? material.quantity : 0,
+      notes: notes || `Status changed to ${status}`
+    }
+    
+    updatedMaterial.usageHistory = [
+      ...(material.usageHistory || []),
+      historyEntry
+    ]
+  }
+
+  await updateDispatchMaterial(materialId, {
+    status,
+    notes: notes || material.notes,
+    usageHistory: updatedMaterial.usageHistory
+  })
+}
+
+// ============================================================================
+// MATERIAL INVENTORY AND REPORTING
+// ============================================================================
+
+export async function getMaterialInventorySummary(projectId?: string): Promise<any[]> {
+  const dispatchNotes = projectId 
+    ? await getProjectDispatchNotes(projectId)
+    : await getAllDispatchNotes()
+  
+  const inventoryMap = new Map<string, any>()
+  
+  for (const dispatch of dispatchNotes) {
+    for (const material of dispatch.materials) {
+      const key = `${material.materialType}-${material.profile}-${material.grade}`
+      
+      if (!inventoryMap.has(key)) {
+        inventoryMap.set(key, {
+          materialType: material.materialType,
+          profile: material.profile,
+          grade: material.grade,
+          totalQuantity: 0,
+          totalWeight: 0,
+          availableQuantity: 0,
+          allocatedQuantity: 0,
+          usedQuantity: 0,
+          locations: new Set<string>(),
+          lastUpdated: new Date()
+        })
+      }
+      
+      const inventory = inventoryMap.get(key)
+      inventory.totalQuantity += material.quantity
+      inventory.totalWeight += material.totalWeight
+      
+      switch (material.status) {
+        case 'arrived':
+          inventory.availableQuantity += material.quantity
+          break
+        case 'allocated':
+          inventory.allocatedQuantity += material.quantity
+          break
+        case 'used':
+          inventory.usedQuantity += material.quantity
+          break
+      }
+      
+      if (material.location) {
+        inventory.locations.add(material.location)
+      }
+    }
+  }
+  
+  return Array.from(inventoryMap.values()).map(inv => ({
+    ...inv,
+    locations: Array.from(inv.locations)
+  }))
+}
+
+export async function getDispatchSummaryStats(projectId?: string): Promise<any> {
+  const dispatchNotes = projectId 
+    ? await getProjectDispatchNotes(projectId)
+    : await getAllDispatchNotes()
+  
+  const summary = {
+    totalDispatches: dispatchNotes.length,
+    pendingDispatches: 0,
+    shippedDispatches: 0,
+    arrivedDispatches: 0,
+    totalValue: 0,
+    totalMaterials: 0,
+    materialsArrived: 0,
+    materialsAllocated: 0,
+    materialsUsed: 0
+  }
+  
+  for (const dispatch of dispatchNotes) {
+    switch (dispatch.status) {
+      case 'pending':
+        summary.pendingDispatches++
+        break
+      case 'shipped':
+        summary.shippedDispatches++
+        break
+      case 'arrived':
+        summary.arrivedDispatches++
+        break
+    }
+    
+    summary.totalValue += dispatch.totalValue || 0
+    summary.totalMaterials += dispatch.materials.length
+    
+    for (const material of dispatch.materials) {
+      switch (material.status) {
+        case 'arrived':
+          summary.materialsArrived++
+          break
+        case 'allocated':
+          summary.materialsAllocated++
+          break
+        case 'used':
+          summary.materialsUsed++
+          break
+      }
+    }
+  }
+  
+  return summary
+}
+
+// ============================================================================
+// MATERIAL CATALOG CRUD OPERATIONS (PHASE 2)
+// ============================================================================
+
+// Material Catalog Operations
+export async function createMaterialCatalog(material: Omit<MaterialCatalog, 'id' | 'createdAt' | 'updatedAt' | 'version'>): Promise<string> {
+  const id = `mat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  const materialWithId: MaterialCatalog = {
+    ...material,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    version: 1
+  }
+
+  await createRecord(STORES.MATERIAL_CATALOG, materialWithId)
+  return id
+}
+
+export async function getAllMaterialCatalog(): Promise<MaterialCatalog[]> {
+  return await getAllRecords(STORES.MATERIAL_CATALOG)
+}
+
+export async function getMaterialCatalogById(id: string): Promise<MaterialCatalog | null> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.MATERIAL_CATALOG], 'readonly')
+    const store = transaction.objectStore(STORES.MATERIAL_CATALOG)
+    const request = store.get(id)
+
+    request.onsuccess = () => {
+      resolve(request.result || null)
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to get material: ${request.error?.message}`))
+    }
+  })
+}
+
+export async function updateMaterialCatalog(id: string, updates: Partial<Omit<MaterialCatalog, 'id' | 'createdAt' | 'version'>>): Promise<void> {
+  const existing = await getMaterialCatalogById(id)
+  if (!existing) {
+    throw new Error('Material not found')
+  }
+
+  const updated: MaterialCatalog = {
+    ...existing,
+    ...updates,
+    updatedAt: new Date(),
+    version: existing.version + 1
+  }
+
+  return await updateRecord(STORES.MATERIAL_CATALOG, updated)
+}
+
+export async function deleteMaterialCatalog(id: string): Promise<void> {
+  return await deleteRecord(STORES.MATERIAL_CATALOG, id)
+}
+
+export async function searchMaterialCatalog(filters: {
+  type?: string[]
+  category?: string[]
+  availability?: string[]
+  priceRange?: { min: number; max: number }
+  strengthRange?: { min: number; max: number }
+  applications?: string[]
+  tags?: string[]
+  searchTerm?: string
+}): Promise<MaterialCatalog[]> {
+  const allMaterials = await getAllMaterialCatalog()
+  
+  return allMaterials.filter(material => {
+    // Type filter
+    if (filters.type && filters.type.length > 0 && !filters.type.includes(material.type)) {
+      return false
+    }
+
+    // Category filter
+    if (filters.category && filters.category.length > 0 && !filters.category.includes(material.category)) {
+      return false
+    }
+
+    // Availability filter
+    if (filters.availability && filters.availability.length > 0 && !filters.availability.includes(material.availability)) {
+      return false
+    }
+
+    // Price range filter
+    if (filters.priceRange) {
+      const { min, max } = filters.priceRange
+      if (material.basePrice < min || material.basePrice > max) {
+        return false
+      }
+    }
+
+    // Strength range filter
+    if (filters.strengthRange) {
+      const { min, max } = filters.strengthRange
+      if (material.yieldStrength < min || material.yieldStrength > max) {
+        return false
+      }
+    }
+
+    // Applications filter
+    if (filters.applications && filters.applications.length > 0) {
+      const hasMatchingApplication = filters.applications.some(app => 
+        material.applications.some(matApp => matApp.toLowerCase().includes(app.toLowerCase()))
+      )
+      if (!hasMatchingApplication) {
+        return false
+      }
+    }
+
+    // Tags filter
+    if (filters.tags && filters.tags.length > 0) {
+      const hasMatchingTag = filters.tags.some(tag => 
+        material.tags.some(matTag => matTag.toLowerCase().includes(tag.toLowerCase()))
+      )
+      if (!hasMatchingTag) {
+        return false
+      }
+    }
+
+    // Text search
+    if (filters.searchTerm) {
+      const term = filters.searchTerm.toLowerCase()
+      const searchFields = [
+        material.name,
+        material.description || '',
+        ...material.applications,
+        ...material.tags,
+        ...material.standards
+      ]
+      
+      const hasMatch = searchFields.some(field => 
+        field.toLowerCase().includes(term)
+      )
+      if (!hasMatch) {
+        return false
+      }
+    }
+
+    return true
+  })
+}
+
+// Material Template Operations
+export async function createMaterialTemplate(template: Omit<MaterialTemplate, 'id' | 'createdAt' | 'updatedAt' | 'usageCount'>): Promise<string> {
+  const id = `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const now = new Date()
+  
+  const templateWithId: MaterialTemplate = {
+    ...template,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    usageCount: 0
+  }
+
+  await createRecord(STORES.MATERIAL_TEMPLATES, templateWithId)
+  return id
+}
+
+export async function getAllMaterialTemplates(): Promise<MaterialTemplate[]> {
+  return await getAllRecords(STORES.MATERIAL_TEMPLATES)
+}
+
+export async function getMaterialTemplateById(id: string): Promise<MaterialTemplate | null> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.MATERIAL_TEMPLATES], 'readonly')
+    const store = transaction.objectStore(STORES.MATERIAL_TEMPLATES)
+    const request = store.get(id)
+
+    request.onsuccess = () => {
+      resolve(request.result || null)
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to get template: ${request.error?.message}`))
+    }
+  })
+}
+
+export async function updateMaterialTemplate(id: string, updates: Partial<Omit<MaterialTemplate, 'id' | 'createdAt'>>): Promise<void> {
+  const existing = await getMaterialTemplateById(id)
+  if (!existing) {
+    throw new Error('Template not found')
+  }
+
+  const updated: MaterialTemplate = {
+    ...existing,
+    ...updates,
+    updatedAt: new Date()
+  }
+
+  return await updateRecord(STORES.MATERIAL_TEMPLATES, updated)
+}
+
+export async function deleteMaterialTemplate(id: string): Promise<void> {
+  return await deleteRecord(STORES.MATERIAL_TEMPLATES, id)
+}
+
+export async function incrementTemplateUsage(id: string): Promise<void> {
+  const template = await getMaterialTemplateById(id)
+  if (template) {
+    await updateMaterialTemplate(id, { 
+      usageCount: template.usageCount + 1 
+    })
+  }
+}
+
+export async function getTemplatesByMaterial(materialCatalogId: string): Promise<MaterialTemplate[]> {
+  const allTemplates = await getAllMaterialTemplates()
+  return allTemplates.filter(template => template.materialCatalogId === materialCatalogId)
+}
+
+export async function getPopularTemplates(limit: number = 10): Promise<MaterialTemplate[]> {
+  const allTemplates = await getAllMaterialTemplates()
+  return allTemplates
+    .sort((a, b) => b.usageCount - a.usageCount)
+    .slice(0, limit)
+}
+
+// ============================================================================
+// DISPATCH NOTES INTEGRATION FUNCTIONS (PHASE 4)
+// ============================================================================
+
+export async function getDispatchNotesByProject(projectId: string): Promise<DispatchNote[]> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.DISPATCH_NOTES], 'readonly')
+    const store = transaction.objectStore(STORES.DISPATCH_NOTES)
+    const index = store.index('projectId')
+    const request = index.getAll(projectId)
+
+    request.onsuccess = () => {
+      const results = request.result.map((note: any) => ({
+        ...note,
+        date: new Date(note.date),
+        expectedDeliveryDate: note.expectedDeliveryDate ? new Date(note.expectedDeliveryDate) : undefined,
+        actualDeliveryDate: note.actualDeliveryDate ? new Date(note.actualDeliveryDate) : undefined,
+        inspectionDate: note.inspectionDate ? new Date(note.inspectionDate) : undefined,
+        createdAt: new Date(note.createdAt),
+        updatedAt: new Date(note.updatedAt)
+      }))
+      resolve(results)
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to get dispatch notes for project: ${request.error?.message}`))
+    }
+  })
+}
+
+export async function getDispatchMaterialsByDispatch(dispatchNoteId: string): Promise<DispatchMaterial[]> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.DISPATCH_MATERIALS], 'readonly')
+    const store = transaction.objectStore(STORES.DISPATCH_MATERIALS)
+    const index = store.index('dispatchNoteId')
+    const request = index.getAll(dispatchNoteId)
+
+    request.onsuccess = () => {
+      const results = request.result.map((material: any) => ({
+        ...material,
+        inspectionDate: material.inspectionDate ? new Date(material.inspectionDate) : undefined,
+        usageHistory: material.usageHistory?.map((entry: any) => ({
+          ...entry,
+          date: new Date(entry.date)
+        })) || []
+      }))
+      resolve(results)
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to get dispatch materials: ${request.error?.message}`))
+    }
+  })
+}
+
+export async function updateDispatchMaterial(id: string, updates: Partial<DispatchMaterial>): Promise<void> {
+  const existing = await getRecord(STORES.DISPATCH_MATERIALS, id)
+  if (!existing) {
+    throw new Error('Dispatch material not found')
+  }
+
+  const updated = {
+    ...existing,
+    ...updates
+  }
+
+  return await updateRecord(STORES.DISPATCH_MATERIALS, updated)
+}
+
+export async function getDispatchMaterialById(id: string): Promise<DispatchMaterial | null> {
+  const db = await getDatabase()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.DISPATCH_MATERIALS], 'readonly')
+    const store = transaction.objectStore(STORES.DISPATCH_MATERIALS)
+    const request = store.get(id)
+
+    request.onsuccess = () => {
+      const result = request.result
+      if (result) {
+        resolve({
+          ...result,
+          inspectionDate: result.inspectionDate ? new Date(result.inspectionDate) : undefined,
+          usageHistory: result.usageHistory?.map((entry: any) => ({
+            ...entry,
+            date: new Date(entry.date)
+          })) || []
+        })
+      } else {
+        resolve(null)
+      }
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to get dispatch material: ${request.error?.message}`))
+    }
+  })
 } 

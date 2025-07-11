@@ -30,6 +30,21 @@ export enum MaterialStatus {
   CANCELLED = 'cancelled'
 }
 
+// New enhanced material status for project materials (Phase 3)
+export enum ProjectMaterialStatus {
+  REQUIRED = 'required',
+  ORDERED = 'ordered',
+  DELIVERED = 'delivered',
+  INSTALLED = 'installed'
+}
+
+export enum ProjectMaterialSource {
+  MANUAL = 'manual',
+  CALCULATION = 'calculation',
+  DISPATCH = 'dispatch',
+  TEMPLATE = 'template'
+}
+
 // Project Management Interfaces
 export interface Project {
   id: string
@@ -49,19 +64,47 @@ export interface Project {
   deadline?: Date
 }
 
+// Enhanced ProjectMaterial interface (Phase 3)
 export interface ProjectMaterial {
   id: string
-  calculationId: string
   projectId: string
+  
+  // Material Specification (from catalog or direct input)
+  materialCatalogId?: string // Reference to MaterialCatalog if from catalog
+  materialName: string
+  profile: string
+  grade: string
+  dimensions: Record<string, number>
+  
+  // Project-Specific Data
   quantity: number
-  status: MaterialStatus
-  orderDate?: Date
-  arrivalDate?: Date
-  installationDate?: Date
+  unitWeight: number
+  totalWeight: number
+  unitCost?: number
+  totalCost?: number
+  
+  // Units
+  lengthUnit: string
+  weightUnit: string
+  
+  // Status & Tracking
+  status: ProjectMaterialStatus
   supplier?: string
-  cost?: number
-  notes: string
+  orderDate?: Date
+  deliveryDate?: Date
+  installationDate?: Date
+  location?: string
+  notes?: string
   trackingNumber?: string
+  
+  // Source Tracking
+  source: ProjectMaterialSource
+  sourceId?: string // calculation ID, dispatch ID, template ID, etc.
+  
+  // Metadata
+  createdAt: Date
+  updatedAt: Date
+  createdBy?: string
 }
 
 // Updated MaterialData interface for enhanced properties
@@ -92,6 +135,121 @@ export interface MaterialData {
   
   // Temperature Effects
   temperatureCoefficient?: number
+}
+
+// ============================================================================
+// CENTRALIZED MATERIALS DATABASE TYPES (PHASE 2)
+// ============================================================================
+
+export enum MaterialType {
+  STEEL = 'steel',
+  ALUMINUM = 'aluminum',
+  STAINLESS = 'stainless',
+  COMPOSITE = 'composite',
+  COPPER = 'copper',
+  TITANIUM = 'titanium'
+}
+
+export enum MaterialCategory {
+  STRUCTURAL = 'structural',
+  PLATE = 'plate',
+  TUBE = 'tube',
+  BAR = 'bar',
+  SHEET = 'sheet',
+  PIPE = 'pipe',
+  ANGLE = 'angle',
+  CHANNEL = 'channel',
+  BEAM = 'beam'
+}
+
+export enum MaterialAvailability {
+  STOCK = 'stock',
+  ORDER = 'order', 
+  SPECIAL = 'special',
+  DISCONTINUED = 'discontinued'
+}
+
+export interface MaterialCatalog {
+  id: string
+  name: string
+  type: MaterialType
+  category: MaterialCategory
+  
+  // Physical Properties
+  density: number // g/cm³
+  yieldStrength: number // MPa
+  tensileStrength: number // MPa
+  elasticModulus: number // GPa
+  poissonRatio: number
+  hardness?: string
+  
+  // Thermal Properties
+  thermalExpansion: number // per °C × 10⁻⁶
+  thermalConductivity: number // W/m·K
+  specificHeat: number // J/kg·K
+  meltingPoint: number // °C
+  
+  // Available Profiles and Compatibility
+  compatibleProfiles: string[]
+  availableGrades: string[]
+  
+  // Pricing & Availability
+  basePrice: number
+  currency: string
+  supplier?: string
+  availability: MaterialAvailability
+  
+  // Standards and Applications
+  standards: string[]
+  applications: string[]
+  description?: string
+  tags: string[]
+  
+  // Metadata
+  createdAt: Date
+  updatedAt: Date
+  createdBy?: string
+  version: number
+}
+
+export interface MaterialTemplate {
+  id: string
+  name: string
+  materialCatalogId: string
+  profile: string
+  grade: string
+  standardDimensions: Record<string, number>
+  description?: string
+  commonUses: string[]
+  estimatedCost?: number
+  supplier?: string
+  
+  // Template metadata
+  createdAt: Date
+  updatedAt: Date
+  usageCount: number
+  isPublic: boolean
+  createdBy?: string
+  tags: string[]
+}
+
+export interface MaterialSearchFilters {
+  type?: MaterialType[]
+  category?: MaterialCategory[]
+  availability?: MaterialAvailability[]
+  priceRange?: { min: number; max: number }
+  strengthRange?: { min: number; max: number }
+  profiles?: string[]
+  applications?: string[]
+  suppliers?: string[]
+  tags?: string[]
+}
+
+export interface MaterialComparisonItem {
+  materialId: string
+  material: MaterialCatalog
+  template?: MaterialTemplate
+  notes?: string
 }
 
 // Re-export StructuralProperties from calculations
@@ -397,6 +555,139 @@ export interface DailyWorkLog {
   weather?: string
   createdAt: Date
   updatedAt: Date
+}
+
+// ============================================================================
+// DISPATCH NOTES & MATERIAL TRACKING TYPES
+// ============================================================================
+
+export enum DispatchStatus {
+  PENDING = 'pending',
+  SHIPPED = 'shipped',
+  ARRIVED = 'arrived',
+  PROCESSED = 'processed',
+  CANCELLED = 'cancelled'
+}
+
+export enum DispatchMaterialStatus {
+  PENDING = 'pending',
+  ARRIVED = 'arrived',
+  ALLOCATED = 'allocated',
+  USED = 'used',
+  DAMAGED = 'damaged'
+}
+
+export interface DispatchSupplier {
+  name: string
+  contact: string
+  phone?: string
+  email?: string
+  address?: string
+}
+
+export interface DispatchMaterial {
+  id: string
+  dispatchNoteId: string
+  // Material specifications
+  materialType: string // Steel, Aluminum, etc.
+  profile: string // I-beam, Channel, etc.
+  grade: string
+  dimensions: {
+    length?: number
+    width?: number
+    height?: number
+    thickness?: number
+    diameter?: number
+    [key: string]: number | undefined
+  }
+  // Quantity and measurements
+  quantity: number
+  unitWeight: number
+  totalWeight: number
+  lengthUnit: string
+  weightUnit: string
+  // Cost information
+  unitCost?: number
+  totalCost?: number
+  currency?: string
+  // Status and tracking
+  status: DispatchMaterialStatus
+  location?: string // Storage location
+  notes?: string
+  // Quality control
+  inspectionDate?: Date
+  inspectionNotes?: string
+  // Allocation tracking
+  allocatedToTasks?: string[] // Task IDs this material is allocated to
+  usageHistory?: {
+    date: Date
+    taskId?: string
+    quantityUsed: number
+    notes?: string
+  }[]
+}
+
+export interface DispatchNote {
+  id: string
+  projectId: string
+  // Dispatch identification
+  dispatchNumber: string
+  internalReference?: string
+  // Dates
+  date: Date
+  expectedDeliveryDate?: Date
+  actualDeliveryDate?: Date
+  // Supplier information
+  supplier: DispatchSupplier
+  // Shipping information
+  status: DispatchStatus
+  trackingNumber?: string
+  shippingMethod?: string
+  // Financial information
+  totalValue?: number
+  currency?: string
+  invoiceNumber?: string
+  // Materials
+  materials: DispatchMaterial[]
+  // Documentation
+  notes?: string
+  attachments?: string[] // File paths or URLs
+  // Quality and inspection
+  inspectionRequired: boolean
+  inspectionCompleted: boolean
+  inspectionDate?: Date
+  inspectionNotes?: string
+  // Metadata
+  createdAt: Date
+  updatedAt: Date
+  createdBy?: string
+  updatedBy?: string
+}
+
+// Summary interfaces for reporting
+export interface DispatchSummary {
+  totalDispatches: number
+  pendingDispatches: number
+  arrivedDispatches: number
+  totalValue: number
+  totalMaterials: number
+  materialsArrived: number
+  materialsAllocated: number
+  materialsUsed: number
+}
+
+export interface MaterialInventory {
+  materialType: string
+  profile: string
+  grade: string
+  totalQuantity: number
+  availableQuantity: number
+  allocatedQuantity: number
+  usedQuantity: number
+  totalWeight: number
+  averageUnitCost?: number
+  locations: string[]
+  lastUpdated: Date
 }
 
 // ============================================================================

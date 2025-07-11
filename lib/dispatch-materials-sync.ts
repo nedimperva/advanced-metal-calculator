@@ -1,0 +1,420 @@
+import { 
+  DispatchNote, 
+  DispatchMaterial, 
+  DispatchMaterialStatus,
+  ProjectMaterial, 
+  ProjectMaterialStatus, 
+  ProjectMaterialSource 
+} from './types'
+import { 
+  getProjectMaterials,
+  createProjectMaterial,
+  updateProjectMaterial,
+  getProjectMaterialsBySource,
+  getDispatchNotesByProject,
+  getDispatchMaterialsByDispatch
+} from './database'
+
+/**
+ * Dispatch Materials Synchronization Service
+ * Handles automatic synchronization between dispatch notes and project materials
+ */
+
+// Mapping between dispatch material status and project material status
+const DISPATCH_TO_PROJECT_STATUS_MAP: Record<DispatchMaterialStatus, ProjectMaterialStatus> = {
+  'pending': ProjectMaterialStatus.ORDERED,
+  'shipped': ProjectMaterialStatus.ORDERED,
+  'arrived': ProjectMaterialStatus.DELIVERED,
+  'inspected': ProjectMaterialStatus.DELIVERED,
+  'allocated': ProjectMaterialStatus.DELIVERED,
+  'used': ProjectMaterialStatus.INSTALLED
+}
+
+// Reverse mapping for project to dispatch status sync
+const PROJECT_TO_DISPATCH_STATUS_MAP: Record<ProjectMaterialStatus, DispatchMaterialStatus> = {
+  [ProjectMaterialStatus.REQUIRED]: 'pending',
+  [ProjectMaterialStatus.ORDERED]: 'shipped',
+  [ProjectMaterialStatus.DELIVERED]: 'arrived',
+  [ProjectMaterialStatus.INSTALLED]: 'used'
+}
+
+interface SyncResult {
+  materialsCreated: number
+  materialsUpdated: number
+  materialsSkipped: number
+  errors: string[]
+}
+
+interface MaterialAllocation {
+  dispatchMaterialId: string
+  projectMaterialId: string
+  allocatedQuantity: number
+  remainingQuantity: number
+  allocationDate: Date
+  notes?: string
+}
+
+/**
+ * Automatically sync dispatch materials to project materials when dispatch note is created/updated
+ */
+export async function syncDispatchToProjectMaterials(
+  projectId: string, 
+  dispatchNote: DispatchNote,
+  options: {
+    createIfNotExists?: boolean
+    updateExisting?: boolean
+    syncStatus?: boolean
+  } = {}
+): Promise<SyncResult> {
+  const { 
+    createIfNotExists = true, 
+    updateExisting = true, 
+    syncStatus = true 
+  } = options
+
+  const result: SyncResult = {
+    materialsCreated: 0,
+    materialsUpdated: 0,
+    materialsSkipped: 0,
+    errors: []
+  }
+
+  try {
+    // Get existing project materials from this dispatch
+    const existingMaterials = await getProjectMaterialsBySource(
+      projectId, 
+      ProjectMaterialSource.DISPATCH, 
+      dispatchNote.id
+    )
+
+    // Create a map of existing materials by dispatch material ID
+    const existingMaterialsMap = new Map<string, ProjectMaterial>()
+    existingMaterials.forEach(material => {
+      if (material.sourceId) {
+        existingMaterialsMap.set(material.sourceId, material)
+      }
+    })
+
+    // Process each dispatch material
+    for (const dispatchMaterial of dispatchNote.materials) {
+      try {
+        const existingMaterial = existingMaterialsMap.get(dispatchMaterial.id)
+
+        if (existingMaterial && updateExisting) {
+          // Update existing project material
+          const updates: Partial<ProjectMaterial> = {
+            quantity: dispatchMaterial.quantity,
+            unitWeight: dispatchMaterial.unitWeight,
+            totalWeight: dispatchMaterial.totalWeight,
+            unitCost: dispatchMaterial.unitCost,
+            totalCost: dispatchMaterial.totalCost,
+            lengthUnit: dispatchMaterial.lengthUnit,
+            weightUnit: dispatchMaterial.weightUnit,
+            location: dispatchMaterial.location,
+            notes: combineNotes(existingMaterial.notes, dispatchMaterial.notes)
+          }
+
+          // Sync status if enabled
+          if (syncStatus && dispatchMaterial.status in DISPATCH_TO_PROJECT_STATUS_MAP) {
+            updates.status = DISPATCH_TO_PROJECT_STATUS_MAP[dispatchMaterial.status]
+            
+            // Update delivery date when status changes to delivered
+            if (updates.status === ProjectMaterialStatus.DELIVERED && !existingMaterial.deliveryDate) {
+              updates.deliveryDate = dispatchNote.actualDeliveryDate || new Date()
+            }
+          }
+
+          await updateProjectMaterial(existingMaterial.id, updates)
+          result.materialsUpdated++
+
+        } else if (!existingMaterial && createIfNotExists) {
+          // Create new project material from dispatch material
+          const newMaterial: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
+            projectId,
+            materialCatalogId: undefined, // Could be enhanced to link to catalog
+            materialName: `${dispatchMaterial.materialType} ${dispatchMaterial.grade}`,
+            profile: dispatchMaterial.profile,
+            grade: dispatchMaterial.grade,
+            dimensions: convertDispatchDimensionsToProjectDimensions(dispatchMaterial.dimensions),
+            quantity: dispatchMaterial.quantity,
+            unitWeight: dispatchMaterial.unitWeight,
+            totalWeight: dispatchMaterial.totalWeight,
+            unitCost: dispatchMaterial.unitCost,
+            totalCost: dispatchMaterial.totalCost,
+            lengthUnit: dispatchMaterial.lengthUnit,
+            weightUnit: dispatchMaterial.weightUnit,
+            status: syncStatus && dispatchMaterial.status in DISPATCH_TO_PROJECT_STATUS_MAP 
+              ? DISPATCH_TO_PROJECT_STATUS_MAP[dispatchMaterial.status] 
+              : ProjectMaterialStatus.DELIVERED,
+            supplier: dispatchNote.supplier.name,
+            orderDate: dispatchNote.date,
+            deliveryDate: dispatchNote.actualDeliveryDate,
+            location: dispatchMaterial.location,
+            notes: createDispatchNotes(dispatchNote, dispatchMaterial),
+            trackingNumber: dispatchNote.trackingNumber,
+            source: ProjectMaterialSource.DISPATCH,
+            sourceId: dispatchMaterial.id
+          }
+
+          await createProjectMaterial(newMaterial)
+          result.materialsCreated++
+        } else {
+          result.materialsSkipped++
+        }
+
+      } catch (error) {
+        const errorMsg = `Failed to sync material ${dispatchMaterial.id}: ${error}`
+        result.errors.push(errorMsg)
+        console.error(errorMsg)
+      }
+    }
+
+  } catch (error) {
+    const errorMsg = `Failed to sync dispatch ${dispatchNote.id}: ${error}`
+    result.errors.push(errorMsg)
+    console.error(errorMsg)
+  }
+
+  return result
+}
+
+/**
+ * Sync project material status changes back to dispatch materials
+ */
+export async function syncProjectToDispatchMaterials(
+  projectMaterial: ProjectMaterial
+): Promise<void> {
+  if (projectMaterial.source !== ProjectMaterialSource.DISPATCH || !projectMaterial.sourceId) {
+    return // Only sync materials that came from dispatch
+  }
+
+  try {
+    // This would require implementing updateDispatchMaterial function in database.ts
+    // For now, we'll just log the sync requirement
+    console.log(`Sync required: Project material ${projectMaterial.id} status changed to ${projectMaterial.status}`)
+    
+    // TODO: Implement bidirectional sync
+    // const dispatchStatus = PROJECT_TO_DISPATCH_STATUS_MAP[projectMaterial.status]
+    // await updateDispatchMaterial(projectMaterial.sourceId, { status: dispatchStatus })
+    
+  } catch (error) {
+    console.error(`Failed to sync project material ${projectMaterial.id} to dispatch:`, error)
+  }
+}
+
+/**
+ * Get material allocation summary for a project
+ */
+export async function getProjectMaterialAllocationSummary(projectId: string): Promise<{
+  totalRequired: number
+  totalDelivered: number
+  totalInstalled: number
+  totalWeight: number
+  totalCost: number
+  materialShortfalls: Array<{
+    materialName: string
+    profile: string
+    grade: string
+    requiredQuantity: number
+    deliveredQuantity: number
+    shortfall: number
+  }>
+  costAnalysis: {
+    budgetedCost: number
+    actualCost: number
+    variance: number
+    variancePercentage: number
+  }
+}> {
+  const projectMaterials = await getProjectMaterials(projectId)
+  
+  const summary = {
+    totalRequired: 0,
+    totalDelivered: 0,
+    totalInstalled: 0,
+    totalWeight: 0,
+    totalCost: 0,
+    materialShortfalls: [] as any[],
+    costAnalysis: {
+      budgetedCost: 0,
+      actualCost: 0,
+      variance: 0,
+      variancePercentage: 0
+    }
+  }
+
+  // Group materials by specification to identify shortfalls
+  const materialGroups = new Map<string, {
+    specification: { materialName: string; profile: string; grade: string }
+    materials: ProjectMaterial[]
+    totalRequired: number
+    totalDelivered: number
+  }>()
+
+  projectMaterials.forEach(material => {
+    const key = `${material.materialName}-${material.profile}-${material.grade}`
+    
+    if (!materialGroups.has(key)) {
+      materialGroups.set(key, {
+        specification: {
+          materialName: material.materialName,
+          profile: material.profile,
+          grade: material.grade
+        },
+        materials: [],
+        totalRequired: 0,
+        totalDelivered: 0
+      })
+    }
+
+    const group = materialGroups.get(key)!
+    group.materials.push(material)
+    
+    // Count quantities based on status
+    if (material.status === ProjectMaterialStatus.REQUIRED) {
+      group.totalRequired += material.quantity
+      summary.totalRequired += material.quantity
+    } else if (material.status === ProjectMaterialStatus.DELIVERED) {
+      group.totalDelivered += material.quantity
+      summary.totalDelivered += material.quantity
+    } else if (material.status === ProjectMaterialStatus.INSTALLED) {
+      group.totalDelivered += material.quantity // Count as delivered too
+      summary.totalDelivered += material.quantity
+      summary.totalInstalled += material.quantity
+    }
+
+    // Accumulate weight and cost
+    summary.totalWeight += material.totalWeight
+    if (material.totalCost) {
+      summary.totalCost += material.totalCost
+    }
+  })
+
+  // Identify shortfalls
+  materialGroups.forEach(group => {
+    if (group.totalRequired > group.totalDelivered) {
+      summary.materialShortfalls.push({
+        materialName: group.specification.materialName,
+        profile: group.specification.profile,
+        grade: group.specification.grade,
+        requiredQuantity: group.totalRequired,
+        deliveredQuantity: group.totalDelivered,
+        shortfall: group.totalRequired - group.totalDelivered
+      })
+    }
+  })
+
+  // Calculate cost analysis (simplified - would need budgeted costs for full analysis)
+  summary.costAnalysis.actualCost = summary.totalCost
+  summary.costAnalysis.budgetedCost = summary.totalCost // TODO: Get from project budget
+  summary.costAnalysis.variance = summary.costAnalysis.actualCost - summary.costAnalysis.budgetedCost
+  summary.costAnalysis.variancePercentage = summary.costAnalysis.budgetedCost > 0 
+    ? (summary.costAnalysis.variance / summary.costAnalysis.budgetedCost) * 100 
+    : 0
+
+  return summary
+}
+
+/**
+ * Auto-sync all dispatch notes for a project
+ */
+export async function syncAllDispatchNotesForProject(
+  projectId: string,
+  options: {
+    createIfNotExists?: boolean
+    updateExisting?: boolean
+    syncStatus?: boolean
+  } = {}
+): Promise<SyncResult> {
+  const aggregatedResult: SyncResult = {
+    materialsCreated: 0,
+    materialsUpdated: 0,
+    materialsSkipped: 0,
+    errors: []
+  }
+
+  try {
+    const dispatchNotes = await getDispatchNotesByProject(projectId)
+    
+    for (const dispatchNote of dispatchNotes) {
+      const result = await syncDispatchToProjectMaterials(projectId, dispatchNote, options)
+      
+      aggregatedResult.materialsCreated += result.materialsCreated
+      aggregatedResult.materialsUpdated += result.materialsUpdated
+      aggregatedResult.materialsSkipped += result.materialsSkipped
+      aggregatedResult.errors.push(...result.errors)
+    }
+
+  } catch (error) {
+    const errorMsg = `Failed to sync all dispatch notes for project ${projectId}: ${error}`
+    aggregatedResult.errors.push(errorMsg)
+    console.error(errorMsg)
+  }
+
+  return aggregatedResult
+}
+
+// Helper functions
+function convertDispatchDimensionsToProjectDimensions(
+  dispatchDimensions: Record<string, number | undefined>
+): Record<string, number> {
+  const converted: Record<string, number> = {}
+  
+  Object.entries(dispatchDimensions).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      converted[key] = value
+    }
+  })
+  
+  return converted
+}
+
+function combineNotes(existingNotes?: string, dispatchNotes?: string): string | undefined {
+  if (!existingNotes && !dispatchNotes) return undefined
+  if (!existingNotes) return dispatchNotes
+  if (!dispatchNotes) return existingNotes
+  
+  return `${existingNotes}\n\nDispatch Update: ${dispatchNotes}`
+}
+
+function createDispatchNotes(dispatchNote: DispatchNote, dispatchMaterial: DispatchMaterial): string {
+  const parts = [
+    `From dispatch: ${dispatchNote.dispatchNumber}`,
+    `Supplier: ${dispatchNote.supplier.name}`,
+    `Delivered: ${dispatchNote.actualDeliveryDate?.toLocaleDateString() || 'Pending'}`
+  ]
+  
+  if (dispatchMaterial.notes) {
+    parts.push(`Material notes: ${dispatchMaterial.notes}`)
+  }
+  
+  if (dispatchNote.trackingNumber) {
+    parts.push(`Tracking: ${dispatchNote.trackingNumber}`)
+  }
+  
+  return parts.join(' • ')
+}
+
+/**
+ * Trigger automatic sync when dispatch note is updated
+ */
+export async function onDispatchNoteUpdated(dispatchNote: DispatchNote): Promise<void> {
+  try {
+    console.log(`Auto-syncing dispatch note ${dispatchNote.dispatchNumber} to project materials...`)
+    
+    const result = await syncDispatchToProjectMaterials(dispatchNote.projectId, dispatchNote, {
+      createIfNotExists: true,
+      updateExisting: true,
+      syncStatus: true
+    })
+    
+    console.log(`Dispatch sync completed: ${result.materialsCreated} created, ${result.materialsUpdated} updated`)
+    
+    if (result.errors.length > 0) {
+      console.warn('Dispatch sync errors:', result.errors)
+    }
+    
+  } catch (error) {
+    console.error('Failed to auto-sync dispatch note:', error)
+  }
+}

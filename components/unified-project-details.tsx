@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Settings, BarChart3, CheckCircle2, Users, Package, Calendar } from 'lucide-react'
+import { ArrowLeft, Settings, BarChart3, CheckCircle2, Users, Package, Calendar, Truck } from 'lucide-react'
 import { useProjects } from '@/contexts/project-context'
 import { TaskProvider, useTask } from '@/contexts/task-context'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { cn } from '@/lib/utils'
 import { useI18n } from '@/contexts/i18n-context'
 import ProjectDetails from './project-details'
-import ProjectMaterials from './project-materials'
+import EnhancedProjectMaterials from './enhanced-project-materials'
 import ProjectTimeline from './project-timeline'
 import ProjectTaskManagement from './tasks/project-task-management'
 import WorkforceManagement from './workforce-management'
+import { ProjectDispatchManagement } from './dispatch/project-dispatch-management'
 import type { Project } from '@/lib/types'
 
 interface UnifiedProjectDetailsProps {
@@ -133,7 +134,7 @@ export function UnifiedProjectDetails({
               isMobile && "px-0 pt-2 bg-background/95"
             )}>
               <TabsList className={cn(
-                "grid w-full grid-cols-5",
+                "grid w-full grid-cols-6",
                 isMobile && "h-10 bg-muted/50"
               )}>
                 <TabsTrigger 
@@ -163,6 +164,13 @@ export function UnifiedProjectDetails({
                 >
                   <Package className="h-4 w-4" />
                   {t('materials')}
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="dispatches" 
+                  className={cn(isMobile && "text-xs py-2")}
+                >
+                  <Truck className="h-4 w-4" />
+                  {t('dispatches')}
                 </TabsTrigger>
                 <TabsTrigger 
                   value="timeline" 
@@ -203,8 +211,16 @@ export function UnifiedProjectDetails({
               </TabsContent>
 
               <TabsContent value="materials" className="mt-0">
-                <ProjectMaterials
+                <EnhancedProjectMaterials
                   key={`materials-${refreshKey}`}
+                  project={project}
+                  onUpdate={handleUpdate}
+                />
+              </TabsContent>
+
+              <TabsContent value="dispatches" className="mt-0">
+                <ProjectDispatchManagement
+                  key={`dispatches-${refreshKey}`}
                   project={project}
                   onUpdate={handleUpdate}
                 />

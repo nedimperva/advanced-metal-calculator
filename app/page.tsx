@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react"
+import dynamic from "next/dynamic"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input, UnitInput } from "@/components/ui/input"
@@ -11,20 +12,31 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock, FolderOpen, Plus, Archive, Users } from "lucide-react"
+import { Calculator, Save, Share2, History, Download, ChevronRight, AlertTriangle, CheckCircle, Loader2, RefreshCw, AlertCircle, BarChart3, Layers, Cog, Clock, Plus, Archive, Users, FolderOpen, Package } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useRouter, useSearchParams } from "next/navigation"
-import ProjectCreationModal from "@/components/project-creation-modal"
 
 import { cn, formatCalculationName, getShortMaterialTag } from "@/lib/utils"
 import { animations, animationPresets, safeAnimation, createStaggeredAnimation } from "@/lib/animations"
-import ProfileSelector from "@/components/profile-selector"
-import MaterialSelector from "@/components/material-selector"
 import { ErrorBoundary } from "@/components/error-boundary"
-import { CalculationBreakdown } from "@/components/calculation-breakdown"
 
-import { AdvancedStructuralAnalysis } from "@/components/advanced-structural-analysis"
+// Dynamic imports for better code splitting
+const ProfileSelector = dynamic(() => import("@/components/profile-selector"), {
+  loading: () => <div className="h-10 bg-muted animate-pulse rounded" />
+})
+const MaterialSelector = dynamic(() => import("@/components/material-selector"), {
+  loading: () => <div className="h-10 bg-muted animate-pulse rounded" />
+})
+const CalculationBreakdown = dynamic(() => import("@/components/calculation-breakdown").then(mod => ({ default: mod.CalculationBreakdown })), {
+  loading: () => <div className="h-32 bg-muted animate-pulse rounded" />
+})
+const AdvancedStructuralAnalysis = dynamic(() => import("@/components/advanced-structural-analysis").then(mod => ({ default: mod.AdvancedStructuralAnalysis })), {
+  loading: () => <div className="h-48 bg-muted animate-pulse rounded" />
+})
+const ProjectCreationModal = dynamic(() => import("@/components/project-creation-modal"), {
+  loading: () => null
+})
 import { 
   LoadingSpinner, 
   CalculationLoading, 
@@ -67,8 +79,9 @@ import {
   getCompatibleProfileCategories, 
   getCompatibleProfileTypesInCategory 
 } from "@/lib/material-profile-compatibility"
+import { useCalculations } from "@/contexts/calculation-context"
 import { useProjects } from "@/contexts/project-context"
-import { saveCalculationToProject } from "@/lib/database"
+import { getAllCalculations } from "@/lib/database"
 import PricingModelSelector from "@/components/pricing-model-selector"
 import ProjectDashboard from "@/components/project-dashboard"
 import MobileProjectDashboard from "@/components/mobile-project-dashboard"
@@ -85,12 +98,13 @@ import { CalculationHistory, CalculationComparison } from "@/components/calculat
 import GlobalWorkers from "@/components/global-workers"
 import GlobalMachinery from "@/components/global-machinery"
 import DailyJournal from "@/components/daily-journal"
+import MaterialCatalogBrowser from "@/components/material-catalog-browser"
 
 // Projects Tab Content Component
-function ProjectsTabContent({ initialSelectedProject }: { initialSelectedProject?: Project }) {
+function ProjectsTabContent() {
   const isDesktop = useMediaQuery("(min-width: 1024px)")
-  const [selectedProject, setSelectedProject] = useState<Project | undefined>(initialSelectedProject ?? undefined)
-  const [showProjectDetails, setShowProjectDetails] = useState(!!initialSelectedProject)
+  const [selectedProject, setSelectedProject] = useState<Project | undefined>(undefined)
+  const [showProjectDetails, setShowProjectDetails] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const { setCurrentProject } = useProjects()
@@ -277,8 +291,7 @@ export default function SteelForgePro() {
   const [weightUnit, setWeightUnit] = useState(suggestions.defaults.weightUnit)
 
   // Project context for calculator
-  const { currentProject, selectProject, projects, refreshProjects, setCurrentProject } = useProjects()
-  const [activeProjectId, setActiveProjectId] = useState<string>('')
+  const { saveCalculation, updateCalculation, getCalculationById } = useCalculations()
 
   // Use refs to store timeout IDs for debouncing
   const lengthUpdateTimeoutRef = useRef<any>(null)
@@ -360,16 +373,6 @@ export default function SteelForgePro() {
   const [calculations, setCalculations] = useState<Calculation[]>([])
   const [activeTab, setActiveTab] = useState("calculator")
   
-  // State for initially selected project when navigating from calculator
-  const [initialSelectedProject, setInitialSelectedProject] = useState<Project | undefined>(undefined)
-  
-  // Reset initial selected project when navigating away from projects tab
-  useEffect(() => {
-    if (activeTab !== 'projects') {
-      setInitialSelectedProject(undefined)
-      setCurrentProject(null)
-    }
-  }, [activeTab, setCurrentProject])
 
   // Handle URL parameters for workforce sub-view
   useEffect(() => {
@@ -433,13 +436,9 @@ export default function SteelForgePro() {
         // Check for edit parameter in URL
         const urlParams = new URLSearchParams(window.location.search)
         const editId = urlParams.get('edit')
-        const projectId = urlParams.get('project')
         if (editId) {
           setIsEditMode(true)
           setEditingCalculationId(editId)
-            if (projectId) {
-            setInitialSelectedProject(projects.find((p: Project) => p.id === projectId))
-          }
         }
       } catch (error) {
         console.error('Failed to load calculations:', error)
@@ -746,7 +745,7 @@ export default function SteelForgePro() {
     setCalculationError(null)
   }, [])
 
-  const saveCalculation = async () => {
+  const handleSaveCalculation = async () => {
     if (weight <= 0 || !selectedProfile || !selectedMaterial || !structuralProperties) {
       toast({
         title: t('cannotSave'),
@@ -836,7 +835,6 @@ export default function SteelForgePro() {
           unitCost,
           totalWeight,
           // Project assignment - automatically assign to active project
-          projectId: activeProjectId || undefined,
           notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`,
           // Keep original timestamp
           timestamp: existingCalc?.timestamp || new Date(),
@@ -879,7 +877,6 @@ export default function SteelForgePro() {
           unitCost,
           totalWeight,
           // Project assignment - automatically assign to active project
-          projectId: activeProjectId || undefined,
           notes: calculationNotes.trim() || `${materialTag} • ${parseFloat(quantity)} pieces`,
           timestamp: new Date(),
         }
@@ -895,16 +892,12 @@ export default function SteelForgePro() {
       dbCalculations.sort((a: Calculation, b: Calculation) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       setCalculations(dbCalculations)
 
-      // Save to IndexedDB for project management
-      if (activeProjectId) {
-        const { saveCalculationToProject } = await import('../lib/database')
-        await saveCalculationToProject(updatedCalculation, activeProjectId)
+      // Save to calculation history
+      if (isEditMode && editingCalculationId) {
+        await updateCalculation(updatedCalculation)
+      } else {
+        await saveCalculation(updatedCalculation)
       }
-
-      // Always refresh project context so allCalculations updates for modals
-      if (typeof refreshProjects === 'function') await refreshProjects()
-
-      const projectName = activeProjectId ? projects.find((p: Project) => p.id === activeProjectId)?.name : 'General History'
       
       // Clear edit mode and notes after saving
       if (isEditMode) {
@@ -917,8 +910,8 @@ export default function SteelForgePro() {
       toast({
         title: isEditMode ? t('calculationUpdated') : t('calculationSaved'),
         description: isEditMode 
-          ? `Updated "${mainName}" in ${projectName}`
-          : `Saved "${mainName}" to ${projectName}`,
+          ? `Updated "${mainName}"`
+          : `Saved "${mainName}" to calculation history`,
       })
     } catch (error) {
       console.error("Error saving calculation:", error)
@@ -1502,7 +1495,7 @@ export default function SteelForgePro() {
             structuralProperties={structuralProperties}
             volume={volume}
             className={safeAnimation(animationPresets.result)}
-            onSave={saveCalculation}
+            onSave={handleSaveCalculation}
             onBreakdown={() => setActiveTab("breakdown")}
             onAdvancedAnalysis={() => setActiveTab("advanced")}
             // Pricing props
@@ -1517,7 +1510,6 @@ export default function SteelForgePro() {
             profileType={profileType}
             length={length}
             lengthUnit={lengthUnit}
-            projectName={currentProject?.name}
           />
         )
       }
@@ -1824,7 +1816,7 @@ export default function SteelForgePro() {
                 safeAnimation(`${animations.slideInFromBottom} delay-600`)
               )}>
                 <Button 
-                  onClick={saveCalculation}
+                  onClick={handleSaveCalculation}
                   className="flex-1" 
                   disabled={isSaving}
                 >
@@ -1833,12 +1825,7 @@ export default function SteelForgePro() {
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
                   )}
-                                          {isEditMode ? t('update') : t('save')}
-                  {activeProjectId && (
-                    <span className="ml-1 text-xs opacity-80">
-                      to {projects.find(p => p.id === activeProjectId)?.name}
-                    </span>
-                  )}
+                  {isEditMode ? t('update') : t('save')}
                 </Button>
                 {isEditMode && (
                   <Button 
@@ -1905,54 +1892,6 @@ export default function SteelForgePro() {
           </div>
           <p className="text-xs text-muted-foreground">{t('appSubtitle')}</p>
           
-          {/* Project Context Indicator */}
-          {activeTab === 'calculator' && (
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <Select value={activeProjectId || "none"} onValueChange={(value) => {
-                if (value === "none") {
-                  setActiveProjectId("")
-                  setCurrentProject(null)
-                } else {
-                  setActiveProjectId(value)
-                  selectProject(value)
-                }
-              }}>
-                <SelectTrigger className="w-64 h-8 text-xs">
-                                          <SelectValue placeholder={t('selectProjectOptional')} />
-                </SelectTrigger>
-                <SelectContent>
-                                      <SelectItem value="none">{t('noProject')}</SelectItem>
-                  {projects.map(project => (
-                    <SelectItem key={project.id} value={project.id}>
-                      <div className="flex items-center gap-2">
-                        <FolderOpen className="h-3 w-3" />
-                        {project.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {activeProjectId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    // Find the project and navigate directly to it
-                    const project = projects.find(p => p.id === activeProjectId)
-                    if (project) {
-                      // Switch to projects tab and set the project as selected
-                      setActiveTab('projects')
-                      // Set the initial selected project
-                      setInitialSelectedProject(project)
-                    }
-                  }}
-                  className="h-8 text-xs"
-                >
-                  {t('viewProject')}
-                </Button>
-              )}
-            </div>
-          )}
         </div>
 
         <SwipeTabs 
@@ -1978,6 +1917,12 @@ export default function SteelForgePro() {
               label: t('projects'),
               icon: <FolderOpen className="h-3 w-3" />,
               shortLabel: "Proj"
+            },
+            {
+              value: "materials",
+              label: "Materials",
+              icon: <Package className="h-3 w-3" />,
+              shortLabel: "Mat"
             },
             {
               value: "workforce",
@@ -2426,11 +2371,12 @@ export default function SteelForgePro() {
                     onLoadCalculation={loadCalculation}
                     onDeleteCalculation={deleteCalculation}
                     onMoveToProject={async (calculationId, projectId) => {
-                      // Update calculation with project ID
-                      const updatedCalculations = calculations.map(calc => 
-                        calc.id === calculationId ? { ...calc, projectId } : calc
-                      )
-                      setCalculations(updatedCalculations)
+                      // This functionality has been removed as calculator is now independent
+                      toast({
+                        title: "Feature Not Available",
+                        description: "Calculator is now independent. Please use the Projects tab to manage project materials.",
+                        variant: "default"
+                      })
                       
                       // Show success message
                       toast({
@@ -2477,7 +2423,17 @@ export default function SteelForgePro() {
               "overflow-y-auto space-y-4",
               isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
             )}>
-              <ProjectsTabContent initialSelectedProject={initialSelectedProject} />
+              <ProjectsTabContent />
+            </div>
+          </SwipeTabs.Content>
+
+          {/* Materials Tab */}
+          <SwipeTabs.Content value="materials" className="">
+            <div className={cn(
+              "overflow-y-auto space-y-4",
+              isDesktop ? "h-[calc(100vh-120px)] p-4" : "h-[calc(100vh-140px)] p-2"
+            )}>
+              <MaterialCatalogBrowser />
             </div>
           </SwipeTabs.Content>
 
