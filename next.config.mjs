@@ -35,20 +35,18 @@ export default withPWA({
   disable: process.env.NODE_ENV === 'development',
   cacheOnFrontEndNav: true,
   reloadOnOnline: true,
-  workboxOptions: {
-    disableDevLogs: true,
-    runtimeCaching: [
-      {
-        urlPattern: /^https?.*/,
-        handler: 'NetworkFirst',
-        options: {
-          cacheName: 'offlineCache',
-          expiration: {
-            maxEntries: 200,
-            maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-          }
+  disableDevLogs: true,
+  runtimeCaching: [
+    {
+      urlPattern: /^https?.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'offlineCache',
+        expiration: {
+          maxEntries: 200,
+          maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
         }
       }
-    ]
-  }
+    }
+  ]
 })(nextConfig);
