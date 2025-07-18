@@ -93,6 +93,7 @@ import {
   createMaterialStockTransaction
 } from '@/lib/database'
 import { useMaterialCatalog } from '@/contexts/material-catalog-context'
+import { useProjects } from '@/contexts/project-context'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
@@ -277,6 +278,7 @@ interface StockMaterialSelectorProps {
 function StockMaterialSelector({ projectId, onAssign }: StockMaterialSelectorProps) {
   const { t } = useI18n()
   const { materials: catalogMaterials } = useMaterialCatalog()
+  const { projects } = useProjects()
   const [materialStock, setMaterialStock] = useState<(MaterialStock & { material: MaterialCatalog })[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedStock, setSelectedStock] = useState<MaterialStock | null>(null)
@@ -347,7 +349,7 @@ function StockMaterialSelector({ projectId, onAssign }: StockMaterialSelectorPro
         referenceId: projectId,
         referenceType: 'PROJECT',
         transactionDate: new Date(),
-        description: `Reserved for project`,
+        description: `Reserved for project: ${projects.find(p => p.id === projectId)?.name || projectId}`,
         createdBy: 'system'
       })
 
