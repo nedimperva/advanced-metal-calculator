@@ -17,8 +17,7 @@ import {
   TrendingDown,
   RefreshCw,
   BarChart3,
-  Loader2,
-  Sync
+  Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Project } from '@/lib/types'
@@ -167,7 +166,7 @@ export default function MaterialAllocationDashboard({
           {isSyncing ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
-            <Sync className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-4 w-4 mr-2" />
           )}
           Sync with Dispatches
         </Button>
