@@ -348,7 +348,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
       
       // Create stock transaction record
       await createMaterialStockTransaction({
-        materialStockId: selectedMaterial.id,
+        materialStockId: stock.id,
         type: 'RESERVED',
         quantity: quantity,
         unitCost: stock.unitCost,

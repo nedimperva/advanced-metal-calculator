@@ -77,7 +77,7 @@ import {
   ProjectMaterialSource,
   Project,
   MaterialCatalog,
-  Calculation
+  MaterialStock
 } from '@/lib/types'
 import { 
   getProjectMaterials,
@@ -87,10 +87,12 @@ import {
   updateProjectMaterialStatus,
   getProjectMaterialStatistics,
   createProjectMaterialFromCalculation,
-  searchProjectMaterials
+  searchProjectMaterials,
+  getAllMaterialStock,
+  reserveMaterialStock,
+  createMaterialStockTransaction
 } from '@/lib/database'
 import { useMaterialCatalog } from '@/contexts/material-catalog-context'
-import { useCalculations } from '@/contexts/calculation-context'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
@@ -267,6 +269,231 @@ function MaterialCard({ material, onEdit, onDelete, onStatusChange, isMobile }: 
   )
 }
 
+interface StockMaterialSelectorProps {
+  projectId: string
+  onAssign: (material: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'>) => void
+}
+
+function StockMaterialSelector({ projectId, onAssign }: StockMaterialSelectorProps) {
+  const { t } = useI18n()
+  const { materials: catalogMaterials } = useMaterialCatalog()
+  const [materialStock, setMaterialStock] = useState<(MaterialStock & { material: MaterialCatalog })[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedStock, setSelectedStock] = useState<MaterialStock | null>(null)
+  const [quantity, setQuantity] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+
+  useEffect(() => {
+    loadMaterialStock()
+  }, [])
+
+  const loadMaterialStock = async () => {
+    try {
+      setIsLoading(true)
+      const [stockData, materials] = await Promise.all([
+        getAllMaterialStock(),
+        catalogMaterials.length > 0 ? Promise.resolve(catalogMaterials) : []
+      ])
+      
+      const stockWithMaterials = stockData.map(stock => ({
+        ...stock,
+        material: materials.find(m => m.id === stock.materialCatalogId)
+      })).filter(stock => stock.material && stock.availableStock > 0) as (MaterialStock & { material: MaterialCatalog })[]
+      
+      setMaterialStock(stockWithMaterials)
+    } catch (error) {
+      console.error('Failed to load material stock:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load material stock',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAssign = async () => {
+    if (!selectedStock || !quantity) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select a material and enter quantity',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const assignQuantity = parseFloat(quantity)
+    if (assignQuantity <= 0 || assignQuantity > selectedStock.availableStock) {
+      toast({
+        title: 'Invalid Quantity',
+        description: `Quantity must be between 1 and ${selectedStock.availableStock}`,
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      // Reserve stock
+      await reserveMaterialStock(selectedStock.materialCatalogId, assignQuantity, projectId)
+      
+      // Create stock transaction
+      await createMaterialStockTransaction({
+        materialStockId: selectedStock.id,
+        type: 'RESERVED',
+        quantity: assignQuantity,
+        unitCost: selectedStock.unitCost,
+        totalCost: assignQuantity * selectedStock.unitCost,
+        referenceId: projectId,
+        referenceType: 'PROJECT',
+        transactionDate: new Date(),
+        description: `Reserved for project`,
+        createdBy: 'system'
+      })
+
+      // Create project material
+      const projectMaterial: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
+        projectId,
+        materialCatalogId: selectedStock.materialCatalogId,
+        materialName: selectedStock.material.name,
+        profile: selectedStock.material.compatibleProfiles?.[0] || 'Standard',
+        grade: selectedStock.material.availableGrades?.[0] || selectedStock.material.type,
+        dimensions: {},
+        quantity: assignQuantity,
+        unitWeight: selectedStock.material.density || 1,
+        totalWeight: assignQuantity * (selectedStock.material.density || 1),
+        unitCost: selectedStock.unitCost,
+        totalCost: assignQuantity * selectedStock.unitCost,
+        lengthUnit: 'mm',
+        weightUnit: 'kg',
+        status: ProjectMaterialStatus.ORDERED,
+        supplier: selectedStock.supplier,
+        orderDate: new Date(),
+        source: ProjectMaterialSource.DISPATCH,
+        notes: `Assigned from stock: ${selectedStock.material.name}`
+      }
+
+      onAssign(projectMaterial)
+      
+      toast({
+        title: 'Success',
+        description: 'Material assigned from stock successfully'
+      })
+    } catch (error) {
+      console.error('Failed to assign material:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to assign material from stock',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const filteredStock = materialStock.filter(stock =>
+    stock.material.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    stock.material.type.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">
+          Assign materials from your stock inventory
+        </p>
+      </div>
+      
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search materials in stock..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Stock List */}
+      <div className="max-h-96 overflow-y-auto space-y-2">
+        {filteredStock.length === 0 ? (
+          <div className="text-center py-8">
+            <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No Stock Available</h3>
+            <p className="text-sm text-muted-foreground">
+              {materialStock.length === 0 
+                ? 'No materials in stock. Add materials to your inventory first.'
+                : 'No materials match your search criteria.'
+              }
+            </p>
+          </div>
+        ) : (
+          filteredStock.map((stock) => (
+            <Card
+              key={stock.id}
+              className={cn(
+                "cursor-pointer border transition-colors hover:bg-muted/50",
+                selectedStock?.id === stock.id && "ring-2 ring-primary"
+              )}
+              onClick={() => setSelectedStock(stock)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-medium">{stock.material.name}</h4>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Badge variant="outline">{stock.material.type}</Badge>
+                      <span>Available: {stock.availableStock}</span>
+                      <span>•</span>
+                      <span>${stock.unitCost.toFixed(2)} per unit</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium">
+                      Total: ${stock.totalValue.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {stock.location}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Assignment Form */}
+      {selectedStock && (
+        <div className="space-y-4 border-t pt-4">
+          <div>
+            <Label htmlFor="quantity">Quantity to Assign</Label>
+            <Input
+              id="quantity"
+              type="number"
+              min="1"
+              max={selectedStock.availableStock}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder={`Max: ${selectedStock.availableStock}`}
+            />
+          </div>
+          <Button onClick={handleAssign} className="w-full">
+            Assign to Project
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface AddMaterialModalProps {
   isOpen: boolean
   onClose: () => void
@@ -277,7 +504,6 @@ interface AddMaterialModalProps {
 function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModalProps) {
   const { t } = useI18n()
   const { materials: catalogMaterials, isLoading: catalogLoading } = useMaterialCatalog()
-  const { calculations } = useCalculations()
   const [activeTab, setActiveTab] = useState<'manual' | 'catalog' | 'calculation'>('manual')
   const [isLoading, setIsLoading] = useState(false)
   
@@ -473,43 +699,13 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
 
           {/* From Stock Tab */}
           {activeTab === 'catalog' && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-sm text-muted-foreground">
-                  Assign materials from your stock inventory
-                </p>
-              </div>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">Manage Materials in Stock</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Use the Materials tab in the main management interface to:
-                    </p>
-                    <ul className="text-sm text-muted-foreground mb-4 space-y-1">
-                      <li>• Add new materials to your inventory</li>
-                      <li>• Track current stock levels</li>
-                      <li>• Assign materials to this project</li>
-                      <li>• Monitor material costs and suppliers</li>
-                    </ul>
-                    <Button 
-                      onClick={() => {
-                        onClose()
-                        toast({
-                          title: 'Go to Materials Tab',
-                          description: 'Navigate to the Materials tab to manage your inventory and assign materials to projects',
-                        })
-                      }}
-                      className="w-full"
-                    >
-                      <Package className="h-4 w-4 mr-2" />
-                      Go to Materials Management
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+            <StockMaterialSelector 
+              projectId={projectId}
+              onAssign={(materialData) => {
+                onAdd(materialData)
+                onClose()
+              }}
+            />
           )}
 
           {/* Calculation Tab */}
