@@ -358,7 +358,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         referenceId: selectedProject,
         referenceType: 'PROJECT',
         transactionDate: new Date(),
-        description: `Reserved for project: ${projects.find(p => p.id === selectedProject)?.name || selectedProject}`,
+        notes: `Reserved for project: ${projects.find(p => p.id === selectedProject)?.name || selectedProject}`,
         createdBy: 'system'
       })
       
@@ -469,7 +469,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         referenceId: projectMaterialId,
         referenceType: 'PROJECT',
         transactionDate: new Date(),
-        description: `Unreserved from project`,
+        notes: `Unreserved from project`,
         createdBy: 'system'
       })
       
@@ -577,7 +577,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
           referenceId: editingAssignment.projectId,
           referenceType: 'PROJECT',
           transactionDate: new Date(),
-          description: `Assignment ${quantityDifference > 0 ? 'increased' : 'decreased'} by ${Math.abs(quantityDifference)}`,
+          notes: `Assignment ${quantityDifference > 0 ? 'increased' : 'decreased'} by ${Math.abs(quantityDifference)}`,
           createdBy: 'system'
         })
       }
@@ -1283,7 +1283,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                                   new Date(transaction.transactionDate).toLocaleDateString() : 
                                   new Date(transaction.createdAt).toLocaleDateString()}
                               </TableCell>
-                              <TableCell>{transaction.description || 'N/A'}</TableCell>
+                              <TableCell>{transaction.notes || 'N/A'}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

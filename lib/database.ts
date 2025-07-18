@@ -2426,17 +2426,6 @@ export async function reserveMaterialStock(materialCatalogId: string, quantity: 
       
       await updateMaterialStock(updatedStock)
       
-      // Create transaction record
-      await createMaterialStockTransaction({
-        materialStockId: stock.id,
-        type: 'RESERVED',
-        quantity,
-        referenceId: projectId,
-        referenceType: 'PROJECT',
-        transactionDate: new Date(),
-        notes: `Reserved for project ${projectId}`
-      })
-      
       resolve()
     } catch (error) {
       reject(error)

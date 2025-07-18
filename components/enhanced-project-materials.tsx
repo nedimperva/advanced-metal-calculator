@@ -349,7 +349,7 @@ function StockMaterialSelector({ projectId, onAssign }: StockMaterialSelectorPro
         referenceId: projectId,
         referenceType: 'PROJECT',
         transactionDate: new Date(),
-        description: `Reserved for project: ${projects.find(p => p.id === projectId)?.name || projectId}`,
+        notes: `Reserved for project: ${projects.find(p => p.id === projectId)?.name || projectId}`,
         createdBy: 'system'
       })
 
