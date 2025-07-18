@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { FolderOpen, Package, Users, Clock, ArrowLeft, Plus, Settings, BarChart3 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -27,7 +26,6 @@ import { ErrorBoundary } from "@/components/error-boundary"
 
 export default function ManagementPage() {
   const router = useRouter()
-  const { t } = useI18n()
   const { projects, currentProject, setCurrentProject } = useProjects()
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
@@ -94,6 +92,14 @@ export default function ManagementPage() {
   ]
 
   if (selectedProjectId && selectedProjectId !== "overview") {
+    const selectedProject = projects.find(p => p.id === selectedProjectId)
+    
+    if (!selectedProject) {
+      // If project not found, reset selection
+      setSelectedProjectId(null)
+      return null
+    }
+    
     return (
       <ErrorBoundary>
         <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
@@ -121,7 +127,10 @@ export default function ManagementPage() {
               <SettingsButton />
             </div>
             
-            <UnifiedProjectDetails projectId={selectedProjectId} />
+            <UnifiedProjectDetails 
+              project={selectedProject} 
+              onBack={() => setSelectedProjectId(null)}
+            />
           </div>
         </div>
       </ErrorBoundary>
@@ -153,7 +162,15 @@ export default function ManagementPage() {
                 </p>
               </div>
             </div>
-            <SettingsButton />
+            <div className="flex items-center space-x-4">
+              {activeTab === "projects" && (
+                <Button onClick={handleCreateProject} className="flex items-center space-x-2">
+                  <Plus className="w-4 h-4" />
+                  <span>New Project</span>
+                </Button>
+              )}
+              <SettingsButton />
+            </div>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -167,17 +184,6 @@ export default function ManagementPage() {
             </TabsList>
 
             <TabsContent value="projects" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold">Project Management</h2>
-                  <p className="text-muted-foreground">Manage your construction projects and timelines</p>
-                </div>
-                <Button onClick={handleCreateProject} className="flex items-center space-x-2">
-                  <Plus className="w-4 h-4" />
-                  <span>New Project</span>
-                </Button>
-              </div>
-
               {isMobile ? (
                 <MobileProjectDashboard 
                   onProjectSelect={handleProjectSelect}

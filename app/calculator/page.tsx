@@ -125,6 +125,7 @@ function getProfileTypeForViewer(profileType: string, dimensions: Record<string,
 }
 
 export default function SteelForgePro() {
+  const router = useRouter()
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [layoutReady, setLayoutReady] = useState(false)
   const { trackStandardSize, trackDimension, trackCalculation, getSuggestions, updateDefaults } = useUserPreferences()
