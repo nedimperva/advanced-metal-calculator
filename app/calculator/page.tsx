@@ -2245,7 +2245,6 @@ export default function SteelForgePro() {
             </div>
           </SwipeTabs.Content>
 
-
         </SwipeTabs>
 
 

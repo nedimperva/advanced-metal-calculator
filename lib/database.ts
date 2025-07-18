@@ -15,13 +15,15 @@ import type {
   DispatchNote,
   DispatchMaterial,
   MaterialCatalog,
-  MaterialTemplate
+  MaterialTemplate,
+  MaterialStock,
+  MaterialStockTransaction
 } from './types'
 import { ProjectStatus, MaterialStatus, ProjectMaterialStatus, ProjectMaterialSource, DispatchStatus, DispatchMaterialStatus } from './types'
 
 // Database configuration
 const DB_NAME = 'MetalCalculatorDB'
-const DB_VERSION = 8 // Phase 5: Performance optimizations with composite indexes
+const DB_VERSION = 9 // Phase 6: Material stock management
 
 // Store names
 export const STORES = {
@@ -43,6 +45,9 @@ export const STORES = {
   // Material catalog stores (Phase 2)
   MATERIAL_CATALOG: 'materialCatalog',
   MATERIAL_TEMPLATES: 'materialTemplates',
+  // Material stock management stores
+  MATERIAL_STOCK: 'materialStock',
+  MATERIAL_STOCK_TRANSACTIONS: 'materialStockTransactions',
   SETTINGS: 'settings'
 } as const
 
@@ -66,6 +71,9 @@ export interface DatabaseSchema {
   // Material catalog schema (Phase 2)
   materialCatalog: MaterialCatalog
   materialTemplates: MaterialTemplate
+  // Material stock management schema
+  materialStock: MaterialStock
+  materialStockTransactions: MaterialStockTransaction
   settings: { key: string; value: any }
 }
 
@@ -402,6 +410,38 @@ export async function initializeDatabase(): Promise<IDBDatabase> {
         materialTemplateStore.createIndex('createdBy', 'createdBy', { unique: false })
       }
 
+      // Create material stock store (Phase 6)
+      if (!db.objectStoreNames.contains(STORES.MATERIAL_STOCK)) {
+        const materialStockStore = db.createObjectStore(STORES.MATERIAL_STOCK, { keyPath: 'id' })
+        materialStockStore.createIndex('materialCatalogId', 'materialCatalogId', { unique: false })
+        materialStockStore.createIndex('location', 'location', { unique: false })
+        materialStockStore.createIndex('supplier', 'supplier', { unique: false })
+        materialStockStore.createIndex('currentStock', 'currentStock', { unique: false })
+        materialStockStore.createIndex('availableStock', 'availableStock', { unique: false })
+        materialStockStore.createIndex('reservedStock', 'reservedStock', { unique: false })
+        materialStockStore.createIndex('createdAt', 'createdAt', { unique: false })
+        materialStockStore.createIndex('updatedAt', 'updatedAt', { unique: false })
+        materialStockStore.createIndex('lastStockUpdate', 'lastStockUpdate', { unique: false })
+        // Composite indexes for performance
+        materialStockStore.createIndex('materialCatalogId_location', ['materialCatalogId', 'location'], { unique: false })
+        materialStockStore.createIndex('supplier_location', ['supplier', 'location'], { unique: false })
+      }
+
+      // Create material stock transactions store (Phase 6)
+      if (!db.objectStoreNames.contains(STORES.MATERIAL_STOCK_TRANSACTIONS)) {
+        const materialStockTransactionStore = db.createObjectStore(STORES.MATERIAL_STOCK_TRANSACTIONS, { keyPath: 'id' })
+        materialStockTransactionStore.createIndex('materialStockId', 'materialStockId', { unique: false })
+        materialStockTransactionStore.createIndex('type', 'type', { unique: false })
+        materialStockTransactionStore.createIndex('referenceId', 'referenceId', { unique: false })
+        materialStockTransactionStore.createIndex('referenceType', 'referenceType', { unique: false })
+        materialStockTransactionStore.createIndex('transactionDate', 'transactionDate', { unique: false })
+        materialStockTransactionStore.createIndex('createdAt', 'createdAt', { unique: false })
+        materialStockTransactionStore.createIndex('createdBy', 'createdBy', { unique: false })
+        // Composite indexes for performance
+        materialStockTransactionStore.createIndex('materialStockId_type', ['materialStockId', 'type'], { unique: false })
+        materialStockTransactionStore.createIndex('referenceId_referenceType', ['referenceId', 'referenceType'], { unique: false })
+      }
+
       // Create settings store
       if (!db.objectStoreNames.contains(STORES.SETTINGS)) {
         db.createObjectStore(STORES.SETTINGS, { keyPath: 'key' })
@@ -514,7 +554,7 @@ export async function deleteRecord<T extends keyof DatabaseSchema>(
 
 // Project-specific operations
 export async function createProject(project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const id = `project_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `project_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const newProject: Project = {
@@ -576,7 +616,7 @@ export async function getProjectsByStatus(status: ProjectStatus): Promise<Projec
 // ============================================================================
 
 export async function createProjectMaterial(material: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const id = `pmat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `pmat_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const newMaterial: ProjectMaterial = {
@@ -823,7 +863,7 @@ export async function updateMaterialStatus(materialId: string, status: ProjectMa
 
 // Calculation-specific operations
 export async function saveCalculation(calculation: Omit<Calculation, 'id' | 'timestamp'>): Promise<string> {
-  const id = `calc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `calc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   
   const newCalculation: Calculation = {
     ...calculation,
@@ -980,7 +1020,7 @@ export async function importDatabase(jsonData: string): Promise<void> {
 // ============================================================================
 
 export async function createTask(task: Omit<ProjectTask, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const id = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `task_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const newTask: ProjectTask = {
@@ -1061,7 +1101,7 @@ export async function createMilestone(milestone: Omit<ProjectMilestone, 'id' | '
     throw new Error('Milestones not supported in current database version. Please refresh the application to upgrade.')
   }
   
-  const id = `milestone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `milestone_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const newMilestone: ProjectMilestone = {
@@ -1146,7 +1186,7 @@ export async function deleteMilestone(id: string): Promise<void> {
 // ============================================================================
 
 export async function createWorkLog(workLog: Omit<DailyWorkLog, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const id = `worklog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `worklog_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const newWorkLog: DailyWorkLog = {
@@ -1202,7 +1242,7 @@ export async function getAllWorkLogs(): Promise<DailyWorkLog[]> {
 
 // Helper function to generate unique IDs for work entries
 export function generateWorkEntryId(): string {
-  return `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `entry_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 // ============================================================================
@@ -1210,7 +1250,7 @@ export function generateWorkEntryId(): string {
 // ============================================================================
 
 export async function createWorker(worker: Omit<Worker, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const id = `worker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `worker_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const newWorker: Worker = {
@@ -1260,7 +1300,7 @@ export async function deleteWorker(id: string): Promise<void> {
 // ============================================================================
 
 export async function createMachinery(machinery: Omit<Machinery, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const id = `machinery_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `machinery_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const newMachinery: Machinery = {
@@ -1309,7 +1349,7 @@ export async function deleteMachinery(id: string): Promise<void> {
 // ============================================================================
 
 export async function createProjectAssignment(assignment: Omit<ProjectAssignment, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const id = `assignment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `assignment_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const newAssignment: ProjectAssignment = {
@@ -1363,7 +1403,7 @@ export async function deleteProjectAssignment(id: string): Promise<void> {
 // ============================================================================
 
 export async function createDailyTimesheet(timesheet: Omit<DailyTimesheet, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const id = `timesheet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `timesheet_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   // Calculate totals
@@ -1475,23 +1515,23 @@ export async function getAllTimesheets(): Promise<DailyTimesheet[]> {
 // ============================================================================
 
 export function generateWorkerId(): string {
-  return `worker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `worker_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 export function generateMachineryId(): string {
-  return `machinery_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `machinery_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 export function generateTimesheetId(): string {
-  return `timesheet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `timesheet_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 export function generateWorkerEntryId(): string {
-  return `worker_entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `worker_entry_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 export function generateMachineryEntryId(): string {
-  return `machinery_entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `machinery_entry_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 // ============================================================================
@@ -1600,7 +1640,7 @@ export function calculateJournalTimesheetTotals(timesheet: DailyJournalTimesheet
 // ============================================================================
 
 export async function createDispatchNote(dispatchNote: Omit<DispatchNote, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-  const id = `dispatch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `dispatch_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const newDispatchNote: DispatchNote = {
@@ -1675,7 +1715,7 @@ export async function getDispatchNotesByStatus(status: DispatchStatus): Promise<
 // ============================================================================
 
 export async function createDispatchMaterial(material: Omit<DispatchMaterial, 'id'>): Promise<string> {
-  const id = `dispatch_material_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `dispatch_material_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   
   const newMaterial: DispatchMaterial = {
     ...material,
@@ -1745,7 +1785,7 @@ export async function bulkCreateDispatchMaterials(
   const newMaterials: DispatchMaterial[] = []
   
   for (const materialData of materials) {
-    const id = `dispatch_material_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const id = `dispatch_material_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
     materialIds.push(id)
     
     const newMaterial: DispatchMaterial = {
@@ -1926,7 +1966,7 @@ export async function getDispatchSummaryStats(projectId?: string): Promise<any> 
 
 // Material Catalog Operations
 export async function createMaterialCatalog(material: Omit<MaterialCatalog, 'id' | 'createdAt' | 'updatedAt' | 'version'>): Promise<string> {
-  const id = `mat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `mat_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const materialWithId: MaterialCatalog = {
@@ -2070,7 +2110,7 @@ export async function searchMaterialCatalog(filters: {
 
 // Material Template Operations
 export async function createMaterialTemplate(template: Omit<MaterialTemplate, 'id' | 'createdAt' | 'updatedAt' | 'usageCount'>): Promise<string> {
-  const id = `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const id = `tpl_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
   const now = new Date()
   
   const templateWithId: MaterialTemplate = {
@@ -2238,6 +2278,253 @@ export async function getDispatchMaterialById(id: string): Promise<DispatchMater
     }
     request.onerror = () => {
       reject(new Error(`Failed to get dispatch material: ${request.error?.message}`))
+    }
+  })
+}
+
+// ============================================================================
+// MATERIAL STOCK MANAGEMENT FUNCTIONS
+// ============================================================================
+
+/**
+ * Create a new material stock entry
+ */
+export async function createMaterialStock(stock: Omit<MaterialStock, 'id' | 'createdAt' | 'updatedAt' | 'lastStockUpdate'>): Promise<string> {
+  const id = `stock_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+  const now = new Date()
+  
+  const newStock: MaterialStock = {
+    ...stock,
+    id,
+    createdAt: now,
+    updatedAt: now,
+    lastStockUpdate: now
+  }
+
+  return new Promise(async (resolve, reject) => {
+    const db = await getDatabase()
+    const transaction = db.transaction([STORES.MATERIAL_STOCK], 'readwrite')
+    const store = transaction.objectStore(STORES.MATERIAL_STOCK)
+    
+    const request = store.add(newStock)
+    
+    request.onsuccess = () => {
+      resolve(id)
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to create material stock: ${request.error?.message}`))
+    }
+  })
+}
+
+/**
+ * Get all material stock entries
+ */
+export async function getAllMaterialStock(): Promise<MaterialStock[]> {
+  return new Promise(async (resolve, reject) => {
+    const db = await getDatabase()
+    const transaction = db.transaction([STORES.MATERIAL_STOCK], 'readonly')
+    const store = transaction.objectStore(STORES.MATERIAL_STOCK)
+    
+    const request = store.getAll()
+    
+    request.onsuccess = () => {
+      const results = request.result.map((stock: any) => ({
+        ...stock,
+        createdAt: new Date(stock.createdAt),
+        updatedAt: new Date(stock.updatedAt),
+        lastStockUpdate: new Date(stock.lastStockUpdate)
+      }))
+      resolve(results)
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to get material stock: ${request.error?.message}`))
+    }
+  })
+}
+
+/**
+ * Get material stock by material catalog ID
+ */
+export async function getMaterialStockByMaterialId(materialCatalogId: string): Promise<MaterialStock | null> {
+  return new Promise(async (resolve, reject) => {
+    const db = await getDatabase()
+    const transaction = db.transaction([STORES.MATERIAL_STOCK], 'readonly')
+    const store = transaction.objectStore(STORES.MATERIAL_STOCK)
+    
+    const request = store.getAll()
+    
+    request.onsuccess = () => {
+      const results = request.result
+      const stock = results.find((s: any) => s.materialCatalogId === materialCatalogId)
+      if (stock) {
+        resolve({
+          ...stock,
+          createdAt: new Date(stock.createdAt),
+          updatedAt: new Date(stock.updatedAt),
+          lastStockUpdate: new Date(stock.lastStockUpdate)
+        })
+      } else {
+        resolve(null)
+      }
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to get material stock: ${request.error?.message}`))
+    }
+  })
+}
+
+/**
+ * Update material stock
+ */
+export async function updateMaterialStock(stock: MaterialStock): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    const db = await getDatabase()
+    const transaction = db.transaction([STORES.MATERIAL_STOCK], 'readwrite')
+    const store = transaction.objectStore(STORES.MATERIAL_STOCK)
+    
+    const updatedStock = {
+      ...stock,
+      updatedAt: new Date()
+    }
+    
+    const request = store.put(updatedStock)
+    
+    request.onsuccess = () => {
+      resolve()
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to update material stock: ${request.error?.message}`))
+    }
+  })
+}
+
+/**
+ * Reserve material stock for a project
+ */
+export async function reserveMaterialStock(materialCatalogId: string, quantity: number, projectId: string): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const stock = await getMaterialStockByMaterialId(materialCatalogId)
+      if (!stock) {
+        reject(new Error('Material stock not found'))
+        return
+      }
+      
+      if (stock.availableStock < quantity) {
+        reject(new Error('Insufficient stock available'))
+        return
+      }
+      
+      // Update stock quantities
+      const updatedStock = {
+        ...stock,
+        reservedStock: stock.reservedStock + quantity,
+        availableStock: stock.availableStock - quantity,
+        lastStockUpdate: new Date()
+      }
+      
+      await updateMaterialStock(updatedStock)
+      
+      // Create transaction record
+      await createMaterialStockTransaction({
+        materialStockId: stock.id,
+        type: 'RESERVED',
+        quantity,
+        referenceId: projectId,
+        referenceType: 'PROJECT',
+        transactionDate: new Date(),
+        notes: `Reserved for project ${projectId}`
+      })
+      
+      resolve()
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
+/**
+ * Create a material stock transaction
+ */
+export async function createMaterialStockTransaction(transaction: Omit<MaterialStockTransaction, 'id' | 'createdAt'>): Promise<string> {
+  const id = `trans_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+  const now = new Date()
+  
+  const newTransaction: MaterialStockTransaction = {
+    ...transaction,
+    id,
+    createdAt: now
+  }
+
+  return new Promise(async (resolve, reject) => {
+    const db = await getDatabase()
+    const dbTransaction = db.transaction([STORES.MATERIAL_STOCK_TRANSACTIONS], 'readwrite')
+    const store = dbTransaction.objectStore(STORES.MATERIAL_STOCK_TRANSACTIONS)
+    
+    const request = store.add(newTransaction)
+    
+    request.onsuccess = () => {
+      resolve(id)
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to create material stock transaction: ${request.error?.message}`))
+    }
+  })
+}
+
+/**
+ * Get material stock transactions by stock ID
+ */
+export async function getMaterialStockTransactions(materialStockId: string): Promise<MaterialStockTransaction[]> {
+  return new Promise(async (resolve, reject) => {
+    const db = await getDatabase()
+    const transaction = db.transaction([STORES.MATERIAL_STOCK_TRANSACTIONS], 'readonly')
+    const store = transaction.objectStore(STORES.MATERIAL_STOCK_TRANSACTIONS)
+    
+    const request = store.getAll()
+    
+    request.onsuccess = () => {
+      const results = request.result
+        .filter((trans: any) => trans.materialStockId === materialStockId)
+        .map((trans: any) => ({
+          ...trans,
+          transactionDate: new Date(trans.transactionDate),
+          createdAt: new Date(trans.createdAt)
+        }))
+      resolve(results)
+    }
+    request.onerror = () => {
+      reject(new Error(`Failed to get material stock transactions: ${request.error?.message}`))
+    }
+  })
+}
+
+// Database reset function
+export async function resetDatabase(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Close the existing database connection
+    if (db) {
+      db.close()
+    }
+    
+    // Delete the database
+    const deleteRequest = indexedDB.deleteDatabase(DB_NAME)
+    
+    deleteRequest.onsuccess = () => {
+      console.log('Database deleted successfully')
+      // Reset the global db reference
+      db = null
+      resolve()
+    }
+    
+    deleteRequest.onerror = () => {
+      reject(new Error(`Failed to delete database: ${deleteRequest.error?.message}`))
+    }
+    
+    deleteRequest.onblocked = () => {
+      console.warn('Database deletion blocked. Close all tabs and try again.')
+      reject(new Error('Database deletion blocked. Close all tabs and try again.'))
     }
   })
 } 

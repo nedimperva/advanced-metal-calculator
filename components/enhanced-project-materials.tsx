@@ -95,7 +95,6 @@ import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
 import MaterialAllocationDashboard from './material-allocation-dashboard'
-import MaterialCatalogBrowser from './material-catalog-browser'
 
 interface EnhancedProjectMaterialsProps {
   project: Project
@@ -375,7 +374,7 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
-              From Catalog
+              From Stock
             </button>
             <button
               onClick={() => setActiveTab('calculation')}
@@ -472,61 +471,43 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
             </div>
           )}
 
-          {/* Catalog Tab */}
+          {/* From Stock Tab */}
           {activeTab === 'catalog' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-4">
                 <p className="text-sm text-muted-foreground">
-                  Select materials from your catalog or add new ones
+                  Assign materials from your stock inventory
                 </p>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    // TODO: Open Add Material to Catalog modal
-                    toast({
-                      title: 'Coming Soon',
-                      description: 'Add material to catalog functionality will be available soon',
-                    })
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add to Catalog
-                </Button>
               </div>
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                <MaterialCatalogBrowser
-                  mode="selector"
-                  onSelectMaterial={(material) => {
-                    // Convert MaterialCatalog to ProjectMaterial format
-                    const projectMaterial: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
-                      projectId,
-                      materialCatalogId: material.id,
-                      materialName: material.name,
-                      profile: material.compatibleProfiles[0] || 'Custom', // Use first compatible profile
-                      grade: material.availableGrades[0] || 'Standard', // Use first available grade
-                      dimensions: {}, // Will need to be specified by user
-                      quantity: 1,
-                      unitWeight: material.density, // Use density as approximate weight
-                      totalWeight: material.density,
-                      lengthUnit: 'm',
-                      weightUnit: 'kg',
-                      status: ProjectMaterialStatus.REQUIRED,
-                      supplier: material.supplier,
-                      unitCost: material.basePrice,
-                      totalCost: material.basePrice,
-                      source: ProjectMaterialSource.MANUAL
-                    }
-                    
-                    onAdd(projectMaterial)
-                    onClose()
-                    
-                    toast({
-                      title: 'Material Added',
-                      description: `${material.name} added to project from catalog`,
-                    })
-                  }}
-                />
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">Manage Materials in Stock</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Use the Materials tab in the main management interface to:
+                    </p>
+                    <ul className="text-sm text-muted-foreground mb-4 space-y-1">
+                      <li>• Add new materials to your inventory</li>
+                      <li>• Track current stock levels</li>
+                      <li>• Assign materials to this project</li>
+                      <li>• Monitor material costs and suppliers</li>
+                    </ul>
+                    <Button 
+                      onClick={() => {
+                        onClose()
+                        toast({
+                          title: 'Go to Materials Tab',
+                          description: 'Navigate to the Materials tab to manage your inventory and assign materials to projects',
+                        })
+                      }}
+                      className="w-full"
+                    >
+                      <Package className="h-4 w-4 mr-2" />
+                      Go to Materials Management
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           )}

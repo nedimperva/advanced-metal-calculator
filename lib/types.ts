@@ -733,3 +733,55 @@ export interface EnhancedProjectProgress {
   isOnSchedule: boolean
   estimatedDaysRemaining?: number
 }
+
+// Material Stock Management
+export interface MaterialStock {
+  id: string
+  materialCatalogId: string
+  material?: MaterialCatalog
+  
+  // Stock quantities
+  currentStock: number
+  reservedStock: number
+  availableStock: number
+  minimumStock: number
+  maximumStock: number
+  
+  // Pricing
+  unitCost: number
+  totalValue: number
+  
+  // Location and supplier
+  location: string
+  supplier: string
+  
+  // Timestamps
+  createdAt: Date
+  updatedAt: Date
+  lastStockUpdate: Date
+  
+  // Additional info
+  notes?: string
+}
+
+// Material Stock Transaction
+export interface MaterialStockTransaction {
+  id: string
+  materialStockId: string
+  type: 'IN' | 'OUT' | 'ADJUSTMENT' | 'RESERVED' | 'UNRESERVED'
+  quantity: number
+  unitCost?: number
+  totalCost?: number
+  
+  // Reference information
+  referenceId?: string // Project ID, Purchase Order ID, etc.
+  referenceType?: 'PROJECT' | 'PURCHASE_ORDER' | 'ADJUSTMENT' | 'INITIAL_STOCK'
+  
+  // Timestamps
+  transactionDate: Date
+  createdAt: Date
+  
+  // User and notes
+  createdBy?: string
+  notes?: string
+}

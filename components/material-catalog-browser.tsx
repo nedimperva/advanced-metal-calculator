@@ -64,6 +64,10 @@ import { useMaterialCatalog } from '@/contexts/material-catalog-context'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
+import { 
+  createMaterialCatalog, 
+  createMaterialStock 
+} from '@/lib/database'
 
 interface MaterialCatalogBrowserProps {
   onSelectMaterial?: (material: MaterialCatalog) => void
@@ -151,8 +155,8 @@ const MaterialCard = React.memo(function MaterialCard({
   isMobile, 
   mode 
 }: MaterialCardProps) {
-  const typeConfig = MATERIAL_TYPE_CONFIG[material.type]
-  const availabilityConfig = AVAILABILITY_CONFIG[material.availability]
+  const typeConfig = MATERIAL_TYPE_CONFIG[material.type] || MATERIAL_TYPE_CONFIG[MaterialType.STEEL]
+  const availabilityConfig = AVAILABILITY_CONFIG[material.availability] || AVAILABILITY_CONFIG[MaterialAvailability.STOCK]
   const TypeIcon = typeConfig.icon
   const AvailabilityIcon = availabilityConfig.icon
 
@@ -187,7 +191,7 @@ const MaterialCard = React.memo(function MaterialCard({
                     {availabilityConfig.label}
                   </Badge>
                   <Badge variant="outline" className="text-xs text-green-600">
-                    ${material.basePrice.toFixed(2)} {material.currency}
+                    ${(material.basePrice || 0).toFixed(2)} {material.currency}
                   </Badge>
                 </div>
               </div>
@@ -203,9 +207,9 @@ const MaterialCard = React.memo(function MaterialCard({
               {/* Profiles */}
               <div className={cn("mt-2", isMobile ? "text-xs" : "text-sm")}>
                 <span className="text-muted-foreground">Profiles: </span>
-                <span>{material.compatibleProfiles.slice(0, 3).join(', ')}</span>
-                {material.compatibleProfiles.length > 3 && (
-                  <span className="text-muted-foreground"> +{material.compatibleProfiles.length - 3} more</span>
+                <span>{(material.compatibleProfiles || []).slice(0, 3).join(', ')}</span>
+                {(material.compatibleProfiles || []).length > 3 && (
+                  <span className="text-muted-foreground"> +{(material.compatibleProfiles || []).length - 3} more</span>
                 )}
               </div>
 
@@ -217,16 +221,16 @@ const MaterialCard = React.memo(function MaterialCard({
               )}
 
               {/* Tags */}
-              {material.tags.length > 0 && (
+              {(material.tags || []).length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {material.tags.slice(0, 3).map((tag, index) => (
+                  {(material.tags || []).slice(0, 3).map((tag, index) => (
                     <Badge key={index} variant="outline" className="text-xs">
                       {tag}
                     </Badge>
                   ))}
-                  {material.tags.length > 3 && (
+                  {(material.tags || []).length > 3 && (
                     <Badge variant="outline" className="text-xs text-muted-foreground">
-                      +{material.tags.length - 3}
+                      +{(material.tags || []).length - 3}
                     </Badge>
                   )}
                 </div>
@@ -345,7 +349,7 @@ function MaterialDetailsModal({ material, isOpen, onClose }: MaterialDetailsModa
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-xs text-muted-foreground">Base Price</p>
-                    <p className="font-medium">${material.basePrice.toFixed(2)} {material.currency}</p>
+                    <p className="font-medium">${(material.basePrice || 0).toFixed(2)} {material.currency}</p>
                   </div>
                 </div>
               </CardContent>
@@ -514,7 +518,7 @@ function MaterialDetailsModal({ material, isOpen, onClose }: MaterialDetailsModa
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Base Price</p>
-                    <p className="font-medium">${material.basePrice.toFixed(2)} {material.currency}</p>
+                    <p className="font-medium">${(material.basePrice || 0).toFixed(2)} {material.currency}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Availability</p>
@@ -1004,6 +1008,7 @@ export default function MaterialCatalogBrowser({
 }: MaterialCatalogBrowserProps) {
   const { t } = useI18n()
   const isMobile = useMediaQuery("(max-width: 767px)")
+  const [mounted, setMounted] = useState(false)
   
   // Material catalog context
   const { 
@@ -1020,6 +1025,7 @@ export default function MaterialCatalogBrowser({
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedMaterial, setSelectedMaterial] = useState<MaterialCatalog | null>(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
   
   // Filters
   const [filters, setFilters] = useState<MaterialSearchFilters>({})
@@ -1096,6 +1102,55 @@ export default function MaterialCatalogBrowser({
     })
   }
 
+  // Handle mounting and prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Handle adding new material to both catalog and stock
+  const handleAddMaterial = async (materialData: Omit<MaterialCatalog, 'id' | 'createdAt' | 'updatedAt' | 'version'>) => {
+    try {
+      // Create the material in the catalog
+      const materialId = await createMaterialCatalog(materialData)
+      
+      // Create initial stock entry for the new material
+      await createMaterialStock({
+        materialCatalogId: materialId,
+        currentStock: 0,
+        reservedStock: 0,
+        availableStock: 0,
+        minimumStock: 10,
+        maximumStock: 1000,
+        unitCost: materialData.costPerUnit || 0,
+        totalValue: 0,
+        location: materialData.location || 'Warehouse A',
+        supplier: materialData.supplier || 'Default Supplier',
+        notes: materialData.notes || ''
+      })
+      
+      setShowAddModal(false)
+      toast({
+        title: "Success",
+        description: "Material added to catalog and stock management"
+      })
+    } catch (error) {
+      console.error('Failed to create material:', error)
+      toast({
+        title: "Error",
+        description: "Failed to add material",
+        variant: "destructive"
+      })
+    }
+  }
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
 
   if (isLoading) {
     return (
@@ -1116,6 +1171,10 @@ export default function MaterialCatalogBrowser({
               Browse and manage your centralized material database
             </p>
           </div>
+          <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Material
+          </Button>
         </div>
 
         {/* Statistics */}
@@ -1286,6 +1345,13 @@ export default function MaterialCatalogBrowser({
         material={selectedMaterial}
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
+      />
+      
+      {/* Add Material Modal */}
+      <AddMaterialModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdd={handleAddMaterial}
       />
 
     </div>

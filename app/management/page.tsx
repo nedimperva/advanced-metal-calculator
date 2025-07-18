@@ -4,13 +4,14 @@ import React, { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FolderOpen, Package, Users, Clock, ArrowLeft, Plus, Settings, BarChart3 } from "lucide-react"
+import { FolderOpen, Package, Users, Clock, Truck, ArrowLeft, Plus, Settings, BarChart3 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { toast } from "@/hooks/use-toast"
 
 import { useI18n } from "@/contexts/i18n-context"
 import { useProjects } from "@/contexts/project-context"
+import { Project } from "@/lib/types"
 import BackgroundElements from "@/components/background-elements"
 import { SettingsButton } from "@/components/settings-button"
 import ProjectCreationModal from "@/components/project-creation-modal"
@@ -20,7 +21,8 @@ import { UnifiedProjectDetails } from "@/components/unified-project-details"
 import GlobalWorkers from "@/components/global-workers"
 import GlobalMachinery from "@/components/global-machinery"
 import ProjectTaskManagement from "@/components/tasks/project-task-management"
-import MaterialAllocationDashboard from "@/components/material-allocation-dashboard"
+import MaterialStockManagement from "@/components/material-stock-management"
+import DispatchManager from "@/components/dispatch-manager"
 import DailyJournal from "@/components/daily-journal"
 import { ErrorBoundary } from "@/components/error-boundary"
 
@@ -42,16 +44,13 @@ export default function ManagementPage() {
     router.push('/')
   }
 
-  const handleProjectSelect = (projectId: string) => {
-    const project = projects.find(p => p.id === projectId)
-    if (project) {
-      setCurrentProject(project)
-      setSelectedProjectId(projectId)
-      toast({
-        title: "Project Selected",
-        description: `Now working on ${project.name}`,
-      })
-    }
+  const handleProjectSelect = (project: Project) => {
+    setCurrentProject(project)
+    setSelectedProjectId(project.id)
+    toast({
+      title: "Project Selected",
+      description: `Now working on ${project.name}`,
+    })
   }
 
   const handleCreateProject = () => {
@@ -70,6 +69,12 @@ export default function ManagementPage() {
       label: "Materials",
       icon: Package,
       description: "Track materials and inventory"
+    },
+    {
+      id: "dispatches",
+      label: "Dispatches",
+      icon: Truck,
+      description: "Track material orders and deliveries"
     },
     {
       id: "workforce",
@@ -174,7 +179,7 @@ export default function ManagementPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-8">
+            <TabsList className="grid w-full grid-cols-6 mb-8">
               {tabItems.map((item) => (
                 <TabsTrigger key={item.id} value={item.id} className="flex items-center space-x-2">
                   <item.icon className="w-4 h-4" />
@@ -187,23 +192,24 @@ export default function ManagementPage() {
               {isMobile ? (
                 <MobileProjectDashboard 
                   onProjectSelect={handleProjectSelect}
-                  selectedProjectId={selectedProjectId}
                 />
               ) : (
                 <ProjectDashboard 
                   onProjectSelect={handleProjectSelect}
-                  selectedProjectId={selectedProjectId}
                 />
               )}
             </TabsContent>
 
             <TabsContent value="materials" className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold">Materials Management</h2>
-                <p className="text-muted-foreground">Track materials, inventory, and allocations</p>
+              <div className="overflow-y-auto space-y-4 h-[calc(100vh-200px)]">
+                <MaterialStockManagement />
               </div>
-              
-              <MaterialAllocationDashboard />
+            </TabsContent>
+
+            <TabsContent value="dispatches" className="space-y-6">
+              <div className="overflow-y-auto space-y-4 h-[calc(100vh-200px)]">
+                <DispatchManager />
+              </div>
             </TabsContent>
 
             <TabsContent value="workforce" className="space-y-6">
@@ -275,8 +281,8 @@ export default function ManagementPage() {
         </div>
 
         <ProjectCreationModal
-          isOpen={isProjectModalOpen}
-          onClose={() => setIsProjectModalOpen(false)}
+          open={isProjectModalOpen}
+          onOpenChange={setIsProjectModalOpen}
         />
       </div>
     </ErrorBoundary>
