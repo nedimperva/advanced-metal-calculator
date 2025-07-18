@@ -121,7 +121,10 @@ export default function ManagementPage() {
               <SettingsButton />
             </div>
             
-            <UnifiedProjectDetails projectId={selectedProjectId} />
+            <UnifiedProjectDetails 
+              project={projects.find(p => p.id === selectedProjectId)!} 
+              onBack={() => setSelectedProjectId(null)}
+            />
           </div>
         </div>
       </ErrorBoundary>
