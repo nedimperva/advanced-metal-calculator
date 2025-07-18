@@ -61,6 +61,7 @@ import {
   Project,
   ProjectMaterial,
   ProjectMaterialStatus,
+  ProjectMaterialSource,
   MaterialStock,
   MaterialStockTransaction
 } from '@/lib/types'
@@ -327,12 +328,12 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         projectId: selectedProject,
         materialCatalogId: selectedMaterial.id,
         materialName: selectedMaterial.name,
-        profile: selectedMaterial.compatibleProfiles[0] || 'Standard',
-        grade: selectedMaterial.availableGrades[0] || selectedMaterial.type,
+        profile: selectedMaterial.compatibleProfiles?.[0] || 'Standard',
+        grade: selectedMaterial.availableGrades?.[0] || selectedMaterial.type,
         dimensions: {},
         quantity: quantity,
-        unitWeight: selectedMaterial.density,
-        totalWeight: quantity * selectedMaterial.density,
+        unitWeight: selectedMaterial.density || 1,
+        totalWeight: quantity * (selectedMaterial.density || 1),
         unitCost: stock.unitCost,
         totalCost: quantity * stock.unitCost,
         lengthUnit: 'mm',
@@ -340,6 +341,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         status: ProjectMaterialStatus.ORDERED,
         supplier: stock.supplier,
         orderDate: new Date(),
+        source: ProjectMaterialSource.DISPATCH,
         notes: `Assigned from stock: ${selectedMaterial.name}`
       }
       
@@ -348,7 +350,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
       
       // Create stock transaction record
       await createMaterialStockTransaction({
-        materialStockId: selectedMaterial.id,
+        materialStockId: stock.id,
         type: 'RESERVED',
         quantity: quantity,
         unitCost: stock.unitCost,
@@ -356,7 +358,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         referenceId: selectedProject,
         referenceType: 'PROJECT',
         transactionDate: new Date(),
-        description: `Reserved for project: ${projects.find(p => p.id === selectedProject)?.name || 'Unknown Project'}`,
+        notes: `Reserved for project: ${projects.find(p => p.id === selectedProject)?.name || selectedProject}`,
         createdBy: 'system'
       })
       
@@ -385,15 +387,33 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
     if (!selectedMaterial) return
     
     try {
-      await updateMaterialStock(selectedMaterial.id, {
+      // Find the current stock record
+      const currentStock = materialStock.find(s => s.materialCatalogId === selectedMaterial.id)
+      if (!currentStock) {
+        toast({
+          title: "Error",
+          description: "Stock record not found",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Update the stock with new values
+      const updatedStock: MaterialStock = {
+        ...currentStock,
         currentStock: stockData.currentStock,
+        availableStock: stockData.currentStock - currentStock.reservedStock,
         minimumStock: stockData.minimumStock,
         maximumStock: stockData.maximumStock,
         unitCost: stockData.unitCost,
+        totalValue: stockData.currentStock * stockData.unitCost,
         location: stockData.location,
         supplier: stockData.supplier,
-        notes: stockData.notes
-      })
+        notes: stockData.notes,
+        updatedAt: new Date()
+      }
+
+      await updateMaterialStock(updatedStock)
       
       await loadMaterials()
       setShowStockDialog(false)
@@ -449,7 +469,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         referenceId: projectMaterialId,
         referenceType: 'PROJECT',
         transactionDate: new Date(),
-        description: `Unreserved from project`,
+        notes: `Unreserved from project`,
         createdBy: 'system'
       })
       
@@ -557,7 +577,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
           referenceId: editingAssignment.projectId,
           referenceType: 'PROJECT',
           transactionDate: new Date(),
-          description: `Assignment ${quantityDifference > 0 ? 'increased' : 'decreased'} by ${Math.abs(quantityDifference)}`,
+          notes: `Assignment ${quantityDifference > 0 ? 'increased' : 'decreased'} by ${Math.abs(quantityDifference)}`,
           createdBy: 'system'
         })
       }
@@ -1263,7 +1283,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                                   new Date(transaction.transactionDate).toLocaleDateString() : 
                                   new Date(transaction.createdAt).toLocaleDateString()}
                               </TableCell>
-                              <TableCell>{transaction.description || 'N/A'}</TableCell>
+                              <TableCell>{transaction.notes || 'N/A'}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

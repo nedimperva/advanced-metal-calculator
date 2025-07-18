@@ -320,7 +320,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
             referenceId: dispatch.id,
             referenceType: 'DISPATCH',
             transactionDate: new Date(),
-            description: `Delivery from dispatch: ${dispatch.orderNumber}`,
+            notes: `Delivery from dispatch: ${dispatch.orderNumber}`,
             createdBy: 'system'
           })
         }
