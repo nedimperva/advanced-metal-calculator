@@ -11,8 +11,7 @@
   "lang": "en",
   "scope": "/",
   "prefer_related_applications": false,
-  "edge_side_includes": true,
-  "cache_digest": "v1",
+  "display_override": ["standalone", "minimal-ui"],
   "icons": [
     {
       "src": "/icon-192x192.png",

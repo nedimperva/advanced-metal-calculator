@@ -36,6 +36,9 @@ export default withPWA({
   cacheOnFrontEndNav: true,
   reloadOnOnline: true,
   disableDevLogs: true,
+  fallbacks: {
+    document: '/offline',
+  },
   runtimeCaching: [
     {
       urlPattern: /^https?.*/,
