@@ -788,3 +788,27 @@ export interface MaterialStockTransaction {
   createdBy?: string
   notes?: string
 }
+
+// ============================================================================
+// MATERIAL INSTALLATION TRACKING (PHASE 7)
+// ============================================================================
+
+export interface MaterialInstallation {
+  id: string
+  projectMaterialId: string
+  projectId: string // For easier querying
+  
+  // Installation details
+  installedQuantity: number
+  remainingQuantity: number // Quantity that remains in the project for future installation
+  returnedToStock: number // Quantity returned to central stock
+  
+  // Installation metadata
+  installationDate: Date
+  installedBy: string
+  notes?: string
+  
+  // Tracking
+  createdAt: Date
+  updatedAt: Date
+}

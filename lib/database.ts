@@ -17,13 +17,14 @@ import type {
   MaterialCatalog,
   MaterialTemplate,
   MaterialStock,
-  MaterialStockTransaction
+  MaterialStockTransaction,
+  MaterialInstallation
 } from './types'
 import { ProjectStatus, MaterialStatus, ProjectMaterialStatus, ProjectMaterialSource, DispatchStatus, DispatchMaterialStatus } from './types'
 
 // Database configuration
 const DB_NAME = 'MetalCalculatorDB'
-const DB_VERSION = 9 // Phase 6: Material stock management
+const DB_VERSION = 10 // Phase 7: Material installation tracking
 
 // Store names
 export const STORES = {
@@ -48,6 +49,8 @@ export const STORES = {
   // Material stock management stores
   MATERIAL_STOCK: 'materialStock',
   MATERIAL_STOCK_TRANSACTIONS: 'materialStockTransactions',
+  // Material installation tracking store
+  MATERIAL_INSTALLATIONS: 'materialInstallations',
   SETTINGS: 'settings'
 } as const
 
@@ -74,6 +77,8 @@ export interface DatabaseSchema {
   // Material stock management schema
   materialStock: MaterialStock
   materialStockTransactions: MaterialStockTransaction
+  // Material installation tracking schema
+  materialInstallations: MaterialInstallation
   settings: { key: string; value: any }
 }
 
@@ -440,6 +445,19 @@ export async function initializeDatabase(): Promise<IDBDatabase> {
         // Composite indexes for performance
         materialStockTransactionStore.createIndex('materialStockId_type', ['materialStockId', 'type'], { unique: false })
         materialStockTransactionStore.createIndex('referenceId_referenceType', ['referenceId', 'referenceType'], { unique: false })
+      }
+
+      // Create material installations store (Phase 7)
+      if (!db.objectStoreNames.contains(STORES.MATERIAL_INSTALLATIONS)) {
+        const materialInstallationStore = db.createObjectStore(STORES.MATERIAL_INSTALLATIONS, { keyPath: 'id' })
+        materialInstallationStore.createIndex('projectMaterialId', 'projectMaterialId', { unique: false })
+        materialInstallationStore.createIndex('projectId', 'projectId', { unique: false })
+        materialInstallationStore.createIndex('installationDate', 'installationDate', { unique: false })
+        materialInstallationStore.createIndex('installedBy', 'installedBy', { unique: false })
+        materialInstallationStore.createIndex('createdAt', 'createdAt', { unique: false })
+        // Composite indexes for performance
+        materialInstallationStore.createIndex('projectMaterialId_installationDate', ['projectMaterialId', 'installationDate'], { unique: false })
+        materialInstallationStore.createIndex('projectId_installationDate', ['projectId', 'installationDate'], { unique: false })
       }
 
       // Create settings store
@@ -2521,6 +2539,391 @@ export async function getMaterialStockTransactions(materialStockId: string): Pro
       }
     } catch (error) {
       reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+// ============================================================================
+// MATERIAL INSTALLATION FUNCTIONS (Phase 7)
+// ============================================================================
+
+/**
+ * Create a new material installation record
+ */
+export async function createMaterialInstallation(installation: Omit<MaterialInstallation, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await getDatabase()
+      const transaction = db.transaction([STORES.MATERIAL_INSTALLATIONS], 'readwrite')
+      const store = transaction.objectStore(STORES.MATERIAL_INSTALLATIONS)
+      
+      const now = new Date()
+      const newInstallation: MaterialInstallation = {
+        id: generateId(),
+        ...installation,
+        createdAt: now,
+        updatedAt: now
+      }
+      
+      const request = store.add(newInstallation)
+      
+      request.onsuccess = () => {
+        resolve(newInstallation.id)
+      }
+      
+      request.onerror = () => {
+        reject(new Error(`Failed to create material installation: ${request.error?.message}`))
+      }
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+/**
+ * Get all material installations for a project material
+ */
+export async function getMaterialInstallationsByProjectMaterial(projectMaterialId: string): Promise<MaterialInstallation[]> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await getDatabase()
+      const transaction = db.transaction([STORES.MATERIAL_INSTALLATIONS], 'readonly')
+      const store = transaction.objectStore(STORES.MATERIAL_INSTALLATIONS)
+      
+      // Use the projectMaterialId index for better performance
+      const index = store.index('projectMaterialId')
+      const request = index.getAll(projectMaterialId)
+      
+      request.onsuccess = () => {
+        const results = request.result.map((installation: any) => ({
+          ...installation,
+          installationDate: new Date(installation.installationDate),
+          createdAt: new Date(installation.createdAt),
+          updatedAt: new Date(installation.updatedAt)
+        }))
+        resolve(results)
+      }
+      
+      request.onerror = () => {
+        reject(new Error(`Failed to get material installations: ${request.error?.message}`))
+      }
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+/**
+ * Get all material installations for a project
+ */
+export async function getMaterialInstallationsByProject(projectId: string): Promise<MaterialInstallation[]> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await getDatabase()
+      const transaction = db.transaction([STORES.MATERIAL_INSTALLATIONS], 'readonly')
+      const store = transaction.objectStore(STORES.MATERIAL_INSTALLATIONS)
+      
+      // Use the projectId index for better performance
+      const index = store.index('projectId')
+      const request = index.getAll(projectId)
+      
+      request.onsuccess = () => {
+        const results = request.result.map((installation: any) => ({
+          ...installation,
+          installationDate: new Date(installation.installationDate),
+          createdAt: new Date(installation.createdAt),
+          updatedAt: new Date(installation.updatedAt)
+        }))
+        resolve(results)
+      }
+      
+      request.onerror = () => {
+        reject(new Error(`Failed to get project material installations: ${request.error?.message}`))
+      }
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+/**
+ * Get a material installation by ID
+ */
+export async function getMaterialInstallationById(id: string): Promise<MaterialInstallation | null> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await getDatabase()
+      const transaction = db.transaction([STORES.MATERIAL_INSTALLATIONS], 'readonly')
+      const store = transaction.objectStore(STORES.MATERIAL_INSTALLATIONS)
+      
+      const request = store.get(id)
+      
+      request.onsuccess = () => {
+        const result = request.result
+        if (result) {
+          resolve({
+            ...result,
+            installationDate: new Date(result.installationDate),
+            createdAt: new Date(result.createdAt),
+            updatedAt: new Date(result.updatedAt)
+          })
+        } else {
+          resolve(null)
+        }
+      }
+      
+      request.onerror = () => {
+        reject(new Error(`Failed to get material installation: ${request.error?.message}`))
+      }
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+/**
+ * Update a material installation
+ */
+export async function updateMaterialInstallation(id: string, updates: Partial<Omit<MaterialInstallation, 'id' | 'createdAt'>>): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const existing = await getMaterialInstallationById(id)
+      if (!existing) {
+        reject(new Error('Material installation not found'))
+        return
+      }
+      
+      const db = await getDatabase()
+      const transaction = db.transaction([STORES.MATERIAL_INSTALLATIONS], 'readwrite')
+      const store = transaction.objectStore(STORES.MATERIAL_INSTALLATIONS)
+      
+      const updated: MaterialInstallation = {
+        ...existing,
+        ...updates,
+        updatedAt: new Date()
+      }
+      
+      const request = store.put(updated)
+      
+      request.onsuccess = () => {
+        resolve()
+      }
+      
+      request.onerror = () => {
+        reject(new Error(`Failed to update material installation: ${request.error?.message}`))
+      }
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+/**
+ * Delete a material installation
+ */
+export async function deleteMaterialInstallation(id: string): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await getDatabase()
+      const transaction = db.transaction([STORES.MATERIAL_INSTALLATIONS], 'readwrite')
+      const store = transaction.objectStore(STORES.MATERIAL_INSTALLATIONS)
+      
+      const request = store.delete(id)
+      
+      request.onsuccess = () => {
+        resolve()
+      }
+      
+      request.onerror = () => {
+        reject(new Error(`Failed to delete material installation: ${request.error?.message}`))
+      }
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+/**
+ * Get installation summary for a project material (prevents double installation)
+ */
+export async function getMaterialInstallationSummary(projectMaterialId: string): Promise<{
+  totalInstalled: number;
+  totalReturned: number;
+  totalRemaining: number;
+  installationCount: number;
+  lastInstallation?: MaterialInstallation;
+}> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const installations = await getMaterialInstallationsByProjectMaterial(projectMaterialId)
+      
+      const summary = {
+        totalInstalled: 0,
+        totalReturned: 0,
+        totalRemaining: 0,
+        installationCount: installations.length,
+        lastInstallation: undefined as MaterialInstallation | undefined
+      }
+      
+      for (const installation of installations) {
+        summary.totalInstalled += installation.installedQuantity
+        summary.totalReturned += installation.returnedToStock
+        summary.totalRemaining += installation.remainingQuantity
+      }
+      
+      if (installations.length > 0) {
+        // Sort by installation date descending and get the latest
+        installations.sort((a, b) => b.installationDate.getTime() - a.installationDate.getTime())
+        summary.lastInstallation = installations[0]
+      }
+      
+      resolve(summary)
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+/**
+ * Check if material can be installed (prevents double installation)
+ */
+export async function canInstallMaterial(projectMaterialId: string, requestedQuantity: number): Promise<{
+  canInstall: boolean;
+  availableQuantity: number;
+  reason?: string;
+}> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Get the project material details
+      const projectMaterial = await getProjectMaterialById(projectMaterialId)
+      if (!projectMaterial) {
+        resolve({
+          canInstall: false,
+          availableQuantity: 0,
+          reason: 'Project material not found'
+        })
+        return
+      }
+      
+      // Get installation summary
+      const installationSummary = await getMaterialInstallationSummary(projectMaterialId)
+      
+      // Calculate available quantity for installation
+      // Available = Total quantity - (Total installed + Total remaining in project)
+      const totalReserved = projectMaterial.quantity
+      const totalUsed = installationSummary.totalInstalled + installationSummary.totalRemaining
+      const availableQuantity = Math.max(0, totalReserved - totalUsed)
+      
+      const canInstall = availableQuantity >= requestedQuantity
+      let reason: string | undefined
+      
+      if (!canInstall) {
+        if (availableQuantity === 0) {
+          reason = 'All material has already been installed or allocated for installation'
+        } else {
+          reason = `Only ${availableQuantity} units available for installation (requested: ${requestedQuantity})`
+        }
+      }
+      
+      resolve({
+        canInstall,
+        availableQuantity,
+        reason
+      })
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+/**
+ * Record a material installation with stock integration
+ * This is the main function to use for recording installations
+ */
+export async function recordMaterialInstallation(params: {
+  projectMaterialId: string;
+  projectId: string;
+  installedQuantity: number;
+  returnedToStock?: number;
+  installedBy: string;
+  installationDate?: Date;
+  notes?: string;
+}): Promise<string> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Validate the installation can proceed
+      const canInstall = await canInstallMaterial(params.projectMaterialId, params.installedQuantity)
+      if (!canInstall.canInstall) {
+        reject(new Error(canInstall.reason || 'Cannot install material'))
+        return
+      }
+      
+      // Get the project material to check for stock integration
+      const projectMaterial = await getProjectMaterialById(params.projectMaterialId)
+      if (!projectMaterial) {
+        reject(new Error('Project material not found'))
+        return
+      }
+      
+      // Calculate quantities
+      const installedQuantity = params.installedQuantity
+      const returnedToStock = params.returnedToStock || 0
+      const remainingQuantity = canInstall.availableQuantity - installedQuantity - returnedToStock
+      
+      // Create the installation record
+      const installationId = await createMaterialInstallation({
+        projectMaterialId: params.projectMaterialId,
+        projectId: params.projectId,
+        installedQuantity,
+        remainingQuantity,
+        returnedToStock,
+        installationDate: params.installationDate || new Date(),
+        installedBy: params.installedBy,
+        notes: params.notes
+      })
+      
+      // If material is linked to catalog and stock, handle stock transactions
+      if (projectMaterial.materialCatalogId && returnedToStock > 0) {
+        try {
+          // Return material to stock
+          await unreserveMaterialStock(
+            projectMaterial.materialCatalogId,
+            returnedToStock,
+            params.projectId
+          )
+          
+          // Create stock transaction record
+          const materialStock = await getMaterialStockByMaterialId(projectMaterial.materialCatalogId)
+          if (materialStock) {
+            await createMaterialStockTransaction({
+              materialStockId: materialStock.id,
+              type: 'IN',
+              quantity: returnedToStock,
+              referenceId: params.projectId,
+              referenceType: 'PROJECT',
+              transactionDate: new Date(),
+              notes: `Material returned to stock from installation (Installation ID: ${installationId})`
+            })
+          }
+        } catch (stockError) {
+          // Log the error but don't fail the installation
+          console.warn('Failed to update stock for returned material:', stockError)
+        }
+      }
+      
+      // Update project material status if fully installed
+      const installationSummary = await getMaterialInstallationSummary(params.projectMaterialId)
+      const totalProcessed = installationSummary.totalInstalled + installationSummary.totalReturned
+      if (totalProcessed >= projectMaterial.quantity) {
+        await updateProjectMaterial(params.projectMaterialId, {
+          status: ProjectMaterialStatus.INSTALLED,
+          installationDate: params.installationDate || new Date()
+        })
+      }
+      
+      resolve(installationId)
+    } catch (error) {
+      reject(new Error(`Failed to record material installation: ${error instanceof Error ? error.message : 'Unknown error'}`))
     }
   })
 }

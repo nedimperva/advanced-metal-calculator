@@ -78,8 +78,18 @@ import {
   ProjectMaterialSource,
   Project,
   MaterialCatalog,
-  MaterialStock
+  MaterialStock,
+  MaterialInstallation
 } from '@/lib/types'
+
+// Enhanced tracking interfaces
+
+interface EnhancedProjectMaterial extends ProjectMaterial {
+  reservedQuantity: number
+  installedQuantity: number
+  availableForInstallation: number
+  installationRecords: MaterialInstallation[]
+}
 import { 
   getProjectMaterials,
   createProjectMaterial,
@@ -92,14 +102,15 @@ import {
   getAllMaterialStock,
   reserveMaterialStock,
   createMaterialStockTransaction,
-  unreserveMaterialStock
+  unreserveMaterialStock,
+  recordMaterialInstallation,
+  getMaterialInstallationsByProjectMaterial
 } from '@/lib/database'
 import { useMaterialCatalog } from '@/contexts/material-catalog-context'
 import { useProjects } from '@/contexts/project-context'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
-import MaterialAllocationDashboard from './material-allocation-dashboard'
 
 interface EnhancedProjectMaterialsProps {
   project: Project
@@ -131,6 +142,16 @@ const MATERIAL_STATUS_CONFIG = {
   }
 }
 
+// Installation status for tracking
+type InstallationStatus = 'not-started' | 'partial' | 'complete'
+
+// Helper function to determine installation status
+function getInstallationStatus(material: EnhancedProjectMaterial): InstallationStatus {
+  if (material.installedQuantity === 0) return 'not-started'
+  if (material.installedQuantity >= material.reservedQuantity) return 'complete'
+  return 'partial'
+}
+
 // Material source icons
 const MATERIAL_SOURCE_ICONS = {
   [ProjectMaterialSource.MANUAL]: FileText,
@@ -140,17 +161,19 @@ const MATERIAL_SOURCE_ICONS = {
 }
 
 interface MaterialCardProps {
-  material: ProjectMaterial
+  material: EnhancedProjectMaterial
   onEdit: () => void
   onDelete: () => void
   onStatusChange: (status: ProjectMaterialStatus) => void
+  onInstall: () => void
   isMobile: boolean
 }
 
-function MaterialCard({ material, onEdit, onDelete, onStatusChange, isMobile }: MaterialCardProps) {
+function MaterialCard({ material, onEdit, onDelete, onStatusChange, onInstall, isMobile }: MaterialCardProps) {
   const { t } = useI18n()
   const statusConfig = MATERIAL_STATUS_CONFIG[material.status]
   const SourceIcon = MATERIAL_SOURCE_ICONS[material.source]
+  const installationStatus = getInstallationStatus(material)
 
   return (
     <Card className="hover:bg-muted/30 transition-colors">
@@ -236,6 +259,20 @@ function MaterialCard({ material, onEdit, onDelete, onStatusChange, isMobile }: 
                 </div>
               )}
 
+              {/* Installation Progress Bar */}
+              {material.reservedQuantity > 0 && (
+                <div className="mt-2">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Installation Progress</span>
+                    <span>{((material.installedQuantity / material.reservedQuantity) * 100).toFixed(0)}%</span>
+                  </div>
+                  <Progress 
+                    value={(material.installedQuantity / material.reservedQuantity) * 100} 
+                    className="h-1.5"
+                  />
+                </div>
+              )}
+              
               {/* Notes */}
               {material.notes && (
                 <div className={cn("text-muted-foreground mt-1 italic", isMobile ? "text-xs break-words" : "text-xs")}>
@@ -914,27 +951,49 @@ export default function EnhancedProjectMaterials({
   const isMobile = useMediaQuery("(max-width: 767px)")
   
   // State
-  const [materials, setMaterials] = useState<ProjectMaterial[]>([])
-  const [filteredMaterials, setFilteredMaterials] = useState<ProjectMaterial[]>([])
+  const [materials, setMaterials] = useState<EnhancedProjectMaterial[]>([])
+  const [filteredMaterials, setFilteredMaterials] = useState<EnhancedProjectMaterial[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectMaterialStatus | 'all'>('all')
   const [sourceFilter, setSourceFilter] = useState<ProjectMaterialSource | 'all'>('all')
   const [statistics, setStatistics] = useState<any>(null)
-  const [showAllocation, setShowAllocation] = useState(false)
+  // Removed unused showAllocation state
   const [showInstallDialog, setShowInstallDialog] = useState(false)
-  const [installMaterial, setInstallMaterial] = useState<ProjectMaterial | null>(null)
+  const [installMaterial, setInstallMaterial] = useState<EnhancedProjectMaterial | null>(null)
   const [installQuantity, setInstallQuantity] = useState('')
   const [returnToStock, setReturnToStock] = useState(false)
 
-  // Load materials
+  // Load materials with installation tracking
   const loadMaterials = async () => {
     setIsLoading(true)
     try {
       const projectMaterials = await getProjectMaterials(project.id)
       const stats = await getProjectMaterialStatistics(project.id)
-      setMaterials(projectMaterials)
+      
+      // Transform materials to include installation tracking
+      const enhancedMaterials: EnhancedProjectMaterial[] = await Promise.all(
+        projectMaterials.map(async (material) => {
+          // Get installation records from the database
+          const installationRecords = await getMaterialInstallationsByProjectMaterial(material.id)
+          
+          // Calculate tracking values
+          const reservedQuantity = material.quantity
+          const installedQuantity = installationRecords.reduce((sum, record) => sum + record.installedQuantity, 0)
+          const availableForInstallation = Math.max(0, reservedQuantity - installedQuantity)
+          
+          return {
+            ...material,
+            reservedQuantity,
+            installedQuantity,
+            availableForInstallation,
+            installationRecords
+          }
+        })
+      )
+      
+      setMaterials(enhancedMaterials)
       setStatistics(stats)
     } catch (error) {
       console.error('Failed to load materials:', error)
@@ -997,20 +1056,8 @@ export default function EnhancedProjectMaterials({
     }
   }
 
-  // Handle status change
+  // Handle status change (simplified - no longer triggers installation dialog)
   const handleStatusChange = async (materialId: string, status: ProjectMaterialStatus) => {
-    // If changing to INSTALLED, show installation dialog
-    if (status === ProjectMaterialStatus.INSTALLED) {
-      const material = materials.find(m => m.id === materialId)
-      if (material) {
-        setInstallMaterial(material)
-        setInstallQuantity(material.quantity.toString())
-        setReturnToStock(false)
-        setShowInstallDialog(true)
-        return
-      }
-    }
-
     try {
       await updateProjectMaterialStatus(materialId, status)
       await loadMaterials()
@@ -1029,72 +1076,45 @@ export default function EnhancedProjectMaterials({
     }
   }
 
-  // Handle installation
+  // Handle installation dialog opening
+  const handleInstallClick = (material: EnhancedProjectMaterial) => {
+    setInstallMaterial(material)
+    setInstallQuantity(material.availableForInstallation.toString())
+    setReturnToStock(false)
+    setShowInstallDialog(true)
+  }
+
+  // Handle installation with proper tracking
   const handleInstallation = async () => {
     if (!installMaterial || !installQuantity) return
 
     const installedQty = parseFloat(installQuantity)
-    const totalQty = installMaterial.quantity
+    const availableQty = installMaterial.availableForInstallation
     
-    if (installedQty <= 0 || installedQty > totalQty) {
+    if (installedQty <= 0 || installedQty > availableQty) {
       toast({
         title: 'Invalid Quantity',
-        description: `Installed quantity must be between 1 and ${totalQty}`,
+        description: `Installed quantity must be between 1 and ${availableQty} (available for installation)`,
         variant: 'destructive'
       })
       return
     }
 
     try {
-      // Update material status to INSTALLED
-      await updateProjectMaterialStatus(installMaterial.id, ProjectMaterialStatus.INSTALLED)
+      // Record the material installation using the unified function
+      const installationId = await recordMaterialInstallation({
+        projectMaterialId: installMaterial.id,
+        projectId: installMaterial.projectId,
+        installedQuantity: installedQty,
+        remainingQuantity: returnToStock ? 0 : (availableQty - installedQty),
+        returnedToStock: returnToStock ? (availableQty - installedQty) : 0,
+        installedBy: 'Current User', // TODO: Get actual user from auth context
+        installationDate: new Date(),
+        notes: `Installation: ${installedQty} units installed${returnToStock && availableQty > installedQty ? `, ${availableQty - installedQty} returned to stock` : ', remaining reserved for future installation'}`
+      })
 
-      // If partial installation and user wants to return remaining to stock
-      const remainingQty = totalQty - installedQty
-      if (remainingQty > 0 && returnToStock && installMaterial.materialCatalogId) {
-        // Unreserve the remaining quantity back to stock
-        await unreserveMaterialStock(installMaterial.materialCatalogId, remainingQty, project.id)
-        
-        // Create transaction record for return to stock
-        const materialStock = await getAllMaterialStock()
-        const stockRecord = materialStock.find(s => s.materialCatalogId === installMaterial.materialCatalogId)
-        
-        if (stockRecord) {
-          await createMaterialStockTransaction({
-            materialStockId: stockRecord.id,
-            type: 'UNRESERVED',
-            quantity: remainingQty,
-            unitCost: installMaterial.unitCost || 0,
-            totalCost: remainingQty * (installMaterial.unitCost || 0),
-            referenceId: installMaterial.id,
-            referenceType: 'PROJECT',
-            transactionDate: new Date(),
-            notes: `Returned to stock after installation. Installed: ${installedQty}, Returned: ${remainingQty}`,
-            createdBy: 'user'
-          })
-        }
-      }
-
-      // Create transaction record for installation
-      if (installMaterial.materialCatalogId) {
-        const materialStock = await getAllMaterialStock()
-        const stockRecord = materialStock.find(s => s.materialCatalogId === installMaterial.materialCatalogId)
-        
-        if (stockRecord) {
-          await createMaterialStockTransaction({
-            materialStockId: stockRecord.id,
-            type: 'OUT',
-            quantity: installedQty,
-            unitCost: installMaterial.unitCost || 0,
-            totalCost: installedQty * (installMaterial.unitCost || 0),
-            referenceId: installMaterial.id,
-            referenceType: 'PROJECT',
-            transactionDate: new Date(),
-            notes: `Material installed in project: ${project.name}. ${remainingQty > 0 ? `Remaining ${remainingQty} ${returnToStock ? 'returned to stock' : 'still reserved'}` : 'Fully installed'}`,
-            createdBy: 'user'
-          })
-        }
-      }
+      // The recordMaterialInstallation function handles all stock transactions 
+      // and status updates automatically
 
       await loadMaterials()
       onUpdate?.()
@@ -1104,8 +1124,8 @@ export default function EnhancedProjectMaterials({
       setReturnToStock(false)
 
       toast({
-        title: 'Success',
-        description: `Material installation recorded. ${installedQty} units installed.${remainingQty > 0 && returnToStock ? ` ${remainingQty} units returned to stock.` : ''}`,
+        title: 'Installation Recorded',
+        description: `${installedQty} units installed successfully.${returnToStock && availableQty > installedQty ? ` ${availableQty - installedQty} units returned to stock.` : ''}`,
       })
     } catch (error) {
       console.error('Failed to record installation:', error)
@@ -1213,14 +1233,57 @@ export default function EnhancedProjectMaterials({
         )}
       </div>
 
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="materials" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="materials">Materials List</TabsTrigger>
-          <TabsTrigger value="allocation">Allocation Dashboard</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="materials" className="space-y-4 mt-6">
+      {/* Materials Content - No more tabs, everything unified */}
+      <div className="space-y-6">
+        {/* Allocation Summary Cards - Moved from dashboard */}
+        {statistics && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Required</p>
+                    <p className="text-lg font-semibold">{materials.reduce((sum, m) => sum + m.reservedQuantity, 0)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-blue-600" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Delivered</p>
+                    <p className="text-lg font-semibold">{materials.filter(m => m.status === ProjectMaterialStatus.DELIVERED || m.status === ProjectMaterialStatus.INSTALLED).length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Installed</p>
+                    <p className="text-lg font-semibold">{materials.reduce((sum, m) => sum + m.installedQuantity, 0).toFixed(1)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-purple-600" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Available to Install</p>
+                    <p className="text-lg font-semibold">{materials.reduce((sum, m) => sum + m.availableForInstallation, 0).toFixed(1)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -1296,20 +1359,13 @@ export default function EnhancedProjectMaterials({
               }}
               onDelete={() => handleDeleteMaterial(material.id)}
               onStatusChange={(status) => handleStatusChange(material.id, status)}
+              onInstall={() => handleInstallClick(material)}
               isMobile={isMobile}
             />
           ))
         )}
         </div>
-        </TabsContent>
-
-        <TabsContent value="allocation" className="mt-6">
-          <MaterialAllocationDashboard
-            project={project}
-            onUpdate={loadMaterials}
-          />
-        </TabsContent>
-      </Tabs>
+      </div>
 
       {/* Add Material Modal */}
       <AddMaterialModal
@@ -1323,31 +1379,47 @@ export default function EnhancedProjectMaterials({
       <Dialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Record Installation</DialogTitle>
+            <DialogTitle>Record Material Installation</DialogTitle>
             <DialogDescription>
-              Record how much of "{installMaterial?.materialName}" was installed
+              Install "{installMaterial?.materialName}" - Track actual usage and prevent double installations
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Installation Summary */}
+            <div className="p-3 bg-muted rounded-lg space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Total Reserved:</span>
+                <span className="font-medium">{installMaterial?.reservedQuantity} {installMaterial?.unit}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Already Installed:</span>
+                <span className="font-medium text-green-600">{installMaterial?.installedQuantity || 0} {installMaterial?.unit}</span>
+              </div>
+              <div className="flex justify-between text-sm border-t pt-2">
+                <span>Available to Install:</span>
+                <span className="font-semibold text-blue-600">{installMaterial?.availableForInstallation} {installMaterial?.unit}</span>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="installedQuantity">Quantity Installed</Label>
+              <Label htmlFor="installedQuantity">Quantity to Install Now</Label>
               <Input
                 id="installedQuantity"
                 type="number"
-                min="0"
-                max={installMaterial?.quantity || 0}
+                min="0.01"
+                max={installMaterial?.availableForInstallation || 0}
                 step="0.01"
                 value={installQuantity}
                 onChange={(e) => setInstallQuantity(e.target.value)}
-                placeholder={`Max: ${installMaterial?.quantity || 0}`}
+                placeholder={`Max: ${installMaterial?.availableForInstallation || 0}`}
               />
               <div className="text-sm text-muted-foreground">
-                Total available: {installMaterial?.quantity} {installMaterial?.weightUnit}
+                Maximum installable: {installMaterial?.availableForInstallation} {installMaterial?.unit}
               </div>
             </div>
 
             {/* Show return option only if there's remaining quantity and material is from stock */}
-            {installMaterial && parseFloat(installQuantity) < installMaterial.quantity && installMaterial.materialCatalogId && (
+            {installMaterial && parseFloat(installQuantity) > 0 && parseFloat(installQuantity) < (installMaterial.availableForInstallation || 0) && installMaterial.materialCatalogId && (
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -1356,20 +1428,20 @@ export default function EnhancedProjectMaterials({
                     onCheckedChange={(checked) => setReturnToStock(!!checked)}
                   />
                   <Label htmlFor="returnToStock" className="text-sm">
-                    Return remaining {(installMaterial.quantity - (parseFloat(installQuantity) || 0)).toFixed(2)} {installMaterial.weightUnit} to stock
+                    Return remaining {((installMaterial.availableForInstallation || 0) - (parseFloat(installQuantity) || 0)).toFixed(2)} {installMaterial.unit} to stock
                   </Label>
                 </div>
                 <div className="text-xs text-muted-foreground ml-6">
                   {returnToStock 
                     ? "Remaining quantity will be unreserved and available for other projects"
-                    : "Remaining quantity will stay reserved for this project"
+                    : "Remaining quantity will stay reserved for future installation in this project"
                   }
                 </div>
               </div>
             )}
 
             {!installMaterial?.materialCatalogId && (
-              <div className="text-sm text-muted-foreground p-3 bg-muted rounded">
+              <div className="text-sm text-muted-foreground p-3 bg-amber-50 border border-amber-200 rounded">
                 <span className="font-medium">Note:</span> This material was manually added and is not linked to stock inventory.
               </div>
             )}
@@ -1388,9 +1460,9 @@ export default function EnhancedProjectMaterials({
             </Button>
             <Button 
               onClick={handleInstallation}
-              disabled={!installQuantity || parseFloat(installQuantity) <= 0}
+              disabled={!installQuantity || parseFloat(installQuantity) <= 0 || parseFloat(installQuantity) > (installMaterial?.availableForInstallation || 0)}
             >
-              Record Installation
+              Record Installation ({parseFloat(installQuantity) || 0} {installMaterial?.unit})
             </Button>
           </DialogFooter>
         </DialogContent>
