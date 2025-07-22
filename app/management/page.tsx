@@ -168,12 +168,6 @@ export default function ManagementPage() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              {activeTab === "projects" && (
-                <Button onClick={handleCreateProject} className="flex items-center space-x-2">
-                  <Plus className="w-4 h-4" />
-                  <span>New Project</span>
-                </Button>
-              )}
               <SettingsButton />
             </div>
           </div>
@@ -192,10 +186,12 @@ export default function ManagementPage() {
               {isMobile ? (
                 <MobileProjectDashboard 
                   onProjectSelect={handleProjectSelect}
+                  onCreateProject={handleCreateProject}
                 />
               ) : (
                 <ProjectDashboard 
                   onProjectSelect={handleProjectSelect}
+                  onCreateProject={handleCreateProject}
                 />
               )}
             </TabsContent>

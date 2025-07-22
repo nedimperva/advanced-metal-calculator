@@ -164,9 +164,6 @@ export default function ProjectDashboard({
   const handleCreateProject = () => {
     if (onCreateProject) {
       onCreateProject()
-    } else {
-      // Project creation will be handled within the tab system
-      console.log('Create new project')
     }
   }
 
@@ -304,7 +301,7 @@ export default function ProjectDashboard({
               Templates
             </Button> */}
             <Button 
-              onClick={() => onCreateProject()}
+              onClick={handleCreateProject}
               className="mb-6"
               size="lg"
             >
