@@ -135,7 +135,6 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
     type: MaterialType.STEEL,
     category: MaterialCategory.STRUCTURAL,
     grade: '',
-    weight: 0,
     costPerUnit: 0,
     unit: 'kg',
     supplier: '',
@@ -229,7 +228,6 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         type: newMaterial.type,
         category: newMaterial.category,
         grade: newMaterial.grade,
-        weight: newMaterial.weight,
         costPerUnit: newMaterial.costPerUnit,
         unit: newMaterial.unit,
         supplier: newMaterial.supplier,
@@ -292,7 +290,6 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         type: MaterialType.STEEL,
         category: MaterialCategory.STRUCTURAL,
         grade: '',
-        weight: 0,
         costPerUnit: 0,
         unit: 'kg',
         supplier: '',
@@ -951,17 +948,6 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                 value={newMaterial.grade}
                 onChange={(e) => setNewMaterial({...newMaterial, grade: e.target.value})}
                 placeholder="S235"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="weight">Weight (kg)</Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.01"
-                value={newMaterial.weight}
-                onChange={(e) => setNewMaterial({...newMaterial, weight: parseFloat(e.target.value) || 0})}
-                placeholder="353.25"
               />
             </div>
             <div className="space-y-2">
