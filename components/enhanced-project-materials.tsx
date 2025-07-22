@@ -179,15 +179,44 @@ function MaterialCard({ material, onEdit, onDelete, onStatusChange, isMobile }: 
                   <Badge variant="secondary" className="text-xs">
                     {material.profile} • {material.grade}
                   </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    {material.totalWeight.toFixed(2)} {material.weightUnit}
-                    {material.quantity > 1 && ` (${material.quantity}x)`}
-                  </Badge>
-                  {material.totalCost && (
-                    <Badge variant="outline" className="text-xs text-green-600">
-                      ${material.totalCost.toFixed(2)}
-                    </Badge>
-                  )}
+                </div>
+                
+                {/* Quantity and Pricing Information */}
+                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                  <div>
+                    <div className="text-muted-foreground text-xs">Quantity & Weight</div>
+                    <div className="font-medium">
+                      {material.quantity} {material.unit || 'pcs'} 
+                      {material.totalWeight > 0 && (
+                        <span className="text-muted-foreground ml-1">
+                          ({material.totalWeight.toFixed(2)} {material.weightUnit})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground text-xs">Pricing</div>
+                    <div className="font-medium">
+                      {material.unitCost && (
+                        <>
+                          {material.unitCost.toFixed(2)} KM/{material.unit || 'pc'}
+                          {material.totalCost && (
+                            <div className="text-green-600 font-semibold">
+                              Total: {material.totalCost.toFixed(2)} KM
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {!material.unitCost && material.totalCost && (
+                        <div className="text-green-600 font-semibold">
+                          {material.totalCost.toFixed(2)} KM
+                        </div>
+                      )}
+                      {!material.unitCost && !material.totalCost && (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -514,19 +543,24 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
   // Manual entry form state
   const [formData, setFormData] = useState({
     materialName: '',
+    materialType: 'STEEL',
     profile: '',
     grade: '',
     quantity: 1,
     unitWeight: 0,
     lengthUnit: 'm',
     weightUnit: 'kg',
+    costPerUnit: 0,
+    unit: 'kg',
     supplier: '',
+    location: '',
+    certificateNumber: '',
     notes: '',
     dimensions: {} as Record<string, number>
   })
 
-  const handleManualSubmit = () => {
-    if (!formData.materialName || !formData.profile || !formData.grade || formData.unitWeight <= 0) {
+  const handleManualSubmit = async () => {
+    if (!formData.materialName || !formData.grade || !formData.costPerUnit || formData.quantity <= 0) {
       toast({
         title: 'Validation Error',
         description: 'Please fill in all required fields',
@@ -535,37 +569,120 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
       return
     }
 
-    const material: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
-      projectId,
-      materialCatalogId: undefined,
-      materialName: formData.materialName,
-      profile: formData.profile,
-      grade: formData.grade,
-      dimensions: formData.dimensions,
-      quantity: formData.quantity,
-      unitWeight: formData.unitWeight,
-      totalWeight: formData.unitWeight * formData.quantity,
-      lengthUnit: formData.lengthUnit,
-      weightUnit: formData.weightUnit,
-      status: ProjectMaterialStatus.REQUIRED,
-      supplier: formData.supplier || undefined,
-      notes: formData.notes || undefined,
-      source: ProjectMaterialSource.MANUAL
-    }
+    setIsLoading(true)
+    
+    try {
+      // First, create the material in the catalog
+      const materialData = {
+        name: formData.materialName,
+        type: formData.materialType,
+        category: 'STRUCTURAL',
+        grade: formData.grade,
+        costPerUnit: formData.costPerUnit,
+        unit: formData.unit,
+        supplier: formData.supplier,
+        location: formData.location,
+        certificateNumber: formData.certificateNumber,
+        notes: formData.notes,
+        // Set basic defaults for required catalog fields
+        density: 7.85,
+        yieldStrength: 250,
+        tensileStrength: 400,
+        elongation: 20,
+        applications: ['Structural'],
+        standards: ['EN 10025'],
+        profile: formData.profile || 'Custom',
+        dimensions: formData.dimensions || {}
+      }
 
-    onAdd(material)
-    onClose()
+      // Create material in catalog
+      const catalogResponse = await fetch('/api/materials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(materialData)
+      })
+
+      if (!catalogResponse.ok) throw new Error('Failed to create material in catalog')
+      
+      const catalogMaterial = await catalogResponse.json()
+
+      // Then create stock record
+      const stockData = {
+        materialId: catalogMaterial.id,
+        currentStock: formData.quantity,
+        minStock: 0,
+        maxStock: formData.quantity * 2,
+        reorderPoint: 0,
+        unit: formData.unit,
+        costPerUnit: formData.costPerUnit,
+        supplier: formData.supplier,
+        location: formData.location,
+        notes: formData.notes
+      }
+
+      const stockResponse = await fetch('/api/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(stockData)
+      })
+
+      if (!stockResponse.ok) throw new Error('Failed to create stock record')
+
+      // Finally, assign to project
+      const projectMaterial: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
+        projectId,
+        materialCatalogId: catalogMaterial.id,
+        materialName: formData.materialName,
+        profile: formData.profile || 'Custom',
+        grade: formData.grade,
+        dimensions: formData.dimensions || {},
+        quantity: formData.quantity,
+        unitWeight: formData.unitWeight || 0,
+        totalWeight: (formData.unitWeight || 0) * formData.quantity,
+        lengthUnit: formData.lengthUnit,
+        weightUnit: formData.weightUnit,
+        status: ProjectMaterialStatus.AVAILABLE,
+        supplier: formData.supplier || undefined,
+        notes: formData.notes || undefined,
+        source: ProjectMaterialSource.MANUAL,
+        unitCost: formData.costPerUnit,
+        totalCost: formData.costPerUnit * formData.quantity
+      }
+
+      onAdd(projectMaterial)
+      onClose()
+
+      toast({
+        title: 'Success',
+        description: 'Material created and assigned to project successfully'
+      })
+      
+    } catch (error) {
+      console.error('Error creating material:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to create material. Please try again.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoading(false)
+    }
     
     // Reset form
     setFormData({
       materialName: '',
+      materialType: 'STEEL',
       profile: '',
       grade: '',
       quantity: 1,
       unitWeight: 0,
       lengthUnit: 'm',
       weightUnit: 'kg',
+      costPerUnit: 0,
+      unit: 'kg',
       supplier: '',
+      location: '',
+      certificateNumber: '',
       notes: '',
       dimensions: {}
     })
@@ -622,38 +739,82 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
           {/* Manual Entry Tab */}
           {activeTab === 'manual' && (
             <div className="space-y-4">
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="materialName">Material Name *</Label>
+                <Input
+                  id="materialName"
+                  value={formData.materialName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, materialName: e.target.value }))}
+                  placeholder="Steel Plate S235 1500x3000x10mm"
+                />
+              </div>
+              
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="materialName">Material Name *</Label>
-                  <Input
-                    id="materialName"
-                    value={formData.materialName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, materialName: e.target.value }))}
-                    placeholder="e.g., A36 Structural Steel"
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="materialType">Material Type *</Label>
+                  <Select 
+                    value={formData.materialType || 'STEEL'} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, materialType: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="STEEL">Steel</SelectItem>
+                      <SelectItem value="CONCRETE">Concrete</SelectItem>
+                      <SelectItem value="ALUMINUM">Aluminum</SelectItem>
+                      <SelectItem value="WOOD">Wood</SelectItem>
+                      <SelectItem value="COMPOSITE">Composite</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <Label htmlFor="profile">Profile *</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="grade">Grade/Quality *</Label>
                   <Input
-                    id="profile"
-                    value={formData.profile}
-                    onChange={(e) => setFormData(prev => ({ ...prev, profile: e.target.value }))}
-                    placeholder="e.g., HEA, IPE, Channel"
+                    id="grade"
+                    value={formData.grade}
+                    onChange={(e) => setFormData(prev => ({ ...prev, grade: e.target.value }))}
+                    placeholder="S235"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="grade">Grade *</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="costPerUnit">Unit Price (KM) *</Label>
                   <Input
-                    id="grade"
-                    value={formData.grade}
-                    onChange={(e) => setFormData(prev => ({ ...prev, grade: e.target.value }))}
-                    placeholder="e.g., A36, S355"
+                    id="costPerUnit"
+                    type="number"
+                    step="0.01"
+                    value={formData.costPerUnit || 0}
+                    onChange={(e) => setFormData(prev => ({ ...prev, costPerUnit: parseFloat(e.target.value) || 0 }))}
+                    placeholder="2.50"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
+                  <Label htmlFor="unit">Unit *</Label>
+                  <Select 
+                    value={formData.unit || 'kg'} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, unit: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="kg">kg</SelectItem>
+                      <SelectItem value="pieces">pieces</SelectItem>
+                      <SelectItem value="m">m</SelectItem>
+                      <SelectItem value="m²">m²</SelectItem>
+                      <SelectItem value="m³">m³</SelectItem>
+                      <SelectItem value="tons">tons</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="quantity">Quantity *</Label>
                   <Input
                     id="quantity"
@@ -663,21 +824,7 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
                     onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="unitWeight">Unit Weight * ({formData.weightUnit})</Label>
-                  <Input
-                    id="unitWeight"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.unitWeight}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unitWeight: parseFloat(e.target.value) || 0 }))}
-                  />
-                </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="supplier">Supplier</Label>
                   <Input
                     id="supplier"
@@ -688,7 +835,27 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
                 </div>
               </div>
 
-              <div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Storage Location</Label>
+                <Input
+                  id="location"
+                  value={formData.location || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="Warehouse A, Section B"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="certificateNumber">Certificate Number</Label>
+                <Input
+                  id="certificateNumber"
+                  value={formData.certificateNumber || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, certificateNumber: e.target.value }))}
+                  placeholder="Optional certificate number"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
                   id="notes"
