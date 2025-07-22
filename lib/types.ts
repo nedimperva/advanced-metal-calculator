@@ -602,10 +602,13 @@ export interface DispatchMaterial {
   }
   // Quantity and measurements
   quantity: number
+  orderedQuantity: number
+  deliveredQuantity: number
   unitWeight: number
   totalWeight: number
   lengthUnit: string
   weightUnit: string
+  unit: string
   // Cost information
   unitCost?: number
   totalCost?: number

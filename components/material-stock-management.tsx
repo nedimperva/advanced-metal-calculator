@@ -169,7 +169,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
       const stockWithMaterials = stockData.map(stock => ({
         ...stock,
         material: catalogMaterials.find(m => m.id === stock.materialCatalogId),
-        totalValue: stock.currentStock * stock.unitCost
+        totalValue: (Number(stock.currentStock) || 0) * (Number(stock.unitCost) || 0)
       })).filter(stock => stock.material) as (MaterialStock & { material: MaterialCatalog })[]
       
       setMaterialStock(stockWithMaterials)
@@ -430,7 +430,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         minimumStock: stockData.minimumStock,
         maximumStock: stockData.maximumStock,
         unitCost: stockData.unitCost,
-        totalValue: stockData.currentStock * stockData.unitCost,
+        totalValue: (Number(stockData.currentStock) || 0) * (Number(stockData.unitCost) || 0),
         location: stockData.location,
         supplier: stockData.supplier,
         notes: stockData.notes,

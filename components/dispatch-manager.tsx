@@ -195,9 +195,9 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           id: dm.id,
           materialName: dm.materialType + ' ' + dm.profile + ' ' + dm.grade,
           materialId: dm.id, // Use dispatch material ID since we don't have catalog ID
-          orderedQuantity: dm.orderedQuantity,
-          deliveredQuantity: dm.deliveredQuantity,
-          unit: dm.unit,
+          orderedQuantity: Number(dm.orderedQuantity) || 0,
+          deliveredQuantity: Number(dm.deliveredQuantity) || 0,
+          unit: dm.unit || 'kg',
           notes: dm.notes || ''
         }))
         
@@ -284,18 +284,21 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           profile: catalogMaterial?.category || 'Standard',
           grade: catalogMaterial?.name || 'Standard',
           dimensions: {
-            length: catalogMaterial?.standardLength,
-            width: catalogMaterial?.standardWidth,
-            height: catalogMaterial?.standardHeight,
-            thickness: catalogMaterial?.standardThickness
+            length: catalogMaterial?.standardLength || 0,
+            width: catalogMaterial?.standardWidth || 0,
+            height: catalogMaterial?.standardHeight || 0,
+            thickness: catalogMaterial?.standardThickness || 0
           },
-          quantity: material.orderedQuantity,
+          quantity: material.orderedQuantity || 0,
+          orderedQuantity: material.orderedQuantity || 0,
+          deliveredQuantity: material.deliveredQuantity || 0,
           unitWeight: catalogMaterial?.density || 1,
-          totalWeight: material.orderedQuantity * (catalogMaterial?.density || 1),
+          totalWeight: (material.orderedQuantity || 0) * (catalogMaterial?.density || 1),
           lengthUnit: catalogMaterial?.lengthUnit || 'mm',
           weightUnit: material.unit || 'kg',
+          unit: material.unit || 'kg',
           unitCost: catalogMaterial?.basePrice || 0,
-          totalCost: material.orderedQuantity * (catalogMaterial?.basePrice || 0),
+          totalCost: (material.orderedQuantity || 0) * (catalogMaterial?.basePrice || 0),
           currency: catalogMaterial?.currency || 'USD',
           status: 'pending',
           location: 'Warehouse',
@@ -439,9 +442,9 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
         
         if (stockRecord) {
           // Update stock levels
-          const newCurrentStock = stockRecord.currentStock + material.deliveredQuantity
-          const newAvailableStock = stockRecord.availableStock + material.deliveredQuantity
-          const newTotalValue = newCurrentStock * stockRecord.unitCost
+          const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(material.deliveredQuantity) || 0)
+          const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(material.deliveredQuantity) || 0)
+          const newTotalValue = newCurrentStock * (Number(stockRecord.unitCost) || 0)
           
           await updateMaterialStock({
             ...stockRecord,
@@ -557,9 +560,9 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
             }
             
             if (stockRecord) {
-              const newCurrentStock = stockRecord.currentStock + material.deliveredQuantity
-              const newAvailableStock = stockRecord.availableStock + material.deliveredQuantity
-              const newTotalValue = newCurrentStock * stockRecord.unitCost
+              const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(material.deliveredQuantity) || 0)
+              const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(material.deliveredQuantity) || 0)
+              const newTotalValue = newCurrentStock * (Number(stockRecord.unitCost) || 0)
               
               await updateMaterialStock({
                 ...stockRecord,
@@ -954,7 +957,11 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                       id="orderedQuantity"
                       type="number"
                       value={newMaterial.orderedQuantity}
-                      onChange={(e) => setNewMaterial({...newMaterial, orderedQuantity: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        const numValue = value === '' ? 0 : (parseFloat(value) || 0)
+                        setNewMaterial({...newMaterial, orderedQuantity: numValue})
+                      }}
                       placeholder="0"
                     />
                   </div>
