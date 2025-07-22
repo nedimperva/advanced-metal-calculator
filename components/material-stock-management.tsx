@@ -1295,12 +1295,15 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                   )}
                 </div>
 
-                {/* Stock Transactions */}
+                {/* Complete Action History */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
                     <FileText className="w-5 h-5" />
-                    Stock Transactions
+                    Complete Action History
                   </h3>
+                  <div className="text-sm text-muted-foreground">
+                    All actions performed on this material including stock changes, project assignments, installations, and returns
+                  </div>
                   {stockTransactions.length > 0 ? (
                     <div className="border rounded-lg overflow-hidden">
                       <Table>
@@ -1314,7 +1317,9 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {stockTransactions.map((transaction) => (
+                          {stockTransactions
+                            .sort((a, b) => new Date(b.transactionDate || b.createdAt).getTime() - new Date(a.transactionDate || a.createdAt).getTime())
+                            .map((transaction) => (
                             <TableRow key={transaction.id}>
                               <TableCell>
                                 <div className="flex items-center gap-2">
@@ -1341,11 +1346,11 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                                     transaction.type === 'EDIT' ? 'secondary' :
                                     'outline'
                                   }>
-                                    {transaction.type === 'IN' ? 'ARRIVAL' :
-                                     transaction.type === 'OUT' ? 'USAGE' :
+                                    {transaction.type === 'IN' ? 'STOCK ADDED' :
+                                     transaction.type === 'OUT' ? 'INSTALLED/USED' :
                                      transaction.type === 'RESERVED' ? 'RESERVED' :
-                                     transaction.type === 'UNRESERVED' ? 'UNRESERVED' :
-                                     transaction.type === 'EDIT' ? 'EDIT' :
+                                     transaction.type === 'UNRESERVED' ? 'RETURNED' :
+                                     transaction.type === 'EDIT' ? 'EDITED' :
                                      transaction.type}
                                   </Badge>
                                 </div>
@@ -1359,14 +1364,30 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                                   projects.find(p => p.id === transaction.referenceId)?.name || 'Unknown Project' :
                                   transaction.referenceType === 'DISPATCH' ? 
                                   `Dispatch: ${transaction.referenceId?.slice(-8) || 'Unknown'}` :
+                                  transaction.referenceType === 'MANUAL' ?
+                                  (transaction.referenceId === 'STOCK_EDIT' ? 'Stock Edit' :
+                                   transaction.referenceId === 'INFO_EDIT' ? 'Info Update' :
+                                   transaction.referenceId === 'INITIAL_STOCK' ? 'Initial Stock' :
+                                   'Manual Entry') :
                                   transaction.referenceType || 'N/A'}
                               </TableCell>
                               <TableCell>
-                                {transaction.transactionDate ? 
-                                  new Date(transaction.transactionDate).toLocaleDateString() : 
-                                  new Date(transaction.createdAt).toLocaleDateString()}
+                                <div className="text-sm">
+                                  {transaction.transactionDate ? 
+                                    new Date(transaction.transactionDate).toLocaleDateString() : 
+                                    new Date(transaction.createdAt).toLocaleDateString()}
+                                  <div className="text-xs text-muted-foreground">
+                                    {transaction.transactionDate ? 
+                                      new Date(transaction.transactionDate).toLocaleTimeString() : 
+                                      new Date(transaction.createdAt).toLocaleTimeString()}
+                                  </div>
+                                </div>
                               </TableCell>
-                              <TableCell>{transaction.notes || 'N/A'}</TableCell>
+                              <TableCell className="max-w-xs">
+                                <div className="text-sm truncate" title={transaction.notes || 'N/A'}>
+                                  {transaction.notes || 'N/A'}
+                                </div>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

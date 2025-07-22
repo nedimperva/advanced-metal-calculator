@@ -2433,6 +2433,37 @@ export async function reserveMaterialStock(materialCatalogId: string, quantity: 
   })
 }
 
+export async function unreserveMaterialStock(materialCatalogId: string, quantity: number, projectId: string): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const stock = await getMaterialStockByMaterialId(materialCatalogId)
+      if (!stock) {
+        reject(new Error('Material stock not found'))
+        return
+      }
+      
+      if (stock.reservedStock < quantity) {
+        reject(new Error('Insufficient reserved stock'))
+        return
+      }
+      
+      // Update stock quantities - return reserved to available
+      const updatedStock = {
+        ...stock,
+        reservedStock: stock.reservedStock - quantity,
+        availableStock: stock.availableStock + quantity,
+        lastStockUpdate: new Date()
+      }
+      
+      await updateMaterialStock(updatedStock)
+      
+      resolve()
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
 /**
  * Create a material stock transaction
  */
