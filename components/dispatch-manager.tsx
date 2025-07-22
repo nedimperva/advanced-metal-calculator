@@ -83,7 +83,8 @@ import {
   getDispatchMaterials,
   updateDispatchNote,
   getDispatchNote,
-  getAllMaterialCatalog
+  getAllMaterialCatalog,
+  createMaterialStock
 } from '@/lib/database'
 
 interface DispatchRecord {
@@ -410,7 +411,9 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
       let stockUpdated = 0
       
       for (const material of dispatch.materials) {
-        if (material.deliveredQuantity <= 0) continue
+        // When marking as delivered, use ordered quantity if delivered quantity is 0
+        const deliveredQuantity = material.deliveredQuantity > 0 ? material.deliveredQuantity : material.orderedQuantity
+        if (deliveredQuantity <= 0) continue
         
         // Try to find stock record by matching material name with catalog
         let stockRecord = null
@@ -440,10 +443,32 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           })
         }
         
+        // If no stock record found but we have a catalog material, create one
+        if (!stockRecord && catalogMaterial) {
+          console.log(`Creating new stock record for material: ${catalogMaterial.name}`)
+          const newStockId = await createMaterialStock({
+            materialCatalogId: catalogMaterial.id,
+            currentStock: 0,
+            reservedStock: 0,
+            availableStock: 0,
+            minimumStock: 10,
+            maximumStock: 1000,
+            unitCost: catalogMaterial.basePrice || 0,
+            totalValue: 0,
+            location: 'Warehouse',
+            supplier: 'Unknown',
+            notes: `Stock record created automatically from dispatch delivery`
+          })
+          
+          // Reload stock records to include the new one
+          const updatedStockRecords = await getAllMaterialStock()
+          stockRecord = updatedStockRecords.find(stock => stock.id === newStockId)
+        }
+        
         if (stockRecord) {
           // Update stock levels
-          const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(material.deliveredQuantity) || 0)
-          const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(material.deliveredQuantity) || 0)
+          const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(deliveredQuantity) || 0)
+          const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(deliveredQuantity) || 0)
           const newTotalValue = newCurrentStock * (Number(stockRecord.unitCost) || 0)
           
           await updateMaterialStock({
@@ -459,9 +484,9 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           await createMaterialStockTransaction({
             materialStockId: stockRecord.id,
             type: 'IN',
-            quantity: material.deliveredQuantity,
-            unitCost: stockRecord.unitCost,
-            totalCost: material.deliveredQuantity * stockRecord.unitCost,
+            quantity: deliveredQuantity,
+            unitCost: stockRecord.unitCost || 0,
+            totalCost: deliveredQuantity * (stockRecord.unitCost || 0),
             referenceId: dispatchId,
             referenceType: 'DISPATCH',
             transactionDate: new Date(),
@@ -472,6 +497,8 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           stockUpdated++
         } else {
           console.warn(`Could not find stock record for material: ${material.materialName}`)
+          console.log('Available catalog materials:', catalogMaterials.map(cm => cm.name))
+          console.log('Available stock records:', stockRecords.map(sr => sr.materialCatalogId))
         }
       }
       
@@ -532,7 +559,9 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           let stockUpdated = 0
           
           for (const material of dispatch.materials) {
-            if (material.deliveredQuantity <= 0) continue
+            // When marking as delivered, use ordered quantity if delivered quantity is 0
+            const deliveredQuantity = material.deliveredQuantity > 0 ? material.deliveredQuantity : material.orderedQuantity
+            if (deliveredQuantity <= 0) continue
             
             // Find stock record by matching material name with catalog
             let stockRecord = null
@@ -559,9 +588,31 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
               })
             }
             
+            // If no stock record found but we have a catalog material, create one
+            if (!stockRecord && catalogMaterial) {
+              console.log(`Creating new stock record for material: ${catalogMaterial.name}`)
+              const newStockId = await createMaterialStock({
+                materialCatalogId: catalogMaterial.id,
+                currentStock: 0,
+                reservedStock: 0,
+                availableStock: 0,
+                minimumStock: 10,
+                maximumStock: 1000,
+                unitCost: catalogMaterial.basePrice || 0,
+                totalValue: 0,
+                location: 'Warehouse',
+                supplier: 'Unknown',
+                notes: `Stock record created automatically from dispatch delivery`
+              })
+              
+              // Reload stock records to include the new one
+              const updatedStockRecords = await getAllMaterialStock()
+              stockRecord = updatedStockRecords.find(stock => stock.id === newStockId)
+            }
+            
             if (stockRecord) {
-              const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(material.deliveredQuantity) || 0)
-              const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(material.deliveredQuantity) || 0)
+              const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(deliveredQuantity) || 0)
+              const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(deliveredQuantity) || 0)
               const newTotalValue = newCurrentStock * (Number(stockRecord.unitCost) || 0)
               
               await updateMaterialStock({
@@ -576,9 +627,9 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
               await createMaterialStockTransaction({
                 materialStockId: stockRecord.id,
                 type: 'IN',
-                quantity: material.deliveredQuantity,
-                unitCost: stockRecord.unitCost,
-                totalCost: material.deliveredQuantity * stockRecord.unitCost,
+                quantity: deliveredQuantity,
+                unitCost: stockRecord.unitCost || 0,
+                totalCost: deliveredQuantity * (stockRecord.unitCost || 0),
                 referenceId: dispatchId,
                 referenceType: 'DISPATCH',
                 transactionDate: new Date(),
@@ -587,6 +638,10 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
               })
               
               stockUpdated++
+            } else {
+              console.warn(`Could not find stock record for material: ${material.materialName}`)
+              console.log('Available catalog materials:', catalogMaterials.map(cm => cm.name))
+              console.log('Available stock records:', stockRecords.map(sr => sr.materialCatalogId))
             }
           }
         }
