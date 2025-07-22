@@ -23,6 +23,14 @@ import {
   DialogFooter
 } from '@/components/ui/dialog'
 import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { 
   Command,
   CommandEmpty,
   CommandGroup,
@@ -71,7 +79,11 @@ import {
   createMaterialStockTransaction,
   createDispatchNote,
   getAllDispatchNotes,
-  createDispatchMaterial
+  createDispatchMaterial,
+  getDispatchMaterials,
+  updateDispatchNote,
+  getDispatchNote,
+  getAllMaterialCatalog
 } from '@/lib/database'
 
 interface DispatchRecord {
@@ -117,6 +129,8 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   const [showViewDialog, setShowViewDialog] = useState(false)
   const [showAddMaterialModal, setShowAddMaterialModal] = useState(false)
   const [selectedDispatch, setSelectedDispatch] = useState<DispatchRecord | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editingDispatch, setEditingDispatch] = useState<DispatchRecord | null>(null)
   
   // New dispatch form
   const [newDispatch, setNewDispatch] = useState({
@@ -170,19 +184,36 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
         }
       }
 
-      // Convert to DispatchRecord format for compatibility
-      const dispatchRecords: DispatchRecord[] = dispatchNotes.map(note => ({
-        id: note.id,
-        orderNumber: note.dispatchNumber || note.orderNumber || 'N/A',
-        supplierName: note.supplier?.name || 'Unknown Supplier',
-        expectedDate: safeDate(note.expectedDeliveryDate),
-        actualDate: note.actualDeliveryDate ? safeDate(note.actualDeliveryDate) : undefined,
-        status: note.status as 'pending' | 'in_transit' | 'delivered' | 'cancelled',
-        materials: [], // Will be populated later with dispatch materials
-        notes: note.notes || '',
-        createdAt: safeISODate(note.createdAt),
-        updatedAt: safeISODate(note.updatedAt)
-      }))
+      // Convert to DispatchRecord format and load materials for each
+      const dispatchRecords: DispatchRecord[] = []
+      
+      for (const note of dispatchNotes) {
+        // Get materials for this dispatch
+        const dispatchMaterials = await getDispatchMaterials(note.id)
+        
+        const materials: MaterialDelivery[] = dispatchMaterials.map(dm => ({
+          id: dm.id,
+          materialName: dm.materialType + ' ' + dm.profile + ' ' + dm.grade,
+          materialId: dm.id, // Use dispatch material ID since we don't have catalog ID
+          orderedQuantity: dm.orderedQuantity,
+          deliveredQuantity: dm.deliveredQuantity,
+          unit: dm.unit,
+          notes: dm.notes || ''
+        }))
+        
+        dispatchRecords.push({
+          id: note.id,
+          orderNumber: note.dispatchNumber || note.orderNumber || 'N/A',
+          supplierName: note.supplier?.name || 'Unknown Supplier',
+          expectedDate: safeDate(note.expectedDeliveryDate),
+          actualDate: note.actualDeliveryDate ? safeDate(note.actualDeliveryDate) : undefined,
+          status: note.status as 'pending' | 'in_transit' | 'delivered' | 'cancelled',
+          materials: materials,
+          notes: note.notes || '',
+          createdAt: safeISODate(note.createdAt),
+          updatedAt: safeISODate(note.updatedAt)
+        })
+      }
       
       setDispatches(dispatchRecords)
     } catch (error) {
@@ -348,63 +379,227 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
     try {
       const dispatch = dispatches.find(d => d.id === dispatchId)
       if (!dispatch) return
-
-      // Update dispatch status
-      const updatedDispatch = {
-        ...dispatch,
-        status: 'delivered' as const,
-        actualDate: new Date().toISOString()
+      
+      // Get the dispatch note from database to update it
+      const dispatchNote = await getDispatchNote(dispatchId)
+      if (!dispatchNote) {
+        toast({
+          title: "Error",
+          description: "Dispatch note not found",
+          variant: "destructive"
+        })
+        return
       }
-
-      // Update dispatches state
-      setDispatches(prev => prev.map(d => d.id === dispatchId ? updatedDispatch : d))
-
+      
+      // Update dispatch status in database
+      await updateDispatchNote({
+        ...dispatchNote,
+        status: 'delivered',
+        actualDeliveryDate: new Date()
+      })
+      
       // Update stock levels for each material
-      const stockRecords = await getAllMaterialStock()
+      const [stockRecords, catalogMaterials] = await Promise.all([
+        getAllMaterialStock(),
+        getAllMaterialCatalog()
+      ])
+      
+      let stockUpdated = 0
       
       for (const material of dispatch.materials) {
-        // Find stock record by material name (simplified matching)
-        const stockRecord = stockRecords.find(stock => 
-          stock.materialCatalogId === material.materialId ||
-          // Fallback: match by name if no direct ID match
-          stockRecords.find(s => s.materialCatalogId === material.materialName)
+        if (material.deliveredQuantity <= 0) continue
+        
+        // Try to find stock record by matching material name with catalog
+        let stockRecord = null
+        
+        // First try to find by material name in catalog
+        const catalogMaterial = catalogMaterials.find(cm => 
+          cm.name.toLowerCase().includes(material.materialName.toLowerCase()) ||
+          material.materialName.toLowerCase().includes(cm.name.toLowerCase())
         )
-
-        if (stockRecord && material.deliveredQuantity > 0) {
+        
+        if (catalogMaterial) {
+          // Find stock record by catalog material ID
+          stockRecord = stockRecords.find(stock => stock.materialCatalogId === catalogMaterial.id)
+        }
+        
+        // If still not found, try fuzzy matching by name
+        if (!stockRecord) {
+          const materialWords = material.materialName.toLowerCase().split(' ')
+          stockRecord = stockRecords.find(stock => {
+            const catalogMat = catalogMaterials.find(cm => cm.id === stock.materialCatalogId)
+            if (!catalogMat) return false
+            
+            const catalogWords = catalogMat.name.toLowerCase().split(' ')
+            return materialWords.some(word => 
+              catalogWords.some(cword => cword.includes(word) || word.includes(cword))
+            )
+          })
+        }
+        
+        if (stockRecord) {
           // Update stock levels
           const newCurrentStock = stockRecord.currentStock + material.deliveredQuantity
           const newAvailableStock = stockRecord.availableStock + material.deliveredQuantity
           const newTotalValue = newCurrentStock * stockRecord.unitCost
-
-          await updateMaterialStock(stockRecord.id, {
+          
+          await updateMaterialStock({
+            ...stockRecord,
             currentStock: newCurrentStock,
             availableStock: newAvailableStock,
             totalValue: newTotalValue,
-            lastStockUpdate: new Date()
+            lastStockUpdate: new Date(),
+            updatedAt: new Date()
           })
-
-          // Create stock transaction
+          
+          // Create transaction record
           await createMaterialStockTransaction({
             materialStockId: stockRecord.id,
             type: 'IN',
             quantity: material.deliveredQuantity,
             unitCost: stockRecord.unitCost,
             totalCost: material.deliveredQuantity * stockRecord.unitCost,
-            referenceId: dispatch.id,
+            referenceId: dispatchId,
             referenceType: 'DISPATCH',
             transactionDate: new Date(),
-            notes: `Delivery from dispatch: ${dispatch.orderNumber}`,
+            notes: `Delivered via dispatch ${dispatch.orderNumber}. Material: ${material.materialName}`,
             createdBy: 'system'
           })
+          
+          stockUpdated++
+        } else {
+          console.warn(`Could not find stock record for material: ${material.materialName}`)
         }
       }
+      
+      // Reload dispatches to reflect changes
+      await loadDispatches()
 
       toast({
         title: "Success",
-        description: "Dispatch marked as delivered and stock updated"
+        description: `Dispatch marked as delivered. ${stockUpdated} materials added to stock.`
       })
     } catch (error) {
       console.error('Failed to mark dispatch as delivered:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update dispatch status",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleStatusChange = async (dispatchId: string, newStatus: string) => {
+    try {
+      // Get the dispatch note from database
+      const dispatchNote = await getDispatchNote(dispatchId)
+      if (!dispatchNote) {
+        toast({
+          title: "Error",
+          description: "Dispatch note not found",
+          variant: "destructive"
+        })
+        return
+      }
+      
+      // Update dispatch status in database
+      const updatedDispatchNote = {
+        ...dispatchNote,
+        status: newStatus as any,
+        updatedAt: new Date()
+      }
+      
+      // If marking as delivered, also set actual delivery date and update stock
+      if (newStatus === 'delivered' && !dispatchNote.actualDeliveryDate) {
+        updatedDispatchNote.actualDeliveryDate = new Date()
+      }
+      
+      await updateDispatchNote(updatedDispatchNote)
+      
+      // If changing to delivered, update stock levels
+      if (newStatus === 'delivered') {
+        const dispatch = dispatches.find(d => d.id === dispatchId)
+        if (dispatch) {
+          // Use the same stock update logic from handleMarkAsDelivered
+          const [stockRecords, catalogMaterials] = await Promise.all([
+            getAllMaterialStock(),
+            getAllMaterialCatalog()
+          ])
+          
+          let stockUpdated = 0
+          
+          for (const material of dispatch.materials) {
+            if (material.deliveredQuantity <= 0) continue
+            
+            // Find stock record by matching material name with catalog
+            let stockRecord = null
+            
+            const catalogMaterial = catalogMaterials.find(cm => 
+              cm.name.toLowerCase().includes(material.materialName.toLowerCase()) ||
+              material.materialName.toLowerCase().includes(cm.name.toLowerCase())
+            )
+            
+            if (catalogMaterial) {
+              stockRecord = stockRecords.find(stock => stock.materialCatalogId === catalogMaterial.id)
+            }
+            
+            if (!stockRecord) {
+              const materialWords = material.materialName.toLowerCase().split(' ')
+              stockRecord = stockRecords.find(stock => {
+                const catalogMat = catalogMaterials.find(cm => cm.id === stock.materialCatalogId)
+                if (!catalogMat) return false
+                
+                const catalogWords = catalogMat.name.toLowerCase().split(' ')
+                return materialWords.some(word => 
+                  catalogWords.some(cword => cword.includes(word) || word.includes(cword))
+                )
+              })
+            }
+            
+            if (stockRecord) {
+              const newCurrentStock = stockRecord.currentStock + material.deliveredQuantity
+              const newAvailableStock = stockRecord.availableStock + material.deliveredQuantity
+              const newTotalValue = newCurrentStock * stockRecord.unitCost
+              
+              await updateMaterialStock({
+                ...stockRecord,
+                currentStock: newCurrentStock,
+                availableStock: newAvailableStock,
+                totalValue: newTotalValue,
+                lastStockUpdate: new Date(),
+                updatedAt: new Date()
+              })
+              
+              await createMaterialStockTransaction({
+                materialStockId: stockRecord.id,
+                type: 'IN',
+                quantity: material.deliveredQuantity,
+                unitCost: stockRecord.unitCost,
+                totalCost: material.deliveredQuantity * stockRecord.unitCost,
+                referenceId: dispatchId,
+                referenceType: 'DISPATCH',
+                transactionDate: new Date(),
+                notes: `Delivered via dispatch ${dispatch.orderNumber}. Material: ${material.materialName}`,
+                createdBy: 'system'
+              })
+              
+              stockUpdated++
+            }
+          }
+        }
+      }
+      
+      // Reload dispatches to reflect changes
+      await loadDispatches()
+      
+      toast({
+        title: "Success",
+        description: newStatus === 'delivered' ? 
+          `Dispatch marked as delivered. Materials added to stock.` :
+          `Dispatch status updated to ${newStatus}`
+      })
+    } catch (error) {
+      console.error('Failed to update dispatch status:', error)
       toast({
         title: "Error",
         description: "Failed to update dispatch status",
@@ -557,19 +752,45 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                               <CheckCircle2 className="w-3 h-3" />
                             </Button>
                           )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              // TODO: Add edit functionality
-                              toast({
-                                title: "Coming Soon",
-                                description: "Edit dispatch functionality will be available soon"
-                              })
-                            }}
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(dispatch.id, 'pending')}
+                                disabled={dispatch.status === 'pending'}
+                              >
+                                <Clock className="w-4 h-4 mr-2" />
+                                Pending
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(dispatch.id, 'in_transit')}
+                                disabled={dispatch.status === 'in_transit'}
+                              >
+                                <Truck className="w-4 h-4 mr-2" />
+                                In Transit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(dispatch.id, 'delivered')}
+                                disabled={dispatch.status === 'delivered'}
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                Delivered
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(dispatch.id, 'cancelled')}
+                                disabled={dispatch.status === 'cancelled'}
+                              >
+                                <AlertTriangle className="w-4 h-4 mr-2" />
+                                Cancelled
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
