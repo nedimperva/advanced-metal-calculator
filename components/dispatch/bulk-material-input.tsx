@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { 
   Plus, 
   Trash2, 
@@ -22,10 +23,11 @@ import {
   Calculator
 } from "lucide-react"
 import { toast } from '@/hooks/use-toast'
-import type { DispatchMaterial, DispatchMaterialStatus } from '@/lib/types'
+import type { DispatchMaterial, DispatchMaterialStatus, MaterialCatalog } from '@/lib/types'
 import { MATERIALS } from '@/lib/metal-data'
 import { LENGTH_UNITS, WEIGHT_UNITS } from '@/lib/unit-conversions'
 import { useMaterials } from '@/contexts/material-context'
+import { useMaterialCatalog } from '@/contexts/material-catalog-context'
 import { useI18n } from '@/contexts/i18n-context'
 
 interface BulkMaterialInputProps {
@@ -95,6 +97,7 @@ export function BulkMaterialInput({
   existingMaterials = [] 
 }: BulkMaterialInputProps) {
   const { bulkAddMaterials } = useMaterials()
+  const { materials: catalogMaterials, loadMaterials, createMaterial } = useMaterialCatalog()
   const { t } = useI18n()
 
   const [materials, setMaterials] = useState<MaterialFormData[]>(() => {
@@ -123,6 +126,32 @@ export function BulkMaterialInput({
 
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [showAddMaterialModal, setShowAddMaterialModal] = useState(false)
+
+  // Load catalog materials on component mount
+  useEffect(() => {
+    loadMaterials()
+  }, [loadMaterials])
+
+  // Handle adding new material to catalog
+  const handleAddToCatalog = async (materialData: Omit<MaterialCatalog, 'id' | 'createdAt' | 'updatedAt' | 'version'>) => {
+    try {
+      await createMaterial(materialData)
+      toast({
+        title: "Success",
+        description: "Material added to catalog successfully",
+      })
+      setShowAddMaterialModal(false)
+      // Reload materials to include the new one
+      loadMaterials()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add material to catalog",
+        variant: "destructive"
+      })
+    }
+  }
 
   function generateId() {
     return `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -355,6 +384,26 @@ export function BulkMaterialInput({
                   </Select>
                   {errors[`${material.id}.materialType`] && (
                     <p className="text-sm text-destructive">{errors[`${material.id}.materialType`]}</p>
+                  )}
+                  
+                  {/* Database Integration Helper */}
+                  {material.materialType && !catalogMaterials.some(cm => cm.name.toLowerCase().includes(material.materialType.toLowerCase())) && (
+                    <div className="mt-2">
+                      <div className="flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <Package className="h-4 w-4 text-yellow-600" />
+                        <span className="text-sm text-yellow-700">
+                          Material not in catalog database
+                        </span>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                          onClick={() => setShowAddMaterialModal(true)}
+                        >
+                          Add to Catalog
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -625,6 +674,31 @@ export function BulkMaterialInput({
           {isLoading ? t('saving') : t('addMaterials')}
         </Button>
       </div>
+
+      {/* Add Material to Catalog Dialog */}
+      <Dialog open={showAddMaterialModal} onOpenChange={setShowAddMaterialModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Material to Catalog</DialogTitle>
+            <DialogDescription>
+              This feature will redirect you to the Materials Management page where you can add new materials to your catalog database.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setShowAddMaterialModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowAddMaterialModal(false)
+                window.open('/management?tab=materials', '_blank')
+              }}
+            >
+              Open Materials Manager
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

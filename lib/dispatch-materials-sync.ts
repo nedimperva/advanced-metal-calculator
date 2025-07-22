@@ -12,7 +12,11 @@ import {
   updateProjectMaterial,
   getProjectMaterialsBySource,
   getDispatchNotesByProject,
-  getDispatchMaterialsByDispatch
+  getDispatchMaterialsByDispatch,
+  getMaterialStockByMaterialId,
+  updateMaterialStock,
+  createMaterialStockTransaction,
+  createMaterialStock
 } from './database'
 
 /**
@@ -158,6 +162,14 @@ export async function syncDispatchToProjectMaterials(
 
           await createProjectMaterial(newMaterial)
           result.materialsCreated++
+
+          // Update stock when material is delivered
+          try {
+            await updateStockFromDispatchDelivery(dispatchMaterial, dispatchNote)
+          } catch (stockError) {
+            console.warn(`Stock update failed for material ${dispatchMaterial.id}:`, stockError)
+            // Don't fail the main sync if stock update fails
+          }
         } else {
           result.materialsSkipped++
         }
@@ -176,6 +188,77 @@ export async function syncDispatchToProjectMaterials(
   }
 
   return result
+}
+
+/**
+ * Update material stock when dispatch materials are delivered
+ */
+export async function updateStockFromDispatchDelivery(
+  dispatchMaterial: DispatchMaterial,
+  dispatchNote: DispatchNote
+): Promise<void> {
+  // Only process materials that have been delivered (arrived, inspected, allocated)
+  if (!['arrived', 'inspected', 'allocated'].includes(dispatchMaterial.status)) {
+    return
+  }
+
+  try {
+    // Create a simple material identifier for stock lookup
+    // In a real implementation, you'd want a more sophisticated material matching system
+    const materialIdentifier = `${dispatchMaterial.materialType}-${dispatchMaterial.grade}-${dispatchMaterial.profile}`
+    
+    // Try to find existing stock for this material
+    // Note: This requires implementing getMaterialStockByMaterialId or similar function
+    // For now, we'll create stock entries for dispatch materials
+    
+    const stockEntry = {
+      materialCatalogId: `dispatch-${dispatchMaterial.id}`, // Temporary ID until catalog integration
+      material: {
+        name: `${dispatchMaterial.materialType} ${dispatchMaterial.grade}`,
+        type: dispatchMaterial.materialType,
+        profile: dispatchMaterial.profile,
+        grade: dispatchMaterial.grade,
+        dimensions: dispatchMaterial.dimensions
+      },
+      currentStock: dispatchMaterial.quantity,
+      availableStock: dispatchMaterial.quantity,
+      reservedStock: 0,
+      unitWeight: dispatchMaterial.unitWeight,
+      totalWeight: dispatchMaterial.totalWeight,
+      unitCost: dispatchMaterial.unitCost,
+      totalValue: dispatchMaterial.totalCost,
+      currency: dispatchMaterial.currency || 'USD',
+      location: dispatchMaterial.location || 'Warehouse',
+      supplier: dispatchNote.supplier?.name || 'Unknown',
+      supplierRef: dispatchNote.orderNumber,
+      notes: `Delivered via dispatch note ${dispatchNote.dispatchNumber}`,
+      lastStockUpdate: new Date()
+    }
+
+    // Create stock entry
+    const stockId = await createMaterialStock(stockEntry)
+
+    // Create stock transaction
+    await createMaterialStockTransaction({
+      materialStockId: stockId,
+      type: 'IN',
+      quantity: dispatchMaterial.quantity,
+      unitCost: dispatchMaterial.unitCost,
+      totalCost: dispatchMaterial.totalCost,
+      currency: dispatchMaterial.currency || 'USD',
+      referenceId: dispatchNote.id,
+      referenceType: 'DISPATCH',
+      transactionDate: dispatchNote.actualDeliveryDate || new Date(),
+      notes: `Material delivery from dispatch ${dispatchNote.dispatchNumber}`,
+      createdBy: 'system'
+    })
+
+    console.log(`Stock updated for dispatch material ${dispatchMaterial.id}: +${dispatchMaterial.quantity} units`)
+
+  } catch (error) {
+    console.error(`Failed to update stock for dispatch material ${dispatchMaterial.id}:`, error)
+    throw error
+  }
 }
 
 /**

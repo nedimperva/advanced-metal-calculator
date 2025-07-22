@@ -2467,24 +2467,29 @@ export async function createMaterialStockTransaction(transaction: Omit<MaterialS
  */
 export async function getMaterialStockTransactions(materialStockId: string): Promise<MaterialStockTransaction[]> {
   return new Promise(async (resolve, reject) => {
-    const db = await getDatabase()
-    const transaction = db.transaction([STORES.MATERIAL_STOCK_TRANSACTIONS], 'readonly')
-    const store = transaction.objectStore(STORES.MATERIAL_STOCK_TRANSACTIONS)
-    
-    const request = store.getAll()
-    
-    request.onsuccess = () => {
-      const results = request.result
-        .filter((trans: any) => trans.materialStockId === materialStockId)
-        .map((trans: any) => ({
+    try {
+      const db = await getDatabase()
+      const transaction = db.transaction([STORES.MATERIAL_STOCK_TRANSACTIONS], 'readonly')
+      const store = transaction.objectStore(STORES.MATERIAL_STOCK_TRANSACTIONS)
+      
+      // Use the materialStockId index for better performance
+      const index = store.index('materialStockId')
+      const request = index.getAll(materialStockId)
+      
+      request.onsuccess = () => {
+        const results = request.result.map((trans: any) => ({
           ...trans,
           transactionDate: new Date(trans.transactionDate),
           createdAt: new Date(trans.createdAt)
         }))
-      resolve(results)
-    }
-    request.onerror = () => {
-      reject(new Error(`Failed to get material stock transactions: ${request.error?.message}`))
+        resolve(results)
+      }
+      
+      request.onerror = () => {
+        reject(new Error(`Failed to get material stock transactions: ${request.error?.message}`))
+      }
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
     }
   })
 }
