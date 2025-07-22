@@ -99,7 +99,6 @@ import { useProjects } from '@/contexts/project-context'
 import { LoadingSpinner } from '@/components/loading-states'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
-import MaterialAllocationDashboard from './material-allocation-dashboard'
 
 interface EnhancedProjectMaterialsProps {
   project: Project
@@ -187,7 +186,7 @@ function MaterialCard({ material, onEdit, onDelete, onStatusChange, isMobile }: 
                     <div className="text-muted-foreground text-xs">Quantity & Weight</div>
                     <div className="font-medium">
                       {material.quantity} {material.unit || 'pcs'} 
-                      {material.totalWeight > 0 && (
+                      {material.totalWeight > 0 && material.unit !== 'kg' && (
                         <span className="text-muted-foreground ml-1">
                           ({material.totalWeight.toFixed(2)} {material.weightUnit})
                         </span>
@@ -384,7 +383,7 @@ function StockMaterialSelector({ projectId, onAssign }: StockMaterialSelectorPro
         createdBy: 'system'
       })
 
-      // Create project material
+      // Create project material with proper unit handling
       const projectMaterial: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
         projectId,
         materialCatalogId: selectedStock.materialCatalogId,
@@ -393,8 +392,9 @@ function StockMaterialSelector({ projectId, onAssign }: StockMaterialSelectorPro
         grade: selectedStock.material.availableGrades?.[0] || selectedStock.material.type,
         dimensions: {},
         quantity: assignQuantity,
+        unit: 'kg', // Ensure consistent unit usage
         unitWeight: selectedStock.material.density || 1,
-        totalWeight: assignQuantity * (selectedStock.material.density || 1),
+        totalWeight: assignQuantity, // For weight-based materials, quantity IS the weight
         unitCost: selectedStock.unitCost,
         totalCost: assignQuantity * selectedStock.unitCost,
         lengthUnit: 'mm',
@@ -628,7 +628,7 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
 
       if (!stockResponse.ok) throw new Error('Failed to create stock record')
 
-      // Finally, assign to project
+      // Finally, assign to project with proper unit handling
       const projectMaterial: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
         projectId,
         materialCatalogId: catalogMaterial.id,
@@ -637,11 +637,12 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
         grade: formData.grade,
         dimensions: formData.dimensions || {},
         quantity: formData.quantity,
-        unitWeight: formData.unitWeight || 0,
-        totalWeight: (formData.unitWeight || 0) * formData.quantity,
+        unit: formData.unit, // Use the selected unit consistently
+        unitWeight: formData.unitWeight || (formData.unit === 'kg' ? 1 : 0), // For kg unit, unitWeight is 1
+        totalWeight: formData.unit === 'kg' ? formData.quantity : (formData.unitWeight || 0) * formData.quantity,
         lengthUnit: formData.lengthUnit,
         weightUnit: formData.weightUnit,
-        status: ProjectMaterialStatus.AVAILABLE,
+        status: ProjectMaterialStatus.REQUIRED,
         supplier: formData.supplier || undefined,
         notes: formData.notes || undefined,
         source: ProjectMaterialSource.MANUAL,
@@ -1039,40 +1040,63 @@ export default function EnhancedProjectMaterials({
     if (installedQty <= 0 || installedQty > totalQty) {
       toast({
         title: 'Invalid Quantity',
-        description: `Installed quantity must be between 1 and ${totalQty}`,
+        description: `Installed quantity must be between 0.01 and ${totalQty}`,
         variant: 'destructive'
       })
       return
     }
 
     try {
-      // Update material status to INSTALLED
-      await updateProjectMaterialStatus(installMaterial.id, ProjectMaterialStatus.INSTALLED)
-
-      // If partial installation and user wants to return remaining to stock
       const remainingQty = totalQty - installedQty
-      if (remainingQty > 0 && returnToStock && installMaterial.materialCatalogId) {
-        // Unreserve the remaining quantity back to stock
-        await unreserveMaterialStock(installMaterial.materialCatalogId, remainingQty, project.id)
-        
-        // Create transaction record for return to stock
-        const materialStock = await getAllMaterialStock()
-        const stockRecord = materialStock.find(s => s.materialCatalogId === installMaterial.materialCatalogId)
-        
-        if (stockRecord) {
-          await createMaterialStockTransaction({
-            materialStockId: stockRecord.id,
-            type: 'UNRESERVED',
+      
+      // If partial installation, update the material quantity to installed amount
+      if (remainingQty > 0) {
+        // Update material quantity to installed amount
+        await updateProjectMaterial(installMaterial.id, {
+          quantity: installedQty,
+          totalWeight: installMaterial.unit === 'kg' ? installedQty : installedQty * (installMaterial.unitWeight || 1),
+          totalCost: installedQty * (installMaterial.unitCost || 0),
+          status: ProjectMaterialStatus.INSTALLED
+        })
+
+        // Handle remaining quantity based on user choice
+        if (returnToStock && installMaterial.materialCatalogId) {
+          // Return remaining to stock
+          await unreserveMaterialStock(installMaterial.materialCatalogId, remainingQty, project.id)
+          
+          const materialStock = await getAllMaterialStock()
+          const stockRecord = materialStock.find(s => s.materialCatalogId === installMaterial.materialCatalogId)
+          
+          if (stockRecord) {
+            await createMaterialStockTransaction({
+              materialStockId: stockRecord.id,
+              type: 'UNRESERVED',
+              quantity: remainingQty,
+              unitCost: installMaterial.unitCost || 0,
+              totalCost: remainingQty * (installMaterial.unitCost || 0),
+              referenceId: installMaterial.id,
+              referenceType: 'PROJECT',
+              transactionDate: new Date(),
+              notes: `Returned to stock after partial installation. Installed: ${installedQty}, Returned: ${remainingQty}`,
+              createdBy: 'user'
+            })
+          }
+        } else {
+          // Keep remaining as reserved - create new material entry for remaining quantity
+          const remainingMaterial: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
+            ...installMaterial,
             quantity: remainingQty,
-            unitCost: installMaterial.unitCost || 0,
+            totalWeight: installMaterial.unit === 'kg' ? remainingQty : remainingQty * (installMaterial.unitWeight || 1),
             totalCost: remainingQty * (installMaterial.unitCost || 0),
-            referenceId: installMaterial.id,
-            referenceType: 'PROJECT',
-            transactionDate: new Date(),
-            notes: `Returned to stock after installation. Installed: ${installedQty}, Returned: ${remainingQty}`,
-            createdBy: 'user'
-          })
+            status: ProjectMaterialStatus.DELIVERED, // Keep as reserved/delivered
+            notes: `Remaining quantity from installation of ${installedQty} ${installMaterial.unit || 'units'}. ${installMaterial.notes || ''}`.trim()
+          }
+          
+          await createProjectMaterial(remainingMaterial)
         }
+      } else {
+        // Full installation
+        await updateProjectMaterialStatus(installMaterial.id, ProjectMaterialStatus.INSTALLED)
       }
 
       // Create transaction record for installation
@@ -1213,14 +1237,8 @@ export default function EnhancedProjectMaterials({
         )}
       </div>
 
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="materials" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="materials">Materials List</TabsTrigger>
-          <TabsTrigger value="allocation">Allocation Dashboard</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="materials" className="space-y-4 mt-6">
+      {/* Materials Management */}
+      <div className="space-y-4 mt-6">
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -1301,15 +1319,7 @@ export default function EnhancedProjectMaterials({
           ))
         )}
         </div>
-        </TabsContent>
-
-        <TabsContent value="allocation" className="mt-6">
-          <MaterialAllocationDashboard
-            project={project}
-            onUpdate={loadMaterials}
-          />
-        </TabsContent>
-      </Tabs>
+      </div>
 
       {/* Add Material Modal */}
       <AddMaterialModal

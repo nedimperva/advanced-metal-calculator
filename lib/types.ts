@@ -78,6 +78,7 @@ export interface ProjectMaterial {
   
   // Project-Specific Data
   quantity: number
+  unit?: string // The unit for quantity (kg, pieces, m, etc.)
   unitWeight: number
   totalWeight: number
   unitCost?: number
