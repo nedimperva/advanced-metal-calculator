@@ -50,7 +50,9 @@ import {
   Calendar,
   User,
   Building,
-  Truck
+  Truck,
+  Clock,
+  Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -253,7 +255,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
       const materialId = await createMaterialCatalog(materialData)
       
       // Create initial stock entry for the new material
-      await createMaterialStock({
+      const stockId = await createMaterialStock({
         materialCatalogId: materialId,
         currentStock: stockData.currentStock,
         reservedStock: 0,
@@ -266,6 +268,22 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         supplier: newMaterial.supplier || 'Default Supplier',
         notes: newMaterial.notes || ''
       })
+
+      // Create initial transaction record if initial stock > 0
+      if (stockData.currentStock > 0) {
+        await createMaterialStockTransaction({
+          materialStockId: stockId,
+          type: 'IN',
+          quantity: stockData.currentStock,
+          unitCost: newMaterial.costPerUnit || 0,
+          totalCost: stockData.currentStock * (newMaterial.costPerUnit || 0),
+          referenceId: 'INITIAL_STOCK',
+          referenceType: 'MANUAL',
+          transactionDate: new Date(),
+          notes: `Initial stock added when material was created. Material: ${newMaterial.name}`,
+          createdBy: 'user'
+        })
+      }
       
       await loadMaterials()
       setShowCreateDialog(false)
@@ -399,6 +417,11 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
         return
       }
 
+      // Calculate the stock change
+      const stockChange = stockData.currentStock - currentStock.currentStock
+      const oldStock = currentStock.currentStock
+      const oldUnitCost = currentStock.unitCost
+
       // Update the stock with new values
       const updatedStock: MaterialStock = {
         ...currentStock,
@@ -415,6 +438,36 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
       }
 
       await updateMaterialStock(updatedStock)
+      
+      // Create transaction record for stock change if there is any
+      if (stockChange !== 0) {
+        await createMaterialStockTransaction({
+          materialStockId: currentStock.id,
+          type: stockChange > 0 ? 'IN' : 'OUT',
+          quantity: Math.abs(stockChange),
+          unitCost: stockData.unitCost,
+          totalCost: Math.abs(stockChange) * stockData.unitCost,
+          referenceId: 'STOCK_EDIT',
+          referenceType: 'MANUAL',
+          transactionDate: new Date(),
+          notes: `Stock ${stockChange > 0 ? 'increased' : 'decreased'} from ${oldStock} to ${stockData.currentStock}. ${oldUnitCost !== stockData.unitCost ? `Unit cost changed from ${oldUnitCost} to ${stockData.unitCost}.` : ''} Edited by user.`,
+          createdBy: 'user'
+        })
+      } else if (oldUnitCost !== stockData.unitCost || currentStock.location !== stockData.location || currentStock.supplier !== stockData.supplier) {
+        // Create transaction record for other changes (price, location, supplier)
+        await createMaterialStockTransaction({
+          materialStockId: currentStock.id,
+          type: 'EDIT',
+          quantity: 0,
+          unitCost: stockData.unitCost,
+          totalCost: 0,
+          referenceId: 'INFO_EDIT',
+          referenceType: 'MANUAL',
+          transactionDate: new Date(),
+          notes: `Material information updated. ${oldUnitCost !== stockData.unitCost ? `Unit cost: ${oldUnitCost} → ${stockData.unitCost}. ` : ''}${currentStock.location !== stockData.location ? `Location: ${currentStock.location} → ${stockData.location}. ` : ''}${currentStock.supplier !== stockData.supplier ? `Supplier: ${currentStock.supplier} → ${stockData.supplier}.` : ''}`,
+          createdBy: 'user'
+        })
+      }
       
       await loadMaterials()
       setShowStockDialog(false)
@@ -1274,22 +1327,32 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                                   {transaction.type === 'RESERVED' && (
                                     <Clock className="w-4 h-4 text-orange-600" />
                                   )}
+                                  {transaction.type === 'UNRESERVED' && (
+                                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                                  )}
+                                  {transaction.type === 'EDIT' && (
+                                    <Settings className="w-4 h-4 text-purple-600" />
+                                  )}
                                   <Badge variant={
                                     transaction.type === 'IN' ? 'default' :
                                     transaction.type === 'OUT' ? 'destructive' :
                                     transaction.type === 'RESERVED' ? 'secondary' :
+                                    transaction.type === 'UNRESERVED' ? 'outline' :
+                                    transaction.type === 'EDIT' ? 'secondary' :
                                     'outline'
                                   }>
                                     {transaction.type === 'IN' ? 'ARRIVAL' :
                                      transaction.type === 'OUT' ? 'USAGE' :
                                      transaction.type === 'RESERVED' ? 'RESERVED' :
+                                     transaction.type === 'UNRESERVED' ? 'UNRESERVED' :
+                                     transaction.type === 'EDIT' ? 'EDIT' :
                                      transaction.type}
                                   </Badge>
                                 </div>
                               </TableCell>
                               <TableCell className="font-medium">
-                                {transaction.type === 'IN' ? '+' : transaction.type === 'OUT' ? '-' : ''}
-                                {transaction.quantity}
+                                {transaction.type === 'IN' ? '+' : transaction.type === 'OUT' ? '-' : transaction.type === 'EDIT' ? '' : ''}
+                                {transaction.type === 'EDIT' ? (transaction.quantity === 0 ? 'N/A' : transaction.quantity) : transaction.quantity}
                               </TableCell>
                               <TableCell>
                                 {transaction.referenceType === 'PROJECT' ? 
