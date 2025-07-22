@@ -104,7 +104,7 @@ interface DispatchManagerProps {
 export default function DispatchManager({ className }: DispatchManagerProps) {
   const { t } = useI18n()
   const { materials: catalogMaterials, loadMaterials, createMaterial } = useMaterialCatalog()
-  const { currentProject } = useProjects()
+  const { projects, currentProject } = useProjects()
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [mounted, setMounted] = useState(false)
   
@@ -120,6 +120,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   
   // New dispatch form
   const [newDispatch, setNewDispatch] = useState({
+    projectId: currentProject?.id || '',
     orderNumber: '',
     supplierName: '',
     expectedDate: '',
@@ -212,10 +213,10 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   }
 
   const handleCreateDispatch = async () => {
-    if (!currentProject) {
+    if (!newDispatch.projectId) {
       toast({
         title: "Error",
-        description: "Please select a project first",
+        description: "Please select a project for this dispatch",
         variant: "destructive"
       })
       return
@@ -224,7 +225,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
     try {
       // Create dispatch note in database
       const dispatchNoteData = {
-        projectId: currentProject.id,
+        projectId: newDispatch.projectId,
         dispatchNumber: newDispatch.orderNumber,
         date: new Date(),
         expectedDeliveryDate: newDispatch.expectedDate ? new Date(newDispatch.expectedDate) : undefined,
@@ -276,6 +277,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
       
       setShowCreateDialog(false)
       setNewDispatch({
+        projectId: currentProject?.id || '',
         orderNumber: '',
         supplierName: '',
         expectedDate: '',
@@ -590,7 +592,30 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           </DialogHeader>
           <div className="space-y-6 py-4">
             {/* Basic Information */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Project Selection - Full Width */}
+            <div className="space-y-2">
+              <Label htmlFor="projectSelect">Project *</Label>
+              <Select 
+                value={newDispatch.projectId} 
+                onValueChange={(value) => setNewDispatch({...newDispatch, projectId: value})}
+              >
+                <SelectTrigger id="projectSelect">
+                  <SelectValue placeholder="Select a project for this dispatch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map(project => (
+                    <SelectItem key={project.id} value={project.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{project.name}</span>
+                        <span className="text-sm text-muted-foreground">{project.client}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="orderNumber">Order Number</Label>
                 <Input
