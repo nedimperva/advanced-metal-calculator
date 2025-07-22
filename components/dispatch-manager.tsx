@@ -23,6 +23,19 @@ import {
   DialogFooter
 } from '@/components/ui/dialog'
 import { 
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command'
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover'
+import { 
   Table,
   TableBody,
   TableCell,
@@ -41,17 +54,24 @@ import {
   AlertTriangle,
   Edit,
   Eye,
-  FileText
+  FileText,
+  Check,
+  ChevronsUpDown
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
+import { useMaterialCatalog } from '@/contexts/material-catalog-context'
+import { useProjects } from '@/contexts/project-context'
 import { LoadingSpinner } from '@/components/loading-states'
 import { 
   getAllMaterialStock,
   updateMaterialStock,
-  createMaterialStockTransaction 
+  createMaterialStockTransaction,
+  createDispatchNote,
+  getAllDispatchNotes,
+  createDispatchMaterial
 } from '@/lib/database'
 
 interface DispatchRecord {
@@ -83,6 +103,8 @@ interface DispatchManagerProps {
 
 export default function DispatchManager({ className }: DispatchManagerProps) {
   const { t } = useI18n()
+  const { materials: catalogMaterials, loadMaterials, createMaterial } = useMaterialCatalog()
+  const { projects, currentProject } = useProjects()
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [mounted, setMounted] = useState(false)
   
@@ -93,10 +115,12 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showViewDialog, setShowViewDialog] = useState(false)
+  const [showAddMaterialModal, setShowAddMaterialModal] = useState(false)
   const [selectedDispatch, setSelectedDispatch] = useState<DispatchRecord | null>(null)
   
   // New dispatch form
   const [newDispatch, setNewDispatch] = useState({
+    projectId: currentProject?.id || '',
     orderNumber: '',
     supplierName: '',
     expectedDate: '',
@@ -106,65 +130,61 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   
   // Material delivery form
   const [newMaterial, setNewMaterial] = useState({
+    materialCatalogId: '',
     materialName: '',
-    materialId: '',
     orderedQuantity: 0,
     deliveredQuantity: 0,
-    unit: 'kg',
+    unit: '',
     notes: ''
   })
+  
+  // Material selection state
+  const [open, setOpen] = useState(false)
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(null)
 
   const loadDispatches = async () => {
     try {
       setIsLoading(true)
-      // TODO: Load dispatches from database
-      // For now, using mock data
-      const mockDispatches: DispatchRecord[] = [
-        {
-          id: '1',
-          orderNumber: 'ORD-2024-001',
-          supplierName: 'ArcelorMittal',
-          expectedDate: '2024-01-15',
-          actualDate: '2024-01-15',
-          status: 'delivered',
-          materials: [
-            {
-              id: '1',
-              materialName: 'Steel Plate S235 1500x3000x10mm',
-              materialId: 'mat-001',
-              orderedQuantity: 5,
-              deliveredQuantity: 5,
-              unit: 'pieces',
-              notes: 'All pieces delivered in good condition'
-            }
-          ],
-          notes: 'Delivery completed successfully',
-          createdAt: '2024-01-10T10:00:00Z',
-          updatedAt: '2024-01-15T14:30:00Z'
-        },
-        {
-          id: '2',
-          orderNumber: 'ORD-2024-002',
-          supplierName: 'Local Supplier',
-          expectedDate: '2024-01-20',
-          status: 'in_transit',
-          materials: [
-            {
-              id: '2',
-              materialName: 'Concrete Mix Grade 30',
-              materialId: 'mat-002',
-              orderedQuantity: 100,
-              deliveredQuantity: 0,
-              unit: 'bags',
-              notes: 'Expected delivery'
-            }
-          ],
-          notes: 'In transit, tracking number: TR123456',
-          createdAt: '2024-01-12T09:00:00Z',
-          updatedAt: '2024-01-18T16:00:00Z'
+      const dispatchNotes = await getAllDispatchNotes()
+      
+      // Helper function to safely convert dates
+      const safeDate = (dateValue: any): string => {
+        if (!dateValue) return ''
+        try {
+          const date = new Date(dateValue)
+          if (isNaN(date.getTime())) return ''
+          return date.toISOString().split('T')[0]
+        } catch {
+          return ''
         }
-      ]
-      setDispatches(mockDispatches)
+      }
+
+      const safeISODate = (dateValue: any): string => {
+        if (!dateValue) return new Date().toISOString()
+        try {
+          const date = new Date(dateValue)
+          if (isNaN(date.getTime())) return new Date().toISOString()
+          return date.toISOString()
+        } catch {
+          return new Date().toISOString()
+        }
+      }
+
+      // Convert to DispatchRecord format for compatibility
+      const dispatchRecords: DispatchRecord[] = dispatchNotes.map(note => ({
+        id: note.id,
+        orderNumber: note.dispatchNumber || note.orderNumber || 'N/A',
+        supplierName: note.supplier?.name || 'Unknown Supplier',
+        expectedDate: safeDate(note.expectedDeliveryDate),
+        actualDate: note.actualDeliveryDate ? safeDate(note.actualDeliveryDate) : undefined,
+        status: note.status as 'pending' | 'in_transit' | 'delivered' | 'cancelled',
+        materials: [], // Will be populated later with dispatch materials
+        notes: note.notes || '',
+        createdAt: safeISODate(note.createdAt),
+        updatedAt: safeISODate(note.updatedAt)
+      }))
+      
+      setDispatches(dispatchRecords)
     } catch (error) {
       console.error('Failed to load dispatches:', error)
       toast({
@@ -180,7 +200,8 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   useEffect(() => {
     setMounted(true)
     loadDispatches()
-  }, [])
+    loadMaterials()
+  }, []) // Empty dependency array - only run once on mount
 
   // Prevent hydration mismatch
   if (!mounted) {
@@ -192,22 +213,71 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   }
 
   const handleCreateDispatch = async () => {
+    if (!newDispatch.projectId) {
+      toast({
+        title: "Error",
+        description: "Please select a project for this dispatch",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
-      const dispatch: DispatchRecord = {
-        id: Date.now().toString(),
-        orderNumber: newDispatch.orderNumber,
-        supplierName: newDispatch.supplierName,
-        expectedDate: newDispatch.expectedDate,
-        status: 'pending',
-        materials: newDispatch.materials,
-        notes: newDispatch.notes,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+      // Create dispatch note in database
+      const dispatchNoteData = {
+        projectId: newDispatch.projectId,
+        dispatchNumber: newDispatch.orderNumber,
+        date: new Date(),
+        expectedDeliveryDate: newDispatch.expectedDate ? new Date(newDispatch.expectedDate) : undefined,
+        supplier: { 
+          name: newDispatch.supplierName,
+          contactPerson: '',
+          phone: '',
+          email: '',
+          address: ''
+        },
+        status: 'pending' as const,
+        notes: newDispatch.notes
       }
       
-      setDispatches(prev => [...prev, dispatch])
+      const dispatchId = await createDispatchNote(dispatchNoteData)
+      
+      // Create dispatch materials for each material
+      for (const material of newDispatch.materials) {
+        // Find the catalog material for better data
+        const catalogMaterial = catalogMaterials.find(cm => cm.id === material.materialId)
+        
+        await createDispatchMaterial({
+          dispatchNoteId: dispatchId,
+          materialType: catalogMaterial?.type || material.materialName.split(' ')[0] || 'Steel',
+          profile: catalogMaterial?.category || 'Standard',
+          grade: catalogMaterial?.name || 'Standard',
+          dimensions: {
+            length: catalogMaterial?.standardLength,
+            width: catalogMaterial?.standardWidth,
+            height: catalogMaterial?.standardHeight,
+            thickness: catalogMaterial?.standardThickness
+          },
+          quantity: material.orderedQuantity,
+          unitWeight: catalogMaterial?.density || 1,
+          totalWeight: material.orderedQuantity * (catalogMaterial?.density || 1),
+          lengthUnit: catalogMaterial?.lengthUnit || 'mm',
+          weightUnit: material.unit || 'kg',
+          unitCost: catalogMaterial?.basePrice || 0,
+          totalCost: material.orderedQuantity * (catalogMaterial?.basePrice || 0),
+          currency: catalogMaterial?.currency || 'USD',
+          status: 'pending',
+          location: 'Warehouse',
+          notes: material.notes || `Material from catalog: ${catalogMaterial?.name || material.materialName}`
+        })
+      }
+      
+      // Reload dispatches to show the new one
+      await loadDispatches()
+      
       setShowCreateDialog(false)
       setNewDispatch({
+        projectId: currentProject?.id || '',
         orderNumber: '',
         supplierName: '',
         expectedDate: '',
@@ -230,10 +300,10 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   }
 
   const addMaterialToDispatch = () => {
-    if (!newMaterial.materialName || !newMaterial.orderedQuantity) {
+    if (!selectedMaterial || !newMaterial.orderedQuantity) {
       toast({
         title: "Error",
-        description: "Please fill in material name and quantity",
+        description: "Please select a material and enter quantity",
         variant: "destructive"
       })
       return
@@ -241,11 +311,11 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
     
     const material: MaterialDelivery = {
       id: Date.now().toString(),
-      materialName: newMaterial.materialName,
-      materialId: newMaterial.materialId,
+      materialName: selectedMaterial.name,
+      materialId: selectedMaterial.id,
       orderedQuantity: newMaterial.orderedQuantity,
       deliveredQuantity: newMaterial.deliveredQuantity,
-      unit: newMaterial.unit,
+      unit: selectedMaterial.baseUnit || 'kg', // Get unit from catalog
       notes: newMaterial.notes
     }
     
@@ -254,14 +324,17 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
       materials: [...prev.materials, material]
     }))
     
+    // Reset form
     setNewMaterial({
+      materialCatalogId: '',
       materialName: '',
-      materialId: '',
       orderedQuantity: 0,
       deliveredQuantity: 0,
-      unit: 'kg',
+      unit: '',
       notes: ''
     })
+    setSelectedMaterial(null)
+    setOpen(false)
   }
 
   const removeMaterialFromDispatch = (materialId: string) => {
@@ -519,7 +592,30 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           </DialogHeader>
           <div className="space-y-6 py-4">
             {/* Basic Information */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Project Selection - Full Width */}
+            <div className="space-y-2">
+              <Label htmlFor="projectSelect">Project *</Label>
+              <Select 
+                value={newDispatch.projectId} 
+                onValueChange={(value) => setNewDispatch({...newDispatch, projectId: value})}
+              >
+                <SelectTrigger id="projectSelect">
+                  <SelectValue placeholder="Select a project for this dispatch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map(project => (
+                    <SelectItem key={project.id} value={project.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{project.name}</span>
+                        <span className="text-sm text-muted-foreground">{project.client}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="orderNumber">Order Number</Label>
                 <Input
@@ -557,50 +653,99 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
               
               {/* Add Material Form */}
               <div className="border rounded-lg p-4 bg-gray-50">
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-3 gap-4 mb-4">
                   <div className="space-y-2">
-                    <Label htmlFor="materialName">Material Name</Label>
-                    <Input
-                      id="materialName"
-                      value={newMaterial.materialName}
-                      onChange={(e) => setNewMaterial({...newMaterial, materialName: e.target.value})}
-                      placeholder="Steel Plate S235"
-                    />
+                    <Label>Select Material</Label>
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={open}
+                          className="w-full justify-between"
+                        >
+                          {selectedMaterial
+                            ? selectedMaterial.name
+                            : "Select material..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search materials..." />
+                          <CommandEmpty>
+                            <div className="p-4 text-center">
+                              <p className="text-sm text-muted-foreground mb-2">
+                                No materials found.
+                              </p>
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => {
+                                  setOpen(false)
+                                  setShowAddMaterialModal(true)
+                                }}
+                              >
+                                Add to Catalog
+                              </Button>
+                            </div>
+                          </CommandEmpty>
+                          <CommandList>
+                            <CommandGroup>
+                              {catalogMaterials.map((material) => (
+                                <CommandItem
+                                  key={material.id}
+                                  onSelect={() => {
+                                    setSelectedMaterial(material)
+                                    setNewMaterial(prev => ({
+                                      ...prev,
+                                      materialCatalogId: material.id,
+                                      materialName: material.name,
+                                      unit: material.baseUnit || 'kg'
+                                    }))
+                                    setOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedMaterial?.id === material.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{material.name}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                      {material.type} - {material.baseUnit || 'kg'}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
+                  
                   <div className="space-y-2">
-                    <Label htmlFor="orderedQuantity">Ordered Quantity</Label>
+                    <Label htmlFor="orderedQuantity">Quantity</Label>
                     <Input
                       id="orderedQuantity"
                       type="number"
                       value={newMaterial.orderedQuantity}
                       onChange={(e) => setNewMaterial({...newMaterial, orderedQuantity: parseFloat(e.target.value) || 0})}
+                      placeholder="0"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="deliveredQuantity">Delivered Quantity</Label>
-                    <Input
-                      id="deliveredQuantity"
-                      type="number"
-                      value={newMaterial.deliveredQuantity}
-                      onChange={(e) => setNewMaterial({...newMaterial, deliveredQuantity: parseFloat(e.target.value) || 0})}
-                    />
-                  </div>
+                  
                   <div className="space-y-2">
                     <Label htmlFor="unit">Unit</Label>
-                    <Select value={newMaterial.unit} onValueChange={(value) => setNewMaterial({...newMaterial, unit: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="kg">kg</SelectItem>
-                        <SelectItem value="pieces">pieces</SelectItem>
-                        <SelectItem value="m">m</SelectItem>
-                        <SelectItem value="m²">m²</SelectItem>
-                        <SelectItem value="m³">m³</SelectItem>
-                        <SelectItem value="tons">tons</SelectItem>
-                        <SelectItem value="bags">bags</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      id="unit"
+                      value={selectedMaterial ? selectedMaterial.baseUnit || 'kg' : newMaterial.unit}
+                      disabled
+                      className="bg-gray-50"
+                    />
                   </div>
                 </div>
                 <Button onClick={addMaterialToDispatch} className="w-full">
@@ -761,6 +906,31 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
               Close
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Material to Catalog Dialog */}
+      <Dialog open={showAddMaterialModal} onOpenChange={setShowAddMaterialModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Material to Catalog</DialogTitle>
+            <DialogDescription>
+              This feature will redirect you to the Materials Management page where you can add new materials to your catalog database.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setShowAddMaterialModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowAddMaterialModal(false)
+                window.open('/management?tab=materials', '_blank')
+              }}
+            >
+              Open Materials Manager
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
