@@ -175,7 +175,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
     setMounted(true)
     loadDispatches()
     loadMaterials()
-  }, [loadMaterials])
+  }, []) // Empty dependency array - only run once on mount
 
   // Prevent hydration mismatch
   if (!mounted) {
