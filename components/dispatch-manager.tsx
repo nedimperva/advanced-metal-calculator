@@ -23,6 +23,14 @@ import {
   DialogFooter
 } from '@/components/ui/dialog'
 import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { 
   Command,
   CommandEmpty,
   CommandGroup,
@@ -71,7 +79,12 @@ import {
   createMaterialStockTransaction,
   createDispatchNote,
   getAllDispatchNotes,
-  createDispatchMaterial
+  createDispatchMaterial,
+  getDispatchMaterials,
+  updateDispatchNote,
+  getDispatchNote,
+  getAllMaterialCatalog,
+  createMaterialStock
 } from '@/lib/database'
 
 interface DispatchRecord {
@@ -117,6 +130,8 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   const [showViewDialog, setShowViewDialog] = useState(false)
   const [showAddMaterialModal, setShowAddMaterialModal] = useState(false)
   const [selectedDispatch, setSelectedDispatch] = useState<DispatchRecord | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editingDispatch, setEditingDispatch] = useState<DispatchRecord | null>(null)
   
   // New dispatch form
   const [newDispatch, setNewDispatch] = useState({
@@ -170,19 +185,36 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
         }
       }
 
-      // Convert to DispatchRecord format for compatibility
-      const dispatchRecords: DispatchRecord[] = dispatchNotes.map(note => ({
-        id: note.id,
-        orderNumber: note.dispatchNumber || note.orderNumber || 'N/A',
-        supplierName: note.supplier?.name || 'Unknown Supplier',
-        expectedDate: safeDate(note.expectedDeliveryDate),
-        actualDate: note.actualDeliveryDate ? safeDate(note.actualDeliveryDate) : undefined,
-        status: note.status as 'pending' | 'in_transit' | 'delivered' | 'cancelled',
-        materials: [], // Will be populated later with dispatch materials
-        notes: note.notes || '',
-        createdAt: safeISODate(note.createdAt),
-        updatedAt: safeISODate(note.updatedAt)
-      }))
+      // Convert to DispatchRecord format and load materials for each
+      const dispatchRecords: DispatchRecord[] = []
+      
+      for (const note of dispatchNotes) {
+        // Get materials for this dispatch
+        const dispatchMaterials = await getDispatchMaterials(note.id)
+        
+        const materials: MaterialDelivery[] = dispatchMaterials.map(dm => ({
+          id: dm.id,
+          materialName: dm.materialType + ' ' + dm.profile + ' ' + dm.grade,
+          materialId: dm.id, // Use dispatch material ID since we don't have catalog ID
+          orderedQuantity: Number(dm.orderedQuantity) || 0,
+          deliveredQuantity: Number(dm.deliveredQuantity) || 0,
+          unit: dm.unit || 'kg',
+          notes: dm.notes || ''
+        }))
+        
+        dispatchRecords.push({
+          id: note.id,
+          orderNumber: note.dispatchNumber || note.orderNumber || 'N/A',
+          supplierName: note.supplier?.name || 'Unknown Supplier',
+          expectedDate: safeDate(note.expectedDeliveryDate),
+          actualDate: note.actualDeliveryDate ? safeDate(note.actualDeliveryDate) : undefined,
+          status: note.status as 'pending' | 'in_transit' | 'delivered' | 'cancelled',
+          materials: materials,
+          notes: note.notes || '',
+          createdAt: safeISODate(note.createdAt),
+          updatedAt: safeISODate(note.updatedAt)
+        })
+      }
       
       setDispatches(dispatchRecords)
     } catch (error) {
@@ -253,18 +285,21 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           profile: catalogMaterial?.category || 'Standard',
           grade: catalogMaterial?.name || 'Standard',
           dimensions: {
-            length: catalogMaterial?.standardLength,
-            width: catalogMaterial?.standardWidth,
-            height: catalogMaterial?.standardHeight,
-            thickness: catalogMaterial?.standardThickness
+            length: catalogMaterial?.standardLength || 0,
+            width: catalogMaterial?.standardWidth || 0,
+            height: catalogMaterial?.standardHeight || 0,
+            thickness: catalogMaterial?.standardThickness || 0
           },
-          quantity: material.orderedQuantity,
+          quantity: material.orderedQuantity || 0,
+          orderedQuantity: material.orderedQuantity || 0,
+          deliveredQuantity: material.deliveredQuantity || 0,
           unitWeight: catalogMaterial?.density || 1,
-          totalWeight: material.orderedQuantity * (catalogMaterial?.density || 1),
+          totalWeight: (material.orderedQuantity || 0) * (catalogMaterial?.density || 1),
           lengthUnit: catalogMaterial?.lengthUnit || 'mm',
           weightUnit: material.unit || 'kg',
+          unit: material.unit || 'kg',
           unitCost: catalogMaterial?.basePrice || 0,
-          totalCost: material.orderedQuantity * (catalogMaterial?.basePrice || 0),
+          totalCost: (material.orderedQuantity || 0) * (catalogMaterial?.basePrice || 0),
           currency: catalogMaterial?.currency || 'USD',
           status: 'pending',
           location: 'Warehouse',
@@ -348,63 +383,281 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
     try {
       const dispatch = dispatches.find(d => d.id === dispatchId)
       if (!dispatch) return
-
-      // Update dispatch status
-      const updatedDispatch = {
-        ...dispatch,
-        status: 'delivered' as const,
-        actualDate: new Date().toISOString()
+      
+      // Get the dispatch note from database to update it
+      const dispatchNote = await getDispatchNote(dispatchId)
+      if (!dispatchNote) {
+        toast({
+          title: "Error",
+          description: "Dispatch note not found",
+          variant: "destructive"
+        })
+        return
       }
-
-      // Update dispatches state
-      setDispatches(prev => prev.map(d => d.id === dispatchId ? updatedDispatch : d))
-
+      
+      // Update dispatch status in database
+      await updateDispatchNote({
+        ...dispatchNote,
+        status: 'delivered',
+        actualDeliveryDate: new Date()
+      })
+      
       // Update stock levels for each material
-      const stockRecords = await getAllMaterialStock()
+      const [stockRecords, catalogMaterials] = await Promise.all([
+        getAllMaterialStock(),
+        getAllMaterialCatalog()
+      ])
+      
+      let stockUpdated = 0
       
       for (const material of dispatch.materials) {
-        // Find stock record by material name (simplified matching)
-        const stockRecord = stockRecords.find(stock => 
-          stock.materialCatalogId === material.materialId ||
-          // Fallback: match by name if no direct ID match
-          stockRecords.find(s => s.materialCatalogId === material.materialName)
+        // When marking as delivered, use ordered quantity if delivered quantity is 0
+        const deliveredQuantity = material.deliveredQuantity > 0 ? material.deliveredQuantity : material.orderedQuantity
+        if (deliveredQuantity <= 0) continue
+        
+        // Try to find stock record by matching material name with catalog
+        let stockRecord = null
+        
+        // First try to find by material name in catalog
+        const catalogMaterial = catalogMaterials.find(cm => 
+          cm.name.toLowerCase().includes(material.materialName.toLowerCase()) ||
+          material.materialName.toLowerCase().includes(cm.name.toLowerCase())
         )
-
-        if (stockRecord && material.deliveredQuantity > 0) {
+        
+        if (catalogMaterial) {
+          // Find stock record by catalog material ID
+          stockRecord = stockRecords.find(stock => stock.materialCatalogId === catalogMaterial.id)
+        }
+        
+        // If still not found, try fuzzy matching by name
+        if (!stockRecord) {
+          const materialWords = material.materialName.toLowerCase().split(' ')
+          stockRecord = stockRecords.find(stock => {
+            const catalogMat = catalogMaterials.find(cm => cm.id === stock.materialCatalogId)
+            if (!catalogMat) return false
+            
+            const catalogWords = catalogMat.name.toLowerCase().split(' ')
+            return materialWords.some(word => 
+              catalogWords.some(cword => cword.includes(word) || word.includes(cword))
+            )
+          })
+        }
+        
+        // If no stock record found but we have a catalog material, create one
+        if (!stockRecord && catalogMaterial) {
+          console.log(`Creating new stock record for material: ${catalogMaterial.name}`)
+          const newStockId = await createMaterialStock({
+            materialCatalogId: catalogMaterial.id,
+            currentStock: 0,
+            reservedStock: 0,
+            availableStock: 0,
+            minimumStock: 10,
+            maximumStock: 1000,
+            unitCost: catalogMaterial.basePrice || 0,
+            totalValue: 0,
+            location: 'Warehouse',
+            supplier: 'Unknown',
+            notes: `Stock record created automatically from dispatch delivery`
+          })
+          
+          // Reload stock records to include the new one
+          const updatedStockRecords = await getAllMaterialStock()
+          stockRecord = updatedStockRecords.find(stock => stock.id === newStockId)
+        }
+        
+        if (stockRecord) {
           // Update stock levels
-          const newCurrentStock = stockRecord.currentStock + material.deliveredQuantity
-          const newAvailableStock = stockRecord.availableStock + material.deliveredQuantity
-          const newTotalValue = newCurrentStock * stockRecord.unitCost
-
-          await updateMaterialStock(stockRecord.id, {
+          const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(deliveredQuantity) || 0)
+          const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(deliveredQuantity) || 0)
+          const newTotalValue = newCurrentStock * (Number(stockRecord.unitCost) || 0)
+          
+          await updateMaterialStock({
+            ...stockRecord,
             currentStock: newCurrentStock,
             availableStock: newAvailableStock,
             totalValue: newTotalValue,
-            lastStockUpdate: new Date()
+            lastStockUpdate: new Date(),
+            updatedAt: new Date()
           })
-
-          // Create stock transaction
+          
+          // Create transaction record
           await createMaterialStockTransaction({
             materialStockId: stockRecord.id,
             type: 'IN',
-            quantity: material.deliveredQuantity,
-            unitCost: stockRecord.unitCost,
-            totalCost: material.deliveredQuantity * stockRecord.unitCost,
-            referenceId: dispatch.id,
+            quantity: deliveredQuantity,
+            unitCost: stockRecord.unitCost || 0,
+            totalCost: deliveredQuantity * (stockRecord.unitCost || 0),
+            referenceId: dispatchId,
             referenceType: 'DISPATCH',
             transactionDate: new Date(),
-            notes: `Delivery from dispatch: ${dispatch.orderNumber}`,
+            notes: `Delivered via dispatch ${dispatch.orderNumber}. Material: ${material.materialName}`,
             createdBy: 'system'
           })
+          
+          stockUpdated++
+        } else {
+          console.warn(`Could not find stock record for material: ${material.materialName}`)
+          console.log('Available catalog materials:', catalogMaterials.map(cm => cm.name))
+          console.log('Available stock records:', stockRecords.map(sr => sr.materialCatalogId))
         }
       }
+      
+      // Reload dispatches to reflect changes
+      await loadDispatches()
 
       toast({
         title: "Success",
-        description: "Dispatch marked as delivered and stock updated"
+        description: `Dispatch marked as delivered. ${stockUpdated} materials added to stock.`
       })
     } catch (error) {
       console.error('Failed to mark dispatch as delivered:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update dispatch status",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleStatusChange = async (dispatchId: string, newStatus: string) => {
+    try {
+      // Get the dispatch note from database
+      const dispatchNote = await getDispatchNote(dispatchId)
+      if (!dispatchNote) {
+        toast({
+          title: "Error",
+          description: "Dispatch note not found",
+          variant: "destructive"
+        })
+        return
+      }
+      
+      // Update dispatch status in database
+      const updatedDispatchNote = {
+        ...dispatchNote,
+        status: newStatus as any,
+        updatedAt: new Date()
+      }
+      
+      // If marking as delivered, also set actual delivery date and update stock
+      if (newStatus === 'delivered' && !dispatchNote.actualDeliveryDate) {
+        updatedDispatchNote.actualDeliveryDate = new Date()
+      }
+      
+      await updateDispatchNote(updatedDispatchNote)
+      
+      // If changing to delivered, update stock levels
+      if (newStatus === 'delivered') {
+        const dispatch = dispatches.find(d => d.id === dispatchId)
+        if (dispatch) {
+          // Use the same stock update logic from handleMarkAsDelivered
+          const [stockRecords, catalogMaterials] = await Promise.all([
+            getAllMaterialStock(),
+            getAllMaterialCatalog()
+          ])
+          
+          let stockUpdated = 0
+          
+          for (const material of dispatch.materials) {
+            // When marking as delivered, use ordered quantity if delivered quantity is 0
+            const deliveredQuantity = material.deliveredQuantity > 0 ? material.deliveredQuantity : material.orderedQuantity
+            if (deliveredQuantity <= 0) continue
+            
+            // Find stock record by matching material name with catalog
+            let stockRecord = null
+            
+            const catalogMaterial = catalogMaterials.find(cm => 
+              cm.name.toLowerCase().includes(material.materialName.toLowerCase()) ||
+              material.materialName.toLowerCase().includes(cm.name.toLowerCase())
+            )
+            
+            if (catalogMaterial) {
+              stockRecord = stockRecords.find(stock => stock.materialCatalogId === catalogMaterial.id)
+            }
+            
+            if (!stockRecord) {
+              const materialWords = material.materialName.toLowerCase().split(' ')
+              stockRecord = stockRecords.find(stock => {
+                const catalogMat = catalogMaterials.find(cm => cm.id === stock.materialCatalogId)
+                if (!catalogMat) return false
+                
+                const catalogWords = catalogMat.name.toLowerCase().split(' ')
+                return materialWords.some(word => 
+                  catalogWords.some(cword => cword.includes(word) || word.includes(cword))
+                )
+              })
+            }
+            
+            // If no stock record found but we have a catalog material, create one
+            if (!stockRecord && catalogMaterial) {
+              console.log(`Creating new stock record for material: ${catalogMaterial.name}`)
+              const newStockId = await createMaterialStock({
+                materialCatalogId: catalogMaterial.id,
+                currentStock: 0,
+                reservedStock: 0,
+                availableStock: 0,
+                minimumStock: 10,
+                maximumStock: 1000,
+                unitCost: catalogMaterial.basePrice || 0,
+                totalValue: 0,
+                location: 'Warehouse',
+                supplier: 'Unknown',
+                notes: `Stock record created automatically from dispatch delivery`
+              })
+              
+              // Reload stock records to include the new one
+              const updatedStockRecords = await getAllMaterialStock()
+              stockRecord = updatedStockRecords.find(stock => stock.id === newStockId)
+            }
+            
+            if (stockRecord) {
+              const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(deliveredQuantity) || 0)
+              const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(deliveredQuantity) || 0)
+              const newTotalValue = newCurrentStock * (Number(stockRecord.unitCost) || 0)
+              
+              await updateMaterialStock({
+                ...stockRecord,
+                currentStock: newCurrentStock,
+                availableStock: newAvailableStock,
+                totalValue: newTotalValue,
+                lastStockUpdate: new Date(),
+                updatedAt: new Date()
+              })
+              
+              await createMaterialStockTransaction({
+                materialStockId: stockRecord.id,
+                type: 'IN',
+                quantity: deliveredQuantity,
+                unitCost: stockRecord.unitCost || 0,
+                totalCost: deliveredQuantity * (stockRecord.unitCost || 0),
+                referenceId: dispatchId,
+                referenceType: 'DISPATCH',
+                transactionDate: new Date(),
+                notes: `Delivered via dispatch ${dispatch.orderNumber}. Material: ${material.materialName}`,
+                createdBy: 'system'
+              })
+              
+              stockUpdated++
+            } else {
+              console.warn(`Could not find stock record for material: ${material.materialName}`)
+              console.log('Available catalog materials:', catalogMaterials.map(cm => cm.name))
+              console.log('Available stock records:', stockRecords.map(sr => sr.materialCatalogId))
+            }
+          }
+        }
+      }
+      
+      // Reload dispatches to reflect changes
+      await loadDispatches()
+      
+      toast({
+        title: "Success",
+        description: newStatus === 'delivered' ? 
+          `Dispatch marked as delivered. Materials added to stock.` :
+          `Dispatch status updated to ${newStatus}`
+      })
+    } catch (error) {
+      console.error('Failed to update dispatch status:', error)
       toast({
         title: "Error",
         description: "Failed to update dispatch status",
@@ -557,19 +810,45 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                               <CheckCircle2 className="w-3 h-3" />
                             </Button>
                           )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              // TODO: Add edit functionality
-                              toast({
-                                title: "Coming Soon",
-                                description: "Edit dispatch functionality will be available soon"
-                              })
-                            }}
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(dispatch.id, 'pending')}
+                                disabled={dispatch.status === 'pending'}
+                              >
+                                <Clock className="w-4 h-4 mr-2" />
+                                Pending
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(dispatch.id, 'in_transit')}
+                                disabled={dispatch.status === 'in_transit'}
+                              >
+                                <Truck className="w-4 h-4 mr-2" />
+                                In Transit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(dispatch.id, 'delivered')}
+                                disabled={dispatch.status === 'delivered'}
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                Delivered
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleStatusChange(dispatch.id, 'cancelled')}
+                                disabled={dispatch.status === 'cancelled'}
+                              >
+                                <AlertTriangle className="w-4 h-4 mr-2" />
+                                Cancelled
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -733,7 +1012,11 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                       id="orderedQuantity"
                       type="number"
                       value={newMaterial.orderedQuantity}
-                      onChange={(e) => setNewMaterial({...newMaterial, orderedQuantity: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        const numValue = value === '' ? 0 : (parseFloat(value) || 0)
+                        setNewMaterial({...newMaterial, orderedQuantity: numValue})
+                      }}
                       placeholder="0"
                     />
                   </div>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { 
@@ -90,7 +91,8 @@ import {
   searchProjectMaterials,
   getAllMaterialStock,
   reserveMaterialStock,
-  createMaterialStockTransaction
+  createMaterialStockTransaction,
+  unreserveMaterialStock
 } from '@/lib/database'
 import { useMaterialCatalog } from '@/contexts/material-catalog-context'
 import { useProjects } from '@/contexts/project-context'
@@ -754,6 +756,10 @@ export default function EnhancedProjectMaterials({
   const [sourceFilter, setSourceFilter] = useState<ProjectMaterialSource | 'all'>('all')
   const [statistics, setStatistics] = useState<any>(null)
   const [showAllocation, setShowAllocation] = useState(false)
+  const [showInstallDialog, setShowInstallDialog] = useState(false)
+  const [installMaterial, setInstallMaterial] = useState<ProjectMaterial | null>(null)
+  const [installQuantity, setInstallQuantity] = useState('')
+  const [returnToStock, setReturnToStock] = useState(false)
 
   // Load materials
   const loadMaterials = async () => {
@@ -826,6 +832,18 @@ export default function EnhancedProjectMaterials({
 
   // Handle status change
   const handleStatusChange = async (materialId: string, status: ProjectMaterialStatus) => {
+    // If changing to INSTALLED, show installation dialog
+    if (status === ProjectMaterialStatus.INSTALLED) {
+      const material = materials.find(m => m.id === materialId)
+      if (material) {
+        setInstallMaterial(material)
+        setInstallQuantity(material.quantity.toString())
+        setReturnToStock(false)
+        setShowInstallDialog(true)
+        return
+      }
+    }
+
     try {
       await updateProjectMaterialStatus(materialId, status)
       await loadMaterials()
@@ -839,6 +857,94 @@ export default function EnhancedProjectMaterials({
       toast({
         title: 'Error',
         description: 'Failed to update material status',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  // Handle installation
+  const handleInstallation = async () => {
+    if (!installMaterial || !installQuantity) return
+
+    const installedQty = parseFloat(installQuantity)
+    const totalQty = installMaterial.quantity
+    
+    if (installedQty <= 0 || installedQty > totalQty) {
+      toast({
+        title: 'Invalid Quantity',
+        description: `Installed quantity must be between 1 and ${totalQty}`,
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      // Update material status to INSTALLED
+      await updateProjectMaterialStatus(installMaterial.id, ProjectMaterialStatus.INSTALLED)
+
+      // If partial installation and user wants to return remaining to stock
+      const remainingQty = totalQty - installedQty
+      if (remainingQty > 0 && returnToStock && installMaterial.materialCatalogId) {
+        // Unreserve the remaining quantity back to stock
+        await unreserveMaterialStock(installMaterial.materialCatalogId, remainingQty, project.id)
+        
+        // Create transaction record for return to stock
+        const materialStock = await getAllMaterialStock()
+        const stockRecord = materialStock.find(s => s.materialCatalogId === installMaterial.materialCatalogId)
+        
+        if (stockRecord) {
+          await createMaterialStockTransaction({
+            materialStockId: stockRecord.id,
+            type: 'UNRESERVED',
+            quantity: remainingQty,
+            unitCost: installMaterial.unitCost || 0,
+            totalCost: remainingQty * (installMaterial.unitCost || 0),
+            referenceId: installMaterial.id,
+            referenceType: 'PROJECT',
+            transactionDate: new Date(),
+            notes: `Returned to stock after installation. Installed: ${installedQty}, Returned: ${remainingQty}`,
+            createdBy: 'user'
+          })
+        }
+      }
+
+      // Create transaction record for installation
+      if (installMaterial.materialCatalogId) {
+        const materialStock = await getAllMaterialStock()
+        const stockRecord = materialStock.find(s => s.materialCatalogId === installMaterial.materialCatalogId)
+        
+        if (stockRecord) {
+          await createMaterialStockTransaction({
+            materialStockId: stockRecord.id,
+            type: 'OUT',
+            quantity: installedQty,
+            unitCost: installMaterial.unitCost || 0,
+            totalCost: installedQty * (installMaterial.unitCost || 0),
+            referenceId: installMaterial.id,
+            referenceType: 'PROJECT',
+            transactionDate: new Date(),
+            notes: `Material installed in project: ${project.name}. ${remainingQty > 0 ? `Remaining ${remainingQty} ${returnToStock ? 'returned to stock' : 'still reserved'}` : 'Fully installed'}`,
+            createdBy: 'user'
+          })
+        }
+      }
+
+      await loadMaterials()
+      onUpdate?.()
+      setShowInstallDialog(false)
+      setInstallMaterial(null)
+      setInstallQuantity('')
+      setReturnToStock(false)
+
+      toast({
+        title: 'Success',
+        description: `Material installation recorded. ${installedQty} units installed.${remainingQty > 0 && returnToStock ? ` ${remainingQty} units returned to stock.` : ''}`,
+      })
+    } catch (error) {
+      console.error('Failed to record installation:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to record material installation',
         variant: 'destructive'
       })
     }
@@ -1045,6 +1151,83 @@ export default function EnhancedProjectMaterials({
         onAdd={handleAddMaterial}
         projectId={project.id}
       />
+
+      {/* Installation Dialog */}
+      <Dialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Installation</DialogTitle>
+            <DialogDescription>
+              Record how much of "{installMaterial?.materialName}" was installed
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="installedQuantity">Quantity Installed</Label>
+              <Input
+                id="installedQuantity"
+                type="number"
+                min="0"
+                max={installMaterial?.quantity || 0}
+                step="0.01"
+                value={installQuantity}
+                onChange={(e) => setInstallQuantity(e.target.value)}
+                placeholder={`Max: ${installMaterial?.quantity || 0}`}
+              />
+              <div className="text-sm text-muted-foreground">
+                Total available: {installMaterial?.quantity} {installMaterial?.weightUnit}
+              </div>
+            </div>
+
+            {/* Show return option only if there's remaining quantity and material is from stock */}
+            {installMaterial && parseFloat(installQuantity) < installMaterial.quantity && installMaterial.materialCatalogId && (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="returnToStock"
+                    checked={returnToStock}
+                    onCheckedChange={(checked) => setReturnToStock(!!checked)}
+                  />
+                  <Label htmlFor="returnToStock" className="text-sm">
+                    Return remaining {(installMaterial.quantity - (parseFloat(installQuantity) || 0)).toFixed(2)} {installMaterial.weightUnit} to stock
+                  </Label>
+                </div>
+                <div className="text-xs text-muted-foreground ml-6">
+                  {returnToStock 
+                    ? "Remaining quantity will be unreserved and available for other projects"
+                    : "Remaining quantity will stay reserved for this project"
+                  }
+                </div>
+              </div>
+            )}
+
+            {!installMaterial?.materialCatalogId && (
+              <div className="text-sm text-muted-foreground p-3 bg-muted rounded">
+                <span className="font-medium">Note:</span> This material was manually added and is not linked to stock inventory.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowInstallDialog(false)
+                setInstallMaterial(null)
+                setInstallQuantity('')
+                setReturnToStock(false)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleInstallation}
+              disabled={!installQuantity || parseFloat(installQuantity) <= 0}
+            >
+              Record Installation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
