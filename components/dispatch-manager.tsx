@@ -63,6 +63,7 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
 import { useMaterialCatalog } from '@/contexts/material-catalog-context'
+import { useProjects } from '@/contexts/project-context'
 import { LoadingSpinner } from '@/components/loading-states'
 import { 
   getAllMaterialStock,
@@ -103,6 +104,7 @@ interface DispatchManagerProps {
 export default function DispatchManager({ className }: DispatchManagerProps) {
   const { t } = useI18n()
   const { materials: catalogMaterials, loadMaterials, createMaterial } = useMaterialCatalog()
+  const { currentProject } = useProjects()
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [mounted, setMounted] = useState(false)
   
@@ -144,18 +146,41 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
       setIsLoading(true)
       const dispatchNotes = await getAllDispatchNotes()
       
+      // Helper function to safely convert dates
+      const safeDate = (dateValue: any): string => {
+        if (!dateValue) return ''
+        try {
+          const date = new Date(dateValue)
+          if (isNaN(date.getTime())) return ''
+          return date.toISOString().split('T')[0]
+        } catch {
+          return ''
+        }
+      }
+
+      const safeISODate = (dateValue: any): string => {
+        if (!dateValue) return new Date().toISOString()
+        try {
+          const date = new Date(dateValue)
+          if (isNaN(date.getTime())) return new Date().toISOString()
+          return date.toISOString()
+        } catch {
+          return new Date().toISOString()
+        }
+      }
+
       // Convert to DispatchRecord format for compatibility
       const dispatchRecords: DispatchRecord[] = dispatchNotes.map(note => ({
         id: note.id,
         orderNumber: note.dispatchNumber || note.orderNumber || 'N/A',
         supplierName: note.supplier?.name || 'Unknown Supplier',
-        expectedDate: note.expectedDeliveryDate ? new Date(note.expectedDeliveryDate).toISOString().split('T')[0] : '',
-        actualDate: note.actualDeliveryDate ? new Date(note.actualDeliveryDate).toISOString().split('T')[0] : undefined,
+        expectedDate: safeDate(note.expectedDeliveryDate),
+        actualDate: note.actualDeliveryDate ? safeDate(note.actualDeliveryDate) : undefined,
         status: note.status as 'pending' | 'in_transit' | 'delivered' | 'cancelled',
         materials: [], // Will be populated later with dispatch materials
         notes: note.notes || '',
-        createdAt: note.createdAt.toISOString(),
-        updatedAt: note.updatedAt.toISOString()
+        createdAt: safeISODate(note.createdAt),
+        updatedAt: safeISODate(note.updatedAt)
       }))
       
       setDispatches(dispatchRecords)
@@ -187,53 +212,62 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   }
 
   const handleCreateDispatch = async () => {
+    if (!currentProject) {
+      toast({
+        title: "Error",
+        description: "Please select a project first",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       // Create dispatch note in database
       const dispatchNoteData = {
+        projectId: currentProject.id,
         dispatchNumber: newDispatch.orderNumber,
-        supplier: { name: newDispatch.supplierName },
-        expectedDeliveryDate: new Date(newDispatch.expectedDate),
+        date: new Date(),
+        expectedDeliveryDate: newDispatch.expectedDate ? new Date(newDispatch.expectedDate) : undefined,
+        supplier: { 
+          name: newDispatch.supplierName,
+          contactPerson: '',
+          phone: '',
+          email: '',
+          address: ''
+        },
         status: 'pending' as const,
-        notes: newDispatch.notes,
-        materials: newDispatch.materials.map(m => ({
-          materialType: m.materialName.split(' ')[0], // Extract type from name
-          profile: 'Standard',
-          grade: 'Standard',
-          dimensions: {},
-          quantity: m.orderedQuantity,
-          unitWeight: 1,
-          totalWeight: m.orderedQuantity,
-          lengthUnit: 'mm',
-          weightUnit: 'kg',
-          unitCost: 0,
-          totalCost: 0,
-          currency: 'USD',
-          status: 'pending' as any,
-          location: 'Warehouse'
-        }))
+        notes: newDispatch.notes
       }
       
       const dispatchId = await createDispatchNote(dispatchNoteData)
       
       // Create dispatch materials for each material
       for (const material of newDispatch.materials) {
+        // Find the catalog material for better data
+        const catalogMaterial = catalogMaterials.find(cm => cm.id === material.materialId)
+        
         await createDispatchMaterial({
           dispatchNoteId: dispatchId,
-          materialType: material.materialName.split(' ')[0],
-          profile: 'Standard',
-          grade: 'Standard',
-          dimensions: {},
+          materialType: catalogMaterial?.type || material.materialName.split(' ')[0] || 'Steel',
+          profile: catalogMaterial?.category || 'Standard',
+          grade: catalogMaterial?.name || 'Standard',
+          dimensions: {
+            length: catalogMaterial?.standardLength,
+            width: catalogMaterial?.standardWidth,
+            height: catalogMaterial?.standardHeight,
+            thickness: catalogMaterial?.standardThickness
+          },
           quantity: material.orderedQuantity,
-          unitWeight: 1,
-          totalWeight: material.orderedQuantity,
-          lengthUnit: 'mm',
-          weightUnit: material.unit,
-          unitCost: 0,
-          totalCost: 0,
-          currency: 'USD',
+          unitWeight: catalogMaterial?.density || 1,
+          totalWeight: material.orderedQuantity * (catalogMaterial?.density || 1),
+          lengthUnit: catalogMaterial?.lengthUnit || 'mm',
+          weightUnit: material.unit || 'kg',
+          unitCost: catalogMaterial?.basePrice || 0,
+          totalCost: material.orderedQuantity * (catalogMaterial?.basePrice || 0),
+          currency: catalogMaterial?.currency || 'USD',
           status: 'pending',
           location: 'Warehouse',
-          notes: material.notes
+          notes: material.notes || `Material from catalog: ${catalogMaterial?.name || material.materialName}`
         })
       }
       
