@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
+import { useMaterialCatalog } from '@/contexts/material-catalog-context'
 import { LoadingSpinner } from '@/components/loading-states'
 import { 
   getAllMaterialStock,
@@ -83,6 +84,7 @@ interface DispatchManagerProps {
 
 export default function DispatchManager({ className }: DispatchManagerProps) {
   const { t } = useI18n()
+  const { materials: catalogMaterials, loadMaterials, createMaterial } = useMaterialCatalog()
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [mounted, setMounted] = useState(false)
   
@@ -93,6 +95,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showViewDialog, setShowViewDialog] = useState(false)
+  const [showAddMaterialModal, setShowAddMaterialModal] = useState(false)
   const [selectedDispatch, setSelectedDispatch] = useState<DispatchRecord | null>(null)
   
   // New dispatch form
@@ -180,7 +183,8 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   useEffect(() => {
     setMounted(true)
     loadDispatches()
-  }, [])
+    loadMaterials()
+  }, [loadMaterials])
 
   // Prevent hydration mismatch
   if (!mounted) {
@@ -566,6 +570,29 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                       onChange={(e) => setNewMaterial({...newMaterial, materialName: e.target.value})}
                       placeholder="Steel Plate S235"
                     />
+                    
+                    {/* Database Integration Helper */}
+                    {newMaterial.materialName && !catalogMaterials.some(cm => 
+                      cm.name.toLowerCase().includes(newMaterial.materialName.toLowerCase()) ||
+                      cm.description?.toLowerCase().includes(newMaterial.materialName.toLowerCase())
+                    ) && (
+                      <div className="mt-2">
+                        <div className="flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                          <Package className="h-4 w-4 text-yellow-600" />
+                          <span className="text-sm text-yellow-700">
+                            Material not found in catalog database
+                          </span>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                            onClick={() => setShowAddMaterialModal(true)}
+                          >
+                            Add to Catalog
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="orderedQuantity">Ordered Quantity</Label>
@@ -761,6 +788,31 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
               Close
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Material to Catalog Dialog */}
+      <Dialog open={showAddMaterialModal} onOpenChange={setShowAddMaterialModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Material to Catalog</DialogTitle>
+            <DialogDescription>
+              This feature will redirect you to the Materials Management page where you can add new materials to your catalog database.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setShowAddMaterialModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowAddMaterialModal(false)
+                window.open('/management?tab=materials', '_blank')
+              }}
+            >
+              Open Materials Manager
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
