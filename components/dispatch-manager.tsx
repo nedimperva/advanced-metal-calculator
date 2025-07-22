@@ -23,6 +23,19 @@ import {
   DialogFooter
 } from '@/components/ui/dialog'
 import { 
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command'
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover'
+import { 
   Table,
   TableBody,
   TableCell,
@@ -41,7 +54,9 @@ import {
   AlertTriangle,
   Edit,
   Eye,
-  FileText
+  FileText,
+  Check,
+  ChevronsUpDown
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -52,7 +67,10 @@ import { LoadingSpinner } from '@/components/loading-states'
 import { 
   getAllMaterialStock,
   updateMaterialStock,
-  createMaterialStockTransaction 
+  createMaterialStockTransaction,
+  createDispatchNote,
+  getAllDispatchNotes,
+  createDispatchMaterial
 } from '@/lib/database'
 
 interface DispatchRecord {
@@ -109,65 +127,38 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   
   // Material delivery form
   const [newMaterial, setNewMaterial] = useState({
+    materialCatalogId: '',
     materialName: '',
-    materialId: '',
     orderedQuantity: 0,
     deliveredQuantity: 0,
-    unit: 'kg',
+    unit: '',
     notes: ''
   })
+  
+  // Material selection state
+  const [open, setOpen] = useState(false)
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(null)
 
   const loadDispatches = async () => {
     try {
       setIsLoading(true)
-      // TODO: Load dispatches from database
-      // For now, using mock data
-      const mockDispatches: DispatchRecord[] = [
-        {
-          id: '1',
-          orderNumber: 'ORD-2024-001',
-          supplierName: 'ArcelorMittal',
-          expectedDate: '2024-01-15',
-          actualDate: '2024-01-15',
-          status: 'delivered',
-          materials: [
-            {
-              id: '1',
-              materialName: 'Steel Plate S235 1500x3000x10mm',
-              materialId: 'mat-001',
-              orderedQuantity: 5,
-              deliveredQuantity: 5,
-              unit: 'pieces',
-              notes: 'All pieces delivered in good condition'
-            }
-          ],
-          notes: 'Delivery completed successfully',
-          createdAt: '2024-01-10T10:00:00Z',
-          updatedAt: '2024-01-15T14:30:00Z'
-        },
-        {
-          id: '2',
-          orderNumber: 'ORD-2024-002',
-          supplierName: 'Local Supplier',
-          expectedDate: '2024-01-20',
-          status: 'in_transit',
-          materials: [
-            {
-              id: '2',
-              materialName: 'Concrete Mix Grade 30',
-              materialId: 'mat-002',
-              orderedQuantity: 100,
-              deliveredQuantity: 0,
-              unit: 'bags',
-              notes: 'Expected delivery'
-            }
-          ],
-          notes: 'In transit, tracking number: TR123456',
-          createdAt: '2024-01-12T09:00:00Z',
-          updatedAt: '2024-01-18T16:00:00Z'
-        }
-      ]
-      setDispatches(mockDispatches)
+      const dispatchNotes = await getAllDispatchNotes()
+      
+      // Convert to DispatchRecord format for compatibility
+      const dispatchRecords: DispatchRecord[] = dispatchNotes.map(note => ({
+        id: note.id,
+        orderNumber: note.dispatchNumber || note.orderNumber || 'N/A',
+        supplierName: note.supplier?.name || 'Unknown Supplier',
+        expectedDate: note.expectedDeliveryDate ? new Date(note.expectedDeliveryDate).toISOString().split('T')[0] : '',
+        actualDate: note.actualDeliveryDate ? new Date(note.actualDeliveryDate).toISOString().split('T')[0] : undefined,
+        status: note.status as 'pending' | 'in_transit' | 'delivered' | 'cancelled',
+        materials: [], // Will be populated later with dispatch materials
+        notes: note.notes || '',
+        createdAt: note.createdAt.toISOString(),
+        updatedAt: note.updatedAt.toISOString()
+      }))
+      
+      setDispatches(dispatchRecords)
     } catch (error) {
       console.error('Failed to load dispatches:', error)
       toast({
@@ -197,19 +188,58 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
 
   const handleCreateDispatch = async () => {
     try {
-      const dispatch: DispatchRecord = {
-        id: Date.now().toString(),
-        orderNumber: newDispatch.orderNumber,
-        supplierName: newDispatch.supplierName,
-        expectedDate: newDispatch.expectedDate,
-        status: 'pending',
-        materials: newDispatch.materials,
+      // Create dispatch note in database
+      const dispatchNoteData = {
+        dispatchNumber: newDispatch.orderNumber,
+        supplier: { name: newDispatch.supplierName },
+        expectedDeliveryDate: new Date(newDispatch.expectedDate),
+        status: 'pending' as const,
         notes: newDispatch.notes,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        materials: newDispatch.materials.map(m => ({
+          materialType: m.materialName.split(' ')[0], // Extract type from name
+          profile: 'Standard',
+          grade: 'Standard',
+          dimensions: {},
+          quantity: m.orderedQuantity,
+          unitWeight: 1,
+          totalWeight: m.orderedQuantity,
+          lengthUnit: 'mm',
+          weightUnit: 'kg',
+          unitCost: 0,
+          totalCost: 0,
+          currency: 'USD',
+          status: 'pending' as any,
+          location: 'Warehouse'
+        }))
       }
       
-      setDispatches(prev => [...prev, dispatch])
+      const dispatchId = await createDispatchNote(dispatchNoteData)
+      
+      // Create dispatch materials for each material
+      for (const material of newDispatch.materials) {
+        await createDispatchMaterial({
+          dispatchNoteId: dispatchId,
+          materialType: material.materialName.split(' ')[0],
+          profile: 'Standard',
+          grade: 'Standard',
+          dimensions: {},
+          quantity: material.orderedQuantity,
+          unitWeight: 1,
+          totalWeight: material.orderedQuantity,
+          lengthUnit: 'mm',
+          weightUnit: material.unit,
+          unitCost: 0,
+          totalCost: 0,
+          currency: 'USD',
+          status: 'pending',
+          location: 'Warehouse',
+          notes: material.notes
+        })
+      }
+      
+      // Reload dispatches to show the new one
+      await loadDispatches()
+      
       setShowCreateDialog(false)
       setNewDispatch({
         orderNumber: '',
@@ -234,10 +264,10 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   }
 
   const addMaterialToDispatch = () => {
-    if (!newMaterial.materialName || !newMaterial.orderedQuantity) {
+    if (!selectedMaterial || !newMaterial.orderedQuantity) {
       toast({
         title: "Error",
-        description: "Please fill in material name and quantity",
+        description: "Please select a material and enter quantity",
         variant: "destructive"
       })
       return
@@ -245,11 +275,11 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
     
     const material: MaterialDelivery = {
       id: Date.now().toString(),
-      materialName: newMaterial.materialName,
-      materialId: newMaterial.materialId,
+      materialName: selectedMaterial.name,
+      materialId: selectedMaterial.id,
       orderedQuantity: newMaterial.orderedQuantity,
       deliveredQuantity: newMaterial.deliveredQuantity,
-      unit: newMaterial.unit,
+      unit: selectedMaterial.baseUnit || 'kg', // Get unit from catalog
       notes: newMaterial.notes
     }
     
@@ -258,14 +288,17 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
       materials: [...prev.materials, material]
     }))
     
+    // Reset form
     setNewMaterial({
+      materialCatalogId: '',
       materialName: '',
-      materialId: '',
       orderedQuantity: 0,
       deliveredQuantity: 0,
-      unit: 'kg',
+      unit: '',
       notes: ''
     })
+    setSelectedMaterial(null)
+    setOpen(false)
   }
 
   const removeMaterialFromDispatch = (materialId: string) => {
@@ -561,73 +594,99 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
               
               {/* Add Material Form */}
               <div className="border rounded-lg p-4 bg-gray-50">
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-3 gap-4 mb-4">
                   <div className="space-y-2">
-                    <Label htmlFor="materialName">Material Name</Label>
-                    <Input
-                      id="materialName"
-                      value={newMaterial.materialName}
-                      onChange={(e) => setNewMaterial({...newMaterial, materialName: e.target.value})}
-                      placeholder="Steel Plate S235"
-                    />
-                    
-                    {/* Database Integration Helper */}
-                    {newMaterial.materialName && !catalogMaterials.some(cm => 
-                      cm.name.toLowerCase().includes(newMaterial.materialName.toLowerCase()) ||
-                      cm.description?.toLowerCase().includes(newMaterial.materialName.toLowerCase())
-                    ) && (
-                      <div className="mt-2">
-                        <div className="flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-                          <Package className="h-4 w-4 text-yellow-600" />
-                          <span className="text-sm text-yellow-700">
-                            Material not found in catalog database
-                          </span>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="h-auto p-0 text-blue-600 hover:text-blue-700"
-                            onClick={() => setShowAddMaterialModal(true)}
-                          >
-                            Add to Catalog
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                    <Label>Select Material</Label>
+                    <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={open}
+                          className="w-full justify-between"
+                        >
+                          {selectedMaterial
+                            ? selectedMaterial.name
+                            : "Select material..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search materials..." />
+                          <CommandEmpty>
+                            <div className="p-4 text-center">
+                              <p className="text-sm text-muted-foreground mb-2">
+                                No materials found.
+                              </p>
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() => {
+                                  setOpen(false)
+                                  setShowAddMaterialModal(true)
+                                }}
+                              >
+                                Add to Catalog
+                              </Button>
+                            </div>
+                          </CommandEmpty>
+                          <CommandList>
+                            <CommandGroup>
+                              {catalogMaterials.map((material) => (
+                                <CommandItem
+                                  key={material.id}
+                                  onSelect={() => {
+                                    setSelectedMaterial(material)
+                                    setNewMaterial(prev => ({
+                                      ...prev,
+                                      materialCatalogId: material.id,
+                                      materialName: material.name,
+                                      unit: material.baseUnit || 'kg'
+                                    }))
+                                    setOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedMaterial?.id === material.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{material.name}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                      {material.type} - {material.baseUnit || 'kg'}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
+                  
                   <div className="space-y-2">
-                    <Label htmlFor="orderedQuantity">Ordered Quantity</Label>
+                    <Label htmlFor="orderedQuantity">Quantity</Label>
                     <Input
                       id="orderedQuantity"
                       type="number"
                       value={newMaterial.orderedQuantity}
                       onChange={(e) => setNewMaterial({...newMaterial, orderedQuantity: parseFloat(e.target.value) || 0})}
+                      placeholder="0"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="deliveredQuantity">Delivered Quantity</Label>
-                    <Input
-                      id="deliveredQuantity"
-                      type="number"
-                      value={newMaterial.deliveredQuantity}
-                      onChange={(e) => setNewMaterial({...newMaterial, deliveredQuantity: parseFloat(e.target.value) || 0})}
-                    />
-                  </div>
+                  
                   <div className="space-y-2">
                     <Label htmlFor="unit">Unit</Label>
-                    <Select value={newMaterial.unit} onValueChange={(value) => setNewMaterial({...newMaterial, unit: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="kg">kg</SelectItem>
-                        <SelectItem value="pieces">pieces</SelectItem>
-                        <SelectItem value="m">m</SelectItem>
-                        <SelectItem value="m²">m²</SelectItem>
-                        <SelectItem value="m³">m³</SelectItem>
-                        <SelectItem value="tons">tons</SelectItem>
-                        <SelectItem value="bags">bags</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      id="unit"
+                      value={selectedMaterial ? selectedMaterial.baseUnit || 'kg' : newMaterial.unit}
+                      disabled
+                      className="bg-gray-50"
+                    />
                   </div>
                 </div>
                 <Button onClick={addMaterialToDispatch} className="w-full">

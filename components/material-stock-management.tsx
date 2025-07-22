@@ -49,7 +49,8 @@ import {
   FileText,
   Calendar,
   User,
-  Building
+  Building,
+  Truck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -1263,19 +1264,38 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                           {stockTransactions.map((transaction) => (
                             <TableRow key={transaction.id}>
                               <TableCell>
-                                <Badge variant={
-                                  transaction.type === 'IN' ? 'default' :
-                                  transaction.type === 'OUT' ? 'destructive' :
-                                  transaction.type === 'RESERVED' ? 'secondary' :
-                                  'outline'
-                                }>
-                                  {transaction.type}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  {transaction.type === 'IN' && (
+                                    <Package className="w-4 h-4 text-green-600" />
+                                  )}
+                                  {transaction.type === 'OUT' && (
+                                    <Truck className="w-4 h-4 text-red-600" />
+                                  )}
+                                  {transaction.type === 'RESERVED' && (
+                                    <Clock className="w-4 h-4 text-orange-600" />
+                                  )}
+                                  <Badge variant={
+                                    transaction.type === 'IN' ? 'default' :
+                                    transaction.type === 'OUT' ? 'destructive' :
+                                    transaction.type === 'RESERVED' ? 'secondary' :
+                                    'outline'
+                                  }>
+                                    {transaction.type === 'IN' ? 'ARRIVAL' :
+                                     transaction.type === 'OUT' ? 'USAGE' :
+                                     transaction.type === 'RESERVED' ? 'RESERVED' :
+                                     transaction.type}
+                                  </Badge>
+                                </div>
                               </TableCell>
-                              <TableCell>{transaction.quantity}</TableCell>
+                              <TableCell className="font-medium">
+                                {transaction.type === 'IN' ? '+' : transaction.type === 'OUT' ? '-' : ''}
+                                {transaction.quantity}
+                              </TableCell>
                               <TableCell>
                                 {transaction.referenceType === 'PROJECT' ? 
                                   projects.find(p => p.id === transaction.referenceId)?.name || 'Unknown Project' :
+                                  transaction.referenceType === 'DISPATCH' ? 
+                                  `Dispatch: ${transaction.referenceId?.slice(-8) || 'Unknown'}` :
                                   transaction.referenceType || 'N/A'}
                               </TableCell>
                               <TableCell>
