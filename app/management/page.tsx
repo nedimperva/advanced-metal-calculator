@@ -20,6 +20,7 @@ import MobileProjectDashboard from "@/components/mobile-project-dashboard"
 import { UnifiedProjectDetails } from "@/components/unified-project-details"
 import GlobalWorkers from "@/components/global-workers"
 import GlobalMachinery from "@/components/global-machinery"
+import WorkforceOverview from "@/components/workforce-overview"
 import ProjectTaskManagement from "@/components/tasks/project-task-management"
 import MaterialStockManagement from "@/components/material-stock-management"
 import DispatchManager from "@/components/dispatch-manager"
@@ -213,6 +214,9 @@ export default function ManagementPage() {
                 <h2 className="text-2xl font-semibold">Workforce Management</h2>
                 <p className="text-muted-foreground">Manage workers and machinery across projects</p>
               </div>
+              
+              {/* Workforce Overview Cards */}
+              <WorkforceOverview />
               
               <div className="grid md:grid-cols-2 gap-6">
                 <Card>
