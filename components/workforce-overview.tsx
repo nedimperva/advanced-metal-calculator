@@ -95,11 +95,11 @@ export default function WorkforceOverview() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 rounded-lg">
-                <Users className="h-5 w-5 text-green-600" />
+                <Clock className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Active Workers</p>
-                <p className="text-2xl font-bold">{stats.activeWorkers}</p>
+                <p className="text-sm text-muted-foreground">Total Labor Hours</p>
+                <p className="text-2xl font-bold">24</p>
               </div>
             </div>
           </CardContent>
@@ -112,8 +112,8 @@ export default function WorkforceOverview() {
                 <Settings className="h-5 w-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Machinery</p>
-                <p className="text-2xl font-bold">{stats.totalMachinery}</p>
+                <p className="text-sm text-muted-foreground">Machine Hours</p>
+                <p className="text-2xl font-bold">8</p>
               </div>
             </div>
           </CardContent>
@@ -123,11 +123,11 @@ export default function WorkforceOverview() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <Settings className="h-5 w-5 text-purple-600" />
+                <Building className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Active Machinery</p>
-                <p className="text-2xl font-bold">{stats.activeMachinery}</p>
+                <p className="text-sm text-muted-foreground">Labor Costs</p>
+                <p className="text-2xl font-bold">$1,040</p>
               </div>
             </div>
           </CardContent>
