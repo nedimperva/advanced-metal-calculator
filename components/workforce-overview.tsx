@@ -5,31 +5,50 @@ import { Card, CardContent } from '@/components/ui/card'
 import { 
   Users,
   Settings,
-  DollarSign,
-  BarChart3
+  Clock,
+  Building
 } from 'lucide-react'
-import { calculateProjectStatistics, type ProjectStatistics } from '@/lib/project-utils'
+import { getAllWorkers, getAllMachinery } from '@/lib/database'
 import { useI18n } from '@/contexts/i18n-context'
 import { LoadingSpinner } from '@/components/loading-states'
+import type { Worker, Machinery } from '@/lib/types'
+
+interface WorkforceStats {
+  totalWorkers: number
+  activeWorkers: number
+  totalMachinery: number
+  activeMachinery: number
+}
 
 export default function WorkforceOverview() {
-  const [statistics, setStatistics] = useState<ProjectStatistics | null>(null)
+  const [stats, setStats] = useState<WorkforceStats | null>(null)
   const [loading, setLoading] = useState(true)
   const { t } = useI18n()
 
   useEffect(() => {
-    const fetchStatistics = async () => {
+    const fetchWorkforceData = async () => {
       try {
-        const stats = await calculateProjectStatistics()
-        setStatistics(stats)
+        const [workers, machinery] = await Promise.all([
+          getAllWorkers(),
+          getAllMachinery()
+        ])
+
+        const workforceStats: WorkforceStats = {
+          totalWorkers: workers.length,
+          activeWorkers: workers.filter(w => w.isActive).length,
+          totalMachinery: machinery.length,
+          activeMachinery: machinery.filter(m => m.isActive).length
+        }
+
+        setStats(workforceStats)
       } catch (error) {
-        console.error('Failed to fetch statistics:', error)
+        console.error('Failed to fetch workforce data:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchStatistics()
+    fetchWorkforceData()
   }, [])
 
   if (loading) {
@@ -40,14 +59,14 @@ export default function WorkforceOverview() {
     )
   }
 
-  if (!statistics || statistics.workforceStats.projectsWithWorkforce === 0) {
+  if (!stats) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
           <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">No Workforce Data</h3>
+          <h3 className="text-lg font-semibold mb-2">Failed to Load Data</h3>
           <p className="text-muted-foreground">
-            No projects with workforce data found. Start tracking time in the Daily Journal.
+            Unable to load workforce information. Please try again.
           </p>
         </CardContent>
       </Card>
@@ -56,7 +75,7 @@ export default function WorkforceOverview() {
 
   return (
     <div>
-      <h3 className="text-lg font-semibold mb-3">{t('workforceOverview')}</h3>
+      <h3 className="text-lg font-semibold mb-3">Workforce Overview</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -65,8 +84,22 @@ export default function WorkforceOverview() {
                 <Users className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">{t('totalLaborHours')}</p>
-                <p className="text-2xl font-bold">{statistics.workforceStats.totalLaborHours.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Total Workers</p>
+                <p className="text-2xl font-bold">{stats.totalWorkers}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Users className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Active Workers</p>
+                <p className="text-2xl font-bold">{stats.activeWorkers}</p>
               </div>
             </div>
           </CardContent>
@@ -79,22 +112,8 @@ export default function WorkforceOverview() {
                 <Settings className="h-5 w-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">{t('machineHours')}</p>
-                <p className="text-2xl font-bold">{statistics.workforceStats.totalMachineryHours.toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <DollarSign className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{t('laborCosts')}</p>
-                <p className="text-2xl font-bold">${statistics.totalWorkforceCosts.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Total Machinery</p>
+                <p className="text-2xl font-bold">{stats.totalMachinery}</p>
               </div>
             </div>
           </CardContent>
@@ -104,12 +123,11 @@ export default function WorkforceOverview() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <BarChart3 className="h-5 w-5 text-purple-600" />
+                <Settings className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">{t('activeProjects')}</p>
-                <p className="text-2xl font-bold">{statistics.workforceStats.projectsWithWorkforce}</p>
-                <p className="text-xs text-muted-foreground">{t('withWorkforce')}</p>
+                <p className="text-sm text-muted-foreground">Active Machinery</p>
+                <p className="text-2xl font-bold">{stats.activeMachinery}</p>
               </div>
             </div>
           </CardContent>
