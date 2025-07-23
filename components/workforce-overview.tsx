@@ -6,18 +6,19 @@ import {
   Users,
   Settings,
   Clock,
-  Building
+  DollarSign
 } from 'lucide-react'
-import { getAllWorkers, getAllMachinery } from '@/lib/database'
+import { getAllWorkers, getAllMachinery, getDailyJournalTimesheetByDate } from '@/lib/database'
 import { useI18n } from '@/contexts/i18n-context'
 import { LoadingSpinner } from '@/components/loading-states'
 import type { Worker, Machinery } from '@/lib/types'
+import { eachDayOfInterval, startOfMonth, endOfMonth, format } from 'date-fns'
 
 interface WorkforceStats {
   totalWorkers: number
-  activeWorkers: number
-  totalMachinery: number
-  activeMachinery: number
+  monthlyLaborHours: number
+  monthlyMachineHours: number
+  monthlyLaborCosts: number
 }
 
 export default function WorkforceOverview() {
@@ -28,16 +29,48 @@ export default function WorkforceOverview() {
   useEffect(() => {
     const fetchWorkforceData = async () => {
       try {
-        const [workers, machinery] = await Promise.all([
-          getAllWorkers(),
-          getAllMachinery()
-        ])
+        const workers = await getAllWorkers()
+        
+        // Get current month date range
+        const now = new Date()
+        const monthStart = startOfMonth(now)
+        const monthEnd = endOfMonth(now)
+        const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
+        
+        let monthlyLaborHours = 0
+        let monthlyMachineHours = 0
+        let monthlyLaborCosts = 0
+        
+        // Calculate monthly statistics from daily timesheets
+        for (const day of daysInMonth) {
+          try {
+            const timesheet = await getDailyJournalTimesheetByDate(day)
+            if (timesheet) {
+              // Sum worker hours and costs
+              timesheet.workerEntries.forEach(entry => {
+                const dailyHours = entry.projectHours.reduce((sum, ph) => sum + ph.hours, 0)
+                const dailyCost = entry.projectHours.reduce((sum, ph) => sum + ph.cost, 0)
+                monthlyLaborHours += dailyHours
+                monthlyLaborCosts += dailyCost
+              })
+              
+              // Sum machinery hours
+              timesheet.machineryEntries.forEach(entry => {
+                const dailyHours = entry.projectHours.reduce((sum, ph) => sum + ph.hours, 0)
+                monthlyMachineHours += dailyHours
+              })
+            }
+          } catch (error) {
+            // Skip days with errors
+            continue
+          }
+        }
 
         const workforceStats: WorkforceStats = {
           totalWorkers: workers.length,
-          activeWorkers: workers.filter(w => w.isActive).length,
-          totalMachinery: machinery.length,
-          activeMachinery: machinery.filter(m => m.isActive).length
+          monthlyLaborHours: Math.round(monthlyLaborHours * 10) / 10, // Round to 1 decimal
+          monthlyMachineHours: Math.round(monthlyMachineHours * 10) / 10,
+          monthlyLaborCosts: Math.round(monthlyLaborCosts)
         }
 
         setStats(workforceStats)
@@ -73,9 +106,11 @@ export default function WorkforceOverview() {
     )
   }
 
+  const currentMonth = format(new Date(), 'MMMM yyyy')
+
   return (
     <div>
-      <h3 className="text-lg font-semibold mb-3">Workforce Overview</h3>
+      <h3 className="text-lg font-semibold mb-3">Workforce Overview - {currentMonth}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -98,8 +133,8 @@ export default function WorkforceOverview() {
                 <Clock className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Labor Hours</p>
-                <p className="text-2xl font-bold">24</p>
+                <p className="text-sm text-muted-foreground">Monthly Labor Hours</p>
+                <p className="text-2xl font-bold">{stats.monthlyLaborHours}</p>
               </div>
             </div>
           </CardContent>
@@ -112,8 +147,8 @@ export default function WorkforceOverview() {
                 <Settings className="h-5 w-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Machine Hours</p>
-                <p className="text-2xl font-bold">8</p>
+                <p className="text-sm text-muted-foreground">Monthly Machine Hours</p>
+                <p className="text-2xl font-bold">{stats.monthlyMachineHours}</p>
               </div>
             </div>
           </CardContent>
@@ -123,11 +158,11 @@ export default function WorkforceOverview() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <Building className="h-5 w-5 text-purple-600" />
+                <DollarSign className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Labor Costs</p>
-                <p className="text-2xl font-bold">$1,040</p>
+                <p className="text-sm text-muted-foreground">Monthly Labor Costs</p>
+                <p className="text-2xl font-bold">${stats.monthlyLaborCosts.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
