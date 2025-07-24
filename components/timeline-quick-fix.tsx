@@ -2,7 +2,7 @@
 // Professional timeline with real-time updates, editing, and task integration
 
 import React, { useState } from 'react'
-import { useTimelineEvents } from './timeline-events-fix'
+import { useTimelineEvents } from '@/hooks/use-timeline-events'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -66,7 +66,7 @@ export function EnhancedTimeline({ project, projectTasks = [] }: EnhancedTimelin
         setEditingId(null)
         setEditTitle('')
       } catch (error) {
-        console.error('Edit failed:', error)
+        // Handle edit error silently
       }
     }
   }
@@ -76,7 +76,7 @@ export function EnhancedTimeline({ project, projectTasks = [] }: EnhancedTimelin
       try {
         await removeEvent(eventId)
       } catch (error) {
-        console.error('Delete failed:', error)
+        // Handle delete error silently
       }
     }
   }

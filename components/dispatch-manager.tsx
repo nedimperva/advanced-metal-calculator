@@ -445,7 +445,6 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
         
         // If no stock record found but we have a catalog material, create one
         if (!stockRecord && catalogMaterial) {
-          console.log(`Creating new stock record for material: ${catalogMaterial.name}`)
           const newStockId = await createMaterialStock({
             materialCatalogId: catalogMaterial.id,
             currentStock: 0,
@@ -497,8 +496,6 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           stockUpdated++
         } else {
           console.warn(`Could not find stock record for material: ${material.materialName}`)
-          console.log('Available catalog materials:', catalogMaterials.map(cm => cm.name))
-          console.log('Available stock records:', stockRecords.map(sr => sr.materialCatalogId))
         }
       }
       
@@ -590,8 +587,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
             
             // If no stock record found but we have a catalog material, create one
             if (!stockRecord && catalogMaterial) {
-              console.log(`Creating new stock record for material: ${catalogMaterial.name}`)
-              const newStockId = await createMaterialStock({
+                  const newStockId = await createMaterialStock({
                 materialCatalogId: catalogMaterial.id,
                 currentStock: 0,
                 reservedStock: 0,
@@ -640,8 +636,6 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
               stockUpdated++
             } else {
               console.warn(`Could not find stock record for material: ${material.materialName}`)
-              console.log('Available catalog materials:', catalogMaterials.map(cm => cm.name))
-              console.log('Available stock records:', stockRecords.map(sr => sr.materialCatalogId))
             }
           }
         }

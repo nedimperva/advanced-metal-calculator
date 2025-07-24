@@ -175,7 +175,6 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
       
       // If no stock data exists, create initial stock for each material
       if (stockData.length === 0 && catalogMaterials.length > 0) {
-        console.log('Creating initial stock data for', catalogMaterials.length, 'materials')
         for (const material of catalogMaterials) {
           await createMaterialStock({
             materialCatalogId: material.id,

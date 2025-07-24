@@ -78,7 +78,6 @@ export default function ProjectTaskManagement({
     // Listen for timeline updates
     const handleTimelineUpdate = (event: CustomEvent) => {
       if (event.detail?.projectId === project.id) {
-        console.log('Timeline updated, reloading timeline events in task management')
         loadRealTimelineEvents()
       }
     }
@@ -169,7 +168,6 @@ export default function ProjectTaskManagement({
     try {
       const allWorkers = await getAllWorkers()
       const activeWorkers = allWorkers.filter(w => w.isActive)
-      console.log('Loaded workers:', activeWorkers.length) // Debug log
       setWorkers(activeWorkers)
     } catch (error) {
       console.error('Failed to load workers:', error)
@@ -185,7 +183,6 @@ export default function ProjectTaskManagement({
     try {
       const { getTimelineEvents } = await import('@/lib/timeline-storage')
       const events = getTimelineEvents(project.id)
-      console.log('Loaded real timeline events:', events.length, events) // Debug log
       setRealTimelineEvents(events)
     } catch (error) {
       console.error('Failed to load timeline events:', error)
@@ -224,7 +221,6 @@ export default function ProjectTaskManagement({
             }
           }
           
-          console.log('Timeline events linked:', selectedEvents, 'to task:', taskId)
           toast({
             title: "Task Saved & Linked",
             description: `Task saved and linked to ${selectedEvents.length} timeline event(s)`,

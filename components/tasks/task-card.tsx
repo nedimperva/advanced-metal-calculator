@@ -86,7 +86,6 @@ function LinkedEventsDisplay({ projectId, taskId }: { projectId: string, taskId:
     try {
       const { getLinkedTimelineEvents } = await import('@/lib/timeline-storage')
       const events = getLinkedTimelineEvents(projectId, taskId)
-      console.log(`Loading linked events for task ${taskId}:`, events)
       setLinkedEvents(events)
     } catch (error) {
       console.error('Failed to load linked events:', error)
@@ -95,37 +94,6 @@ function LinkedEventsDisplay({ projectId, taskId }: { projectId: string, taskId:
     }
   }
 
-  const debugStorage = () => {
-    const stored = localStorage.getItem('timeline_events')
-    console.log('🔍 DEBUG - Task Card Debug Info:')
-    console.log('  Project ID:', projectId)
-    console.log('  Task ID:', taskId)
-    console.log('  Raw timeline storage:', stored)
-    
-    if (stored) {
-      const allEvents = JSON.parse(stored)
-      console.log('  All events count:', allEvents.length)
-      console.log('  All events:', allEvents)
-      
-      const projectEvents = allEvents.filter((e: any) => e.projectId === projectId)
-      console.log('  Project events count:', projectEvents.length)
-      console.log('  Project events:', projectEvents)
-      
-      const linkedToThis = projectEvents.filter((e: any) => 
-        e.linkedTaskIds && e.linkedTaskIds.includes(taskId)
-      )
-      console.log('  Events linked to this task count:', linkedToThis.length)
-      console.log('  Events linked to this task:', linkedToThis)
-      
-      // Check if task ID exists in any linkedTaskIds arrays
-      const anyLinked = allEvents.filter((e: any) => 
-        e.linkedTaskIds && e.linkedTaskIds.includes(taskId)
-      )
-      console.log('  Any events linked to this task (cross-project):', anyLinked)
-    } else {
-      console.log('  No timeline events in storage')
-    }
-  }
 
   useEffect(() => {
     loadLinkedEvents()
@@ -133,7 +101,6 @@ function LinkedEventsDisplay({ projectId, taskId }: { projectId: string, taskId:
     // Listen for timeline updates
     const handleTimelineUpdate = (event: CustomEvent) => {
       if (event.detail?.projectId === projectId) {
-        console.log('Timeline updated, reloading linked events for task:', taskId)
         loadLinkedEvents()
       }
     }
@@ -163,14 +130,6 @@ function LinkedEventsDisplay({ projectId, taskId }: { projectId: string, taskId:
         <span className="text-xs text-muted-foreground">
           Linked Events ({linkedEvents.length})
         </span>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={debugStorage}
-          className="h-5 px-1 text-xs ml-auto"
-        >
-          Debug
-        </Button>
       </div>
       {linkedEvents.length === 0 ? (
         <div className="text-xs text-muted-foreground/70 italic">

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import { useTimelineEvents } from './timeline-events-fix'
+import { useTimelineEvents } from '@/hooks/use-timeline-events'
 import { type StoredTimelineEvent } from '@/lib/timeline-storage'
 import { Edit, Trash2, Plus, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -54,7 +54,7 @@ export function EnhancedTimelineWrapper({ project, projectTasks = [] }: Enhanced
       try {
         await editEvent(event.id, { title: newTitle.trim() })
       } catch (error) {
-        console.error('Quick edit failed:', error)
+        // Handle edit error silently
       }
     }
   }
@@ -64,7 +64,7 @@ export function EnhancedTimelineWrapper({ project, projectTasks = [] }: Enhanced
       try {
         await removeEvent(eventId)
       } catch (error) {
-        console.error('Delete failed:', error)
+        // Handle delete error silently
       }
     }
   }

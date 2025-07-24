@@ -172,7 +172,6 @@ export default function ProjectDashboard({
       onCreateProject()
     } else {
       // Template viewing will be handled within the tab system
-      console.log('View templates')
     }
   }
 
@@ -184,7 +183,6 @@ export default function ProjectDashboard({
       }
     } else {
       // Project viewing will be handled within the tab system
-      console.log('View project:', projectId)
     }
   }
 
@@ -195,7 +193,6 @@ export default function ProjectDashboard({
         onEditProject(project)
       }
     } else {
-      console.log('Edit project:', projectId)
     }
   }
 

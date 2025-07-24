@@ -229,7 +229,6 @@ export default function MobileProjectDashboard({
 
   const handleViewTemplates = () => {
     // Template viewing will be handled within the tab system
-    console.log('View templates')
   }
 
   const handleViewProject = (projectId: string) => {
@@ -240,7 +239,6 @@ export default function MobileProjectDashboard({
       }
     } else {
       // Project viewing will be handled within the tab system
-      console.log('View project:', projectId)
     }
   }
 
@@ -251,7 +249,7 @@ export default function MobileProjectDashboard({
         onEditProject(project)
       }
     } else {
-      console.log('Edit project:', projectId)
+      // Edit project functionality will be handled within the tab system
     }
   }
 

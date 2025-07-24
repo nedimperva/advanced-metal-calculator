@@ -1032,7 +1032,6 @@ export default function ProjectTimeline({
         }))
         
         setCustomEvents(timelineEvents)
-        console.log('Loaded stored events:', timelineEvents.length)
       } catch (error) {
         console.error('Failed to load stored events:', error)
       }
@@ -1190,7 +1189,6 @@ export default function ProjectTimeline({
       }))
       
       setCustomEvents(timelineEvents)
-      console.log('Event saved and reloaded:', savedEvent.title, 'Total events:', timelineEvents.length)
       
       onUpdate?.()
       
