@@ -83,6 +83,8 @@ interface EditProjectModalProps {
 function EditProjectModal({ project, isOpen, onClose, onSave }: EditProjectModalProps) {
   const { t } = useI18n()
   const [isLoading, setIsLoading] = useState(false)
+  
+  console.log('EditProjectModal component render - isOpen:', isOpen)
   const [formData, setFormData] = useState({
     name: project.name,
     description: project.description,
@@ -336,6 +338,11 @@ export function ProjectNavigation({
   const { deleteProject, updateProject } = useProjects()
   const { t } = useI18n()
   const [showEditModal, setShowEditModal] = useState(false)
+  
+  // Debug modal state changes
+  useEffect(() => {
+    console.log('showEditModal state changed to:', showEditModal)
+  }, [showEditModal])
 
   // Handle navigation actions
   const handleBack = () => {
@@ -343,9 +350,14 @@ export function ProjectNavigation({
     console.log('Navigate back to projects')
   }
 
-  const handleEdit = () => {
+  const handleEdit = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    console.log('handleEdit called - before modal state change')
     if (project) {
+      console.log('Setting modal to true for project:', project.name)
       setShowEditModal(true)
+      console.log('Modal state should be true now')
     }
   }
 
@@ -435,6 +447,7 @@ export function ProjectNavigation({
           {project && (
             <>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleEdit}
