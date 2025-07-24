@@ -20,13 +20,28 @@ export enum ErrorType {
   USER_INPUT = 'USER_INPUT',
 }
 
+// Interface for validation error details
+export interface ValidationErrorDetails {
+  field?: string
+  value?: unknown
+  constraint?: string
+  expectedType?: string
+  actualType?: string
+  range?: { min?: number; max?: number }
+}
+
+// Interface for general error context
+export interface ErrorContext {
+  [key: string]: unknown
+}
+
 export interface StructuredError {
   type: ErrorType
   code: string
   message: string
-  details?: any
+  details?: ValidationErrorDetails | Record<string, unknown>
   timestamp: Date
-  context?: Record<string, any>
+  context?: ErrorContext
 }
 
 // Validation constants
@@ -251,12 +266,23 @@ export function validateMaterialTemperature(
   return { isValid: errors.length === 0, errors, warnings }
 }
 
+// Interface for material data
+export interface MaterialData {
+  name: string
+  density: number
+  meltingPoint: number
+  thermalExpansion?: number
+  yieldStrength?: number
+  tensileStrength?: number
+  type: string
+}
+
 // Comprehensive calculation validation
 export function validateCalculationInputs(
   profileType: string,
   dimensions: Record<string, string>,
   length: string,
-  materialData: any,
+  materialData: MaterialData | null,
   temperature?: string
 ): ValidationResult {
   const errors: string[] = []
@@ -364,8 +390,8 @@ export function createError(
   type: ErrorType,
   code: string,
   message: string,
-  details?: any,
-  context?: Record<string, any>
+  details?: ValidationErrorDetails | Record<string, unknown>,
+  context?: ErrorContext
 ): StructuredError {
   return {
     type,
