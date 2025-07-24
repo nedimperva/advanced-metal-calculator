@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from "react"
 
+// Type definition for legacy MediaQueryList methods
+interface LegacyMediaQueryList {
+  matches: boolean;
+  media: string;
+  addEventListener?: (type: "change", listener: (this: MediaQueryList, ev: MediaQueryListEvent) => void) => void;
+  removeEventListener?: (type: "change", listener: (this: MediaQueryList, ev: MediaQueryListEvent) => void) => void;
+  addListener?: (listener: (this: MediaQueryList, ev: MediaQueryListEvent) => void) => void;
+  removeListener?: (listener: (this: MediaQueryList, ev: MediaQueryListEvent) => void) => void;
+}
+
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -9,7 +19,7 @@ export function useMediaQuery(query: string): boolean {
   useEffect(() => {
     setMounted(true)
     
-    const media = window.matchMedia(query)
+    const media = window.matchMedia(query) as LegacyMediaQueryList
     
     // Set initial value immediately after mounting
     setMatches(media.matches)
@@ -21,16 +31,16 @@ export function useMediaQuery(query: string): boolean {
     // Use the newer method if available, fallback to deprecated method
     if (media.addEventListener) {
       media.addEventListener("change", listener)
-    } else {
-      // @ts-ignore - for older browsers
+    } else if (media.addListener) {
+      // Legacy browser support
       media.addListener(listener)
     }
 
     return () => {
       if (media.removeEventListener) {
         media.removeEventListener("change", listener)
-      } else {
-        // @ts-ignore - for older browsers
+      } else if (media.removeListener) {
+        // Legacy browser support
         media.removeListener(listener)
       }
     }
