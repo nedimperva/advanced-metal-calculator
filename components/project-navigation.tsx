@@ -1,9 +1,27 @@
 "use client"
 
-import React from 'react'
+import React, { useState } from 'react'
 // Navigation is now handled within the tab system - no router needed
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -29,13 +47,15 @@ import {
   BarChart3,
   Calendar,
   Settings,
-  FolderOpen
+  FolderOpen,
+  Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjects } from '@/contexts/project-context'
 import { useI18n } from '@/contexts/i18n-context'
 import { PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS } from '@/lib/project-utils'
-import type { Project } from '@/lib/types'
+import { toast } from '@/hooks/use-toast'
+import type { Project, ProjectStatus } from '@/lib/types'
 
 interface ProjectNavigationProps {
   project?: Project
@@ -53,6 +73,238 @@ const projectTabs = [
   { value: 'timeline', label: 'Timeline', icon: Calendar }
 ]
 
+interface EditProjectModalProps {
+  project: Project
+  isOpen: boolean
+  onClose: () => void
+  onSave: (project: Partial<Project>) => Promise<void>
+}
+
+function EditProjectModal({ project, isOpen, onClose, onSave }: EditProjectModalProps) {
+  const { t } = useI18n()
+  const [isLoading, setIsLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    name: project.name,
+    description: project.description,
+    status: project.status,
+    totalBudget: project.totalBudget?.toString() || '',
+    currency: project.currency,
+    notes: project.notes,
+    client: project.client || '',
+    location: project.location || '',
+    deadline: project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '',
+    tags: project.tags.join(', ')
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Project name is required'
+    }
+
+    if (formData.name.length > 100) {
+      newErrors.name = 'Project name must be less than 100 characters'
+    }
+
+    if (formData.totalBudget && (isNaN(parseFloat(formData.totalBudget)) || parseFloat(formData.totalBudget) < 0)) {
+      newErrors.totalBudget = 'Budget must be a valid positive number'
+    }
+
+    if (formData.deadline) {
+      const deadlineDate = new Date(formData.deadline)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (deadlineDate <= today) {
+        newErrors.deadline = 'Deadline must be in the future'
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return
+
+    setIsLoading(true)
+    try {
+      const updatedProject: Partial<Project> = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        status: formData.status,
+        totalBudget: formData.totalBudget ? parseFloat(formData.totalBudget) : undefined,
+        currency: formData.currency,
+        notes: formData.notes.trim(),
+        client: formData.client.trim() || undefined,
+        location: formData.location.trim() || undefined,
+        deadline: formData.deadline ? new Date(formData.deadline) : undefined,
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
+      }
+
+      await onSave(updatedProject)
+    } catch (error) {
+      console.error('Error updating project:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Project</DialogTitle>
+          <DialogDescription>
+            Update project details, status, and other information
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Project Name */}
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="projectName">Project Name *</Label>
+              <Input
+                id="projectName"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className={errors.name ? 'border-red-500' : ''}
+              />
+              {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
+            </div>
+
+            {/* Status */}
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as ProjectStatus }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Client */}
+            <div className="space-y-2">
+              <Label htmlFor="client">Client</Label>
+              <Input
+                id="client"
+                value={formData.client}
+                onChange={(e) => setFormData(prev => ({ ...prev, client: e.target.value }))}
+              />
+            </div>
+
+            {/* Location */}
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+              />
+            </div>
+
+            {/* Budget */}
+            <div className="space-y-2">
+              <Label htmlFor="budget">Budget</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="budget"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.totalBudget}
+                  onChange={(e) => setFormData(prev => ({ ...prev, totalBudget: e.target.value }))}
+                  className={errors.totalBudget ? 'border-red-500' : ''}
+                />
+                <Select
+                  value={formData.currency}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KM">KM</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {errors.totalBudget && <p className="text-red-500 text-sm">{errors.totalBudget}</p>}
+            </div>
+
+            {/* Deadline */}
+            <div className="space-y-2">
+              <Label htmlFor="deadline">Deadline</Label>
+              <Input
+                id="deadline"
+                type="date"
+                value={formData.deadline}
+                onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+                className={errors.deadline ? 'border-red-500' : ''}
+              />
+              {errors.deadline && <p className="text-red-500 text-sm">{errors.deadline}</p>}
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="tags">Tags (comma-separated)</Label>
+              <Input
+                id="tags"
+                value={formData.tags}
+                onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
+                placeholder="e.g., structural, high-priority, urban"
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              rows={3}
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={isLoading}>
+            {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Update Project
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function ProjectNavigation({ 
   project, 
   className,
@@ -62,8 +314,9 @@ export function ProjectNavigation({
   onTabChange
 }: ProjectNavigationProps) {
   // Router and pathname no longer needed - navigation handled by parent
-  const { deleteProject } = useProjects()
+  const { deleteProject, updateProject } = useProjects()
   const { t } = useI18n()
+  const [showEditModal, setShowEditModal] = useState(false)
 
   // Handle navigation actions
   const handleBack = () => {
@@ -72,9 +325,9 @@ export function ProjectNavigation({
   }
 
   const handleEdit = () => {
-    // Edit functionality will be handled in-place within the tab system
-    console.log('Edit project:', project?.id)
-    // TODO: Implement inline editing or edit modal
+    if (project) {
+      setShowEditModal(true)
+    }
   }
 
   const handleShare = async () => {
@@ -233,6 +486,32 @@ export function ProjectNavigation({
             </TabsList>
           </Tabs>
         </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {project && (
+        <EditProjectModal
+          project={project}
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSave={async (updatedProject) => {
+            try {
+              await updateProject({ ...project, ...updatedProject })
+              setShowEditModal(false)
+              toast({
+                title: 'Project Updated',
+                description: `"${updatedProject.name}" has been updated successfully`,
+              })
+            } catch (error) {
+              console.error('Failed to update project:', error)
+              toast({
+                title: 'Error',
+                description: 'Failed to update project. Please try again.',
+                variant: 'destructive',
+              })
+            }
+          }}
+        />
       )}
     </div>
   )

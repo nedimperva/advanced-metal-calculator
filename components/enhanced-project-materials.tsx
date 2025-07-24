@@ -906,6 +906,289 @@ function AddMaterialModal({ isOpen, onClose, onAdd, projectId }: AddMaterialModa
   )
 }
 
+interface EditMaterialFormProps {
+  material: ProjectMaterial
+  onSave: (material: Partial<ProjectMaterial>) => Promise<void>
+  onCancel: () => void
+}
+
+function EditMaterialForm({ material, onSave, onCancel }: EditMaterialFormProps) {
+  const { t } = useI18n()
+  const [isLoading, setIsLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    materialName: material.materialName,
+    profile: material.profile,
+    grade: material.grade,
+    quantity: material.quantity.toString(),
+    unit: material.unit || 'pcs',
+    unitCost: material.unitCost?.toString() || '',
+    totalCost: material.totalCost?.toString() || '',
+    supplier: material.supplier || '',
+    location: material.location || '',
+    notes: material.notes || '',
+    orderDate: material.orderDate ? new Date(material.orderDate).toISOString().split('T')[0] : '',
+    deliveryDate: material.deliveryDate ? new Date(material.deliveryDate).toISOString().split('T')[0] : '',
+    dimensions: { ...material.dimensions }
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.materialName.trim()) {
+      newErrors.materialName = 'Material name is required'
+    }
+
+    if (!formData.profile.trim()) {
+      newErrors.profile = 'Profile is required'
+    }
+
+    if (!formData.grade.trim()) {
+      newErrors.grade = 'Grade is required'
+    }
+
+    const quantity = parseFloat(formData.quantity)
+    if (!formData.quantity || isNaN(quantity) || quantity <= 0) {
+      newErrors.quantity = 'Valid quantity is required'
+    }
+
+    if (formData.unitCost && (isNaN(parseFloat(formData.unitCost)) || parseFloat(formData.unitCost) < 0)) {
+      newErrors.unitCost = 'Unit cost must be a valid positive number'
+    }
+
+    if (formData.totalCost && (isNaN(parseFloat(formData.totalCost)) || parseFloat(formData.totalCost) < 0)) {
+      newErrors.totalCost = 'Total cost must be a valid positive number'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return
+
+    setIsLoading(true)
+    try {
+      const quantity = parseFloat(formData.quantity)
+      const unitCost = formData.unitCost ? parseFloat(formData.unitCost) : undefined
+      const totalCost = formData.totalCost ? parseFloat(formData.totalCost) : (unitCost ? unitCost * quantity : undefined)
+
+      const updatedMaterial: Partial<ProjectMaterial> = {
+        materialName: formData.materialName.trim(),
+        profile: formData.profile.trim(),
+        grade: formData.grade.trim(),
+        quantity,
+        unit: formData.unit,
+        unitCost,
+        totalCost,
+        supplier: formData.supplier.trim() || undefined,
+        location: formData.location.trim() || undefined,
+        notes: formData.notes.trim() || undefined,
+        orderDate: formData.orderDate ? new Date(formData.orderDate) : undefined,
+        deliveryDate: formData.deliveryDate ? new Date(formData.deliveryDate) : undefined,
+        dimensions: formData.dimensions
+      }
+
+      await onSave(updatedMaterial)
+    } catch (error) {
+      console.error('Error updating material:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Material Name */}
+        <div className="space-y-2">
+          <Label htmlFor="materialName">Material Name *</Label>
+          <Input
+            id="materialName"
+            value={formData.materialName}
+            onChange={(e) => setFormData(prev => ({ ...prev, materialName: e.target.value }))}
+            className={errors.materialName ? 'border-red-500' : ''}
+          />
+          {errors.materialName && <p className="text-red-500 text-sm">{errors.materialName}</p>}
+        </div>
+
+        {/* Profile */}
+        <div className="space-y-2">
+          <Label htmlFor="profile">Profile *</Label>
+          <Input
+            id="profile"
+            value={formData.profile}
+            onChange={(e) => setFormData(prev => ({ ...prev, profile: e.target.value }))}
+            className={errors.profile ? 'border-red-500' : ''}
+          />
+          {errors.profile && <p className="text-red-500 text-sm">{errors.profile}</p>}
+        </div>
+
+        {/* Grade */}
+        <div className="space-y-2">
+          <Label htmlFor="grade">Grade *</Label>
+          <Input
+            id="grade"
+            value={formData.grade}
+            onChange={(e) => setFormData(prev => ({ ...prev, grade: e.target.value }))}
+            className={errors.grade ? 'border-red-500' : ''}
+          />
+          {errors.grade && <p className="text-red-500 text-sm">{errors.grade}</p>}
+        </div>
+
+        {/* Quantity */}
+        <div className="space-y-2">
+          <Label htmlFor="quantity">Quantity *</Label>
+          <div className="flex gap-2">
+            <Input
+              id="quantity"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.quantity}
+              onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+              className={errors.quantity ? 'border-red-500' : ''}
+            />
+            <Select
+              value={formData.unit}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, unit: value }))}
+            >
+              <SelectTrigger className="w-24">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pcs">pcs</SelectItem>
+                <SelectItem value="kg">kg</SelectItem>
+                <SelectItem value="m">m</SelectItem>
+                <SelectItem value="m²">m²</SelectItem>
+                <SelectItem value="m³">m³</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity}</p>}
+        </div>
+
+        {/* Unit Cost */}
+        <div className="space-y-2">
+          <Label htmlFor="unitCost">Unit Cost (KM)</Label>
+          <Input
+            id="unitCost"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.unitCost}
+            onChange={(e) => setFormData(prev => ({ ...prev, unitCost: e.target.value }))}
+            className={errors.unitCost ? 'border-red-500' : ''}
+          />
+          {errors.unitCost && <p className="text-red-500 text-sm">{errors.unitCost}</p>}
+        </div>
+
+        {/* Total Cost */}
+        <div className="space-y-2">
+          <Label htmlFor="totalCost">Total Cost (KM)</Label>
+          <Input
+            id="totalCost"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.totalCost}
+            onChange={(e) => setFormData(prev => ({ ...prev, totalCost: e.target.value }))}
+            className={errors.totalCost ? 'border-red-500' : ''}
+          />
+          {errors.totalCost && <p className="text-red-500 text-sm">{errors.totalCost}</p>}
+        </div>
+
+        {/* Supplier */}
+        <div className="space-y-2">
+          <Label htmlFor="supplier">Supplier</Label>
+          <Input
+            id="supplier"
+            value={formData.supplier}
+            onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
+          />
+        </div>
+
+        {/* Location */}
+        <div className="space-y-2">
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            value={formData.location}
+            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+          />
+        </div>
+
+        {/* Order Date */}
+        <div className="space-y-2">
+          <Label htmlFor="orderDate">Order Date</Label>
+          <Input
+            id="orderDate"
+            type="date"
+            value={formData.orderDate}
+            onChange={(e) => setFormData(prev => ({ ...prev, orderDate: e.target.value }))}
+          />
+        </div>
+
+        {/* Delivery Date */}
+        <div className="space-y-2">
+          <Label htmlFor="deliveryDate">Delivery Date</Label>
+          <Input
+            id="deliveryDate"
+            type="date"
+            value={formData.deliveryDate}
+            onChange={(e) => setFormData(prev => ({ ...prev, deliveryDate: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      {/* Dimensions */}
+      <div className="space-y-2">
+        <Label>Dimensions ({material.lengthUnit})</Label>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {Object.entries(formData.dimensions).map(([key, value]) => (
+            <div key={key} className="space-y-1">
+              <Label htmlFor={`dim-${key}`} className="text-xs capitalize">{key}</Label>
+              <Input
+                id={`dim-${key}`}
+                type="number"
+                step="0.01"
+                min="0"
+                value={value}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  dimensions: { ...prev.dimensions, [key]: parseFloat(e.target.value) || 0 }
+                }))}
+                className="text-sm"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+          rows={3}
+        />
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel} disabled={isLoading}>
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit} disabled={isLoading}>
+          {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Update Material
+        </Button>
+      </DialogFooter>
+    </div>
+  )
+}
+
 export default function EnhancedProjectMaterials({
   project,
   onUpdate,
@@ -928,6 +1211,7 @@ export default function EnhancedProjectMaterials({
   const [installMaterial, setInstallMaterial] = useState<ProjectMaterial | null>(null)
   const [installQuantity, setInstallQuantity] = useState('')
   const [returnToStock, setReturnToStock] = useState(false)
+  const [editingMaterial, setEditingMaterial] = useState<ProjectMaterial | null>(null)
 
   // Load materials
   const loadMaterials = async () => {
@@ -1305,13 +1589,7 @@ export default function EnhancedProjectMaterials({
             <MaterialCard
               key={material.id}
               material={material}
-              onEdit={() => {
-                // TODO: Implement edit modal
-                toast({
-                  title: 'Coming Soon',
-                  description: 'Material editing will be available soon',
-                })
-              }}
+              onEdit={() => setEditingMaterial(material)}
               onDelete={() => handleDeleteMaterial(material.id)}
               onStatusChange={(status) => handleStatusChange(material.id, status)}
               isMobile={isMobile}
@@ -1403,6 +1681,48 @@ export default function EnhancedProjectMaterials({
               Record Installation
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Material Modal */}
+      <Dialog open={!!editingMaterial} onOpenChange={() => setEditingMaterial(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Material</DialogTitle>
+            <DialogDescription>
+              Update material details, quantities, and specifications
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingMaterial && (
+            <EditMaterialForm 
+              material={editingMaterial}
+              onSave={async (updatedMaterial) => {
+                try {
+                  await updateProjectMaterial(editingMaterial.id, {
+                    ...updatedMaterial,
+                    updatedAt: new Date()
+                  })
+                  
+                  await loadMaterials()
+                  setEditingMaterial(null)
+                  
+                  toast({
+                    title: 'Material Updated',
+                    description: `${updatedMaterial.materialName} has been updated successfully`,
+                  })
+                } catch (error) {
+                  console.error('Failed to update material:', error)
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to update material. Please try again.',
+                    variant: 'destructive',
+                  })
+                }
+              }}
+              onCancel={() => setEditingMaterial(null)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
