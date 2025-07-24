@@ -3,15 +3,34 @@
 import React, { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FolderOpen, Package, Users, Clock, Truck, ArrowLeft, Plus, Settings, BarChart3 } from "lucide-react"
+import { FolderOpen, Package, Users, Clock, Truck, ArrowLeft, Plus, Settings, BarChart3, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { toast } from "@/hooks/use-toast"
 
 import { useI18n } from "@/contexts/i18n-context"
 import { useProjects } from "@/contexts/project-context"
-import { Project } from "@/lib/types"
+import { Project, ProjectStatus } from "@/lib/types"
+import { PROJECT_STATUS_LABELS } from "@/lib/project-utils"
 import BackgroundElements from "@/components/background-elements"
 import { SettingsButton } from "@/components/settings-button"
 import ProjectCreationModal from "@/components/project-creation-modal"
@@ -27,12 +46,265 @@ import DispatchManager from "@/components/dispatch-manager"
 import DailyJournal from "@/components/daily-journal"
 import { ErrorBoundary } from "@/components/error-boundary"
 
+interface EditProjectModalProps {
+  project: Project
+  isOpen: boolean
+  onClose: () => void
+  onSave: (project: Partial<Project>) => Promise<void>
+}
+
+function EditProjectModal({ project, isOpen, onClose, onSave }: EditProjectModalProps) {
+  const { t } = useI18n()
+  const [isLoading, setIsLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    name: project.name,
+    description: project.description,
+    status: project.status,
+    totalBudget: project.totalBudget?.toString() || '',
+    currency: project.currency,
+    notes: project.notes,
+    client: project.client || '',
+    location: project.location || '',
+    deadline: project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '',
+    tags: project.tags.join(', ')
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Reset form data when project changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        totalBudget: project.totalBudget?.toString() || '',
+        currency: project.currency,
+        notes: project.notes,
+        client: project.client || '',
+        location: project.location || '',
+        deadline: project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '',
+        tags: project.tags.join(', ')
+      })
+      setErrors({})
+    }
+  }, [project, isOpen])
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Project name is required'
+    }
+
+    if (formData.name.length > 100) {
+      newErrors.name = 'Project name must be less than 100 characters'
+    }
+
+    if (formData.totalBudget && (isNaN(parseFloat(formData.totalBudget)) || parseFloat(formData.totalBudget) < 0)) {
+      newErrors.totalBudget = 'Budget must be a valid positive number'
+    }
+
+    if (formData.deadline) {
+      const deadlineDate = new Date(formData.deadline)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (deadlineDate <= today) {
+        newErrors.deadline = 'Deadline must be in the future'
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return
+
+    setIsLoading(true)
+    try {
+      const updatedProject: Partial<Project> = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        status: formData.status,
+        totalBudget: formData.totalBudget ? parseFloat(formData.totalBudget) : undefined,
+        currency: formData.currency,
+        notes: formData.notes.trim(),
+        client: formData.client.trim() || undefined,
+        location: formData.location.trim() || undefined,
+        deadline: formData.deadline ? new Date(formData.deadline) : undefined,
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
+      }
+
+      await onSave(updatedProject)
+    } catch (error) {
+      console.error('Error updating project:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Project</DialogTitle>
+          <DialogDescription>
+            Update project details, status, and other information
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Project Name */}
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="projectName">Project Name *</Label>
+              <Input
+                id="projectName"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className={errors.name ? 'border-red-500' : ''}
+              />
+              {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
+            </div>
+
+            {/* Status */}
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as ProjectStatus }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Client */}
+            <div className="space-y-2">
+              <Label htmlFor="client">Client</Label>
+              <Input
+                id="client"
+                value={formData.client}
+                onChange={(e) => setFormData(prev => ({ ...prev, client: e.target.value }))}
+              />
+            </div>
+
+            {/* Location */}
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+              />
+            </div>
+
+            {/* Budget */}
+            <div className="space-y-2">
+              <Label htmlFor="budget">Budget</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="budget"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.totalBudget}
+                  onChange={(e) => setFormData(prev => ({ ...prev, totalBudget: e.target.value }))}
+                  className={errors.totalBudget ? 'border-red-500' : ''}
+                />
+                <Select
+                  value={formData.currency}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KM">KM</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {errors.totalBudget && <p className="text-red-500 text-sm">{errors.totalBudget}</p>}
+            </div>
+
+            {/* Deadline */}
+            <div className="space-y-2">
+              <Label htmlFor="deadline">Deadline</Label>
+              <Input
+                id="deadline"
+                type="date"
+                value={formData.deadline}
+                onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+                className={errors.deadline ? 'border-red-500' : ''}
+              />
+              {errors.deadline && <p className="text-red-500 text-sm">{errors.deadline}</p>}
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="tags">Tags (comma-separated)</Label>
+              <Input
+                id="tags"
+                value={formData.tags}
+                onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
+                placeholder="e.g., structural, high-priority, urban"
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              rows={3}
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={isLoading}>
+            {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Update Project
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function ManagementPage() {
   const router = useRouter()
-  const { projects, currentProject, setCurrentProject } = useProjects()
+  const { projects, currentProject, setCurrentProject, updateProject } = useProjects()
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("projects")
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
   const isMobile = useMediaQuery("(max-width: 768px)")
 
   useEffect(() => {
@@ -52,6 +324,13 @@ export default function ManagementPage() {
       title: "Project Selected",
       description: `Now working on ${project.name}`,
     })
+  }
+
+  const handleProjectEdit = (project: Project) => {
+    console.log('handleProjectEdit called with project:', project.name)
+    setEditingProject(project)
+    setShowEditModal(true)
+    console.log('Modal state set to true')
   }
 
   const handleCreateProject = () => {
@@ -115,7 +394,12 @@ export default function ManagementPage() {
               <div className="flex items-center space-x-4">
                 <Button
                   variant="ghost"
-                  onClick={() => setSelectedProjectId(null)}
+                  onClick={() => {
+                    setSelectedProjectId(null)
+                    // Reset edit modal state when navigating back
+                    setShowEditModal(false)
+                    setEditingProject(null)
+                  }}
                   className="flex items-center space-x-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -135,8 +419,44 @@ export default function ManagementPage() {
             
             <UnifiedProjectDetails 
               project={selectedProject} 
-              onBack={() => setSelectedProjectId(null)}
+              onBack={() => {
+                setSelectedProjectId(null)
+                // Reset edit modal state when navigating back
+                setShowEditModal(false)
+                setEditingProject(null)
+              }}
+              onEdit={handleProjectEdit}
             />
+
+            {/* Edit Project Modal - Also available in project details view */}
+            {editingProject && (
+              <EditProjectModal
+                project={editingProject}
+                isOpen={showEditModal}
+                onClose={() => {
+                  setShowEditModal(false)
+                  setEditingProject(null)
+                }}
+                onSave={async (updatedProject) => {
+                  try {
+                    await updateProject({ ...editingProject, ...updatedProject })
+                    setShowEditModal(false)
+                    setEditingProject(null)
+                    toast({
+                      title: 'Project Updated',
+                      description: `"${updatedProject.name}" has been updated successfully`,
+                    })
+                  } catch (error) {
+                    console.error('Failed to update project:', error)
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to update project. Please try again.',
+                      variant: 'destructive',
+                    })
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
       </ErrorBoundary>
@@ -188,11 +508,13 @@ export default function ManagementPage() {
                 <MobileProjectDashboard 
                   onProjectSelect={handleProjectSelect}
                   onCreateProject={handleCreateProject}
+                  onEditProject={handleProjectEdit}
                 />
               ) : (
                 <ProjectDashboard 
                   onProjectSelect={handleProjectSelect}
                   onCreateProject={handleCreateProject}
+                  onEditProject={handleProjectEdit}
                 />
               )}
             </TabsContent>
@@ -284,6 +606,36 @@ export default function ManagementPage() {
           open={isProjectModalOpen}
           onOpenChange={setIsProjectModalOpen}
         />
+
+        {/* Edit Project Modal */}
+        {editingProject && (
+          <EditProjectModal
+            project={editingProject}
+            isOpen={showEditModal}
+            onClose={() => {
+              setShowEditModal(false)
+              setEditingProject(null)
+            }}
+            onSave={async (updatedProject) => {
+              try {
+                await updateProject({ ...editingProject, ...updatedProject })
+                setShowEditModal(false)
+                setEditingProject(null)
+                toast({
+                  title: 'Project Updated',
+                  description: `"${updatedProject.name}" has been updated successfully`,
+                })
+              } catch (error) {
+                console.error('Failed to update project:', error)
+                toast({
+                  title: 'Error',
+                  description: 'Failed to update project. Please try again.',
+                  variant: 'destructive',
+                })
+              }
+            }}
+          />
+        )}
       </div>
     </ErrorBoundary>
   )
