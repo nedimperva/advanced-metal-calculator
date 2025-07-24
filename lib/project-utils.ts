@@ -1,6 +1,7 @@
-import type { Project, ProjectMaterial, Calculation, DailyJournalTimesheet, JournalWorkerEntry, JournalMachineryEntry, ProjectMilestone } from './types'
-import { ProjectStatus, MaterialStatus } from './types'
-import { getAllProjects, getProjectMaterials, getProjectCalculations, getDailyJournalTimesheetByDate } from './database'
+import type { Project, ProjectMaterial, Calculation, DailyJournalTimesheet, JournalWorkerEntry, JournalMachineryEntry, ProjectMilestone, ProjectTask } from './types'
+import { ProjectStatus, MaterialStatus, TaskStatus } from './types'
+import { getAllProjects, getProjectMaterials, getProjectCalculations, getDailyJournalTimesheetByDate, getProjectTasks } from './database'
+import { calculateTaskProgress, type TaskProgressSummary } from './task-utils'
 import { startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
 
 // Legacy hardcoded labels - keep for compatibility but use localized functions instead
@@ -118,6 +119,59 @@ export interface ProjectCostSummary {
     uniqueMachinery: number
     averageDailyCost: number
     daysWorked: number
+  }
+}
+
+// Enhanced task-based budget tracking
+export interface TaskBasedBudgetSummary {
+  totalBudget: number
+  totalActualCost: number
+  estimatedTotalCost: number
+  remainingBudget: number
+  budgetUtilization: number // percentage
+  projectedOverrun: number
+  
+  // Cost breakdown
+  materialCosts: number
+  laborCosts: number
+  machineryCosts: number
+  taskRelatedCosts: number
+  
+  // Task-based cost analysis
+  costByTaskType: Record<string, {
+    budgetAllocated: number
+    actualCost: number
+    estimatedCost: number
+    variance: number
+    utilizationPercentage: number
+  }>
+  
+  // Budget alerts and warnings
+  budgetAlerts: Array<{
+    type: 'warning' | 'critical' | 'info'
+    message: string
+    taskId?: string
+    category: 'budget' | 'timeline' | 'resource'
+  }>
+  
+  // Cost trends and forecasting
+  costTrend: Array<{
+    date: Date
+    actualCost: number
+    budgetUsed: number
+    projectedCost: number
+  }>
+  
+  workforceBreakdown: {
+    totalLaborHours: number
+    totalMachineryHours: number
+    totalLaborCost: number
+    totalMachineryCost: number
+    averageHourlyRates: {
+      labor: number
+      machinery: number
+    }
+    costByTask: Record<string, number>
   }
 }
 
@@ -254,6 +308,167 @@ export async function calculateProjectWorkforceCosts(projectId: string, monthsBa
   }
 }
 
+// Enhanced task-based budget calculation
+export async function calculateTaskBasedBudget(project: Project): Promise<TaskBasedBudgetSummary> {
+  const [tasks, materials, workforceData] = await Promise.all([
+    getProjectTasks(project.id),
+    getProjectMaterials(project.id),
+    calculateProjectWorkforceCosts(project.id)
+  ])
+  
+  const totalBudget = project.totalBudget || 0
+  
+  // Calculate actual costs
+  const materialCosts = materials.reduce((sum, material) => sum + (material.totalCost || 0), 0)
+  const laborCosts = workforceData.totalLaborCost
+  const machineryCosts = workforceData.totalMachineryCost
+  
+  // Calculate task-related costs (simplified - could be enhanced with task-specific budgets)
+  const taskRelatedCosts = 0 // Placeholder for future task-specific cost tracking
+  
+  const totalActualCost = materialCosts + laborCosts + machineryCosts + taskRelatedCosts
+  
+  // Estimate total cost based on task progress
+  const taskProgress = calculateTaskProgress(tasks)
+  const estimatedTotalCost = taskProgress.completionPercentage > 0 
+    ? (totalActualCost / taskProgress.completionPercentage) * 100
+    : totalActualCost
+  
+  const remainingBudget = totalBudget - totalActualCost
+  const budgetUtilization = totalBudget > 0 ? (totalActualCost / totalBudget) * 100 : 0
+  const projectedOverrun = Math.max(0, estimatedTotalCost - totalBudget)
+  
+  // Cost analysis by task type
+  const costByTaskType: Record<string, {
+    budgetAllocated: number
+    actualCost: number
+    estimatedCost: number
+    variance: number
+    utilizationPercentage: number
+  }> = {}
+  
+  // Simple allocation: distribute budget evenly across task types for now
+  const taskTypes = [...new Set(tasks.map(t => t.type))]
+  const budgetPerTaskType = totalBudget / Math.max(taskTypes.length, 1)
+  
+  taskTypes.forEach(taskType => {
+    const typeTasks = tasks.filter(t => t.type === taskType)
+    const completedTasks = typeTasks.filter(t => t.status === TaskStatus.COMPLETED).length
+    const totalTypeTasks = typeTasks.length
+    
+    // Rough cost allocation based on completion
+    const actualCost = totalTypeTasks > 0 ? (totalActualCost * completedTasks) / totalTypeTasks : 0
+    const progressPercentage = totalTypeTasks > 0 ? (completedTasks / totalTypeTasks) * 100 : 0
+    const estimatedCost = progressPercentage > 0 ? (actualCost / progressPercentage) * 100 : actualCost
+    
+    costByTaskType[taskType] = {
+      budgetAllocated: budgetPerTaskType,
+      actualCost,
+      estimatedCost,
+      variance: budgetPerTaskType - estimatedCost,
+      utilizationPercentage: budgetPerTaskType > 0 ? (actualCost / budgetPerTaskType) * 100 : 0
+    }
+  })
+  
+  // Generate budget alerts
+  const budgetAlerts: Array<{
+    type: 'warning' | 'critical' | 'info'
+    message: string
+    taskId?: string
+    category: 'budget' | 'timeline' | 'resource'
+  }> = []
+  
+  if (budgetUtilization > 90) {
+    budgetAlerts.push({
+      type: 'critical',
+      message: `Project has used ${budgetUtilization.toFixed(1)}% of budget`,
+      category: 'budget'
+    })
+  } else if (budgetUtilization > 75) {
+    budgetAlerts.push({
+      type: 'warning',
+      message: `Project approaching budget limit (${budgetUtilization.toFixed(1)}% used)`,
+      category: 'budget'
+    })
+  }
+  
+  if (projectedOverrun > 0) {
+    budgetAlerts.push({
+      type: 'warning',
+      message: `Projected cost overrun of $${projectedOverrun.toFixed(2)}`,
+      category: 'budget'
+    })
+  }
+  
+  // Find overdue tasks that might impact budget
+  const overdueTasks = tasks.filter(task => 
+    task.scheduledEnd && 
+    new Date(task.scheduledEnd) < new Date() && 
+    task.status !== TaskStatus.COMPLETED &&
+    task.status !== TaskStatus.CANCELLED
+  )
+  
+  if (overdueTasks.length > 0) {
+    budgetAlerts.push({
+      type: 'warning',
+      message: `${overdueTasks.length} overdue tasks may impact budget`,
+      category: 'timeline'
+    })
+  }
+  
+  // Simple cost trend (last 30 days)
+  const costTrend: Array<{
+    date: Date
+    actualCost: number
+    budgetUsed: number
+    projectedCost: number
+  }> = []
+  
+  // For now, just add current snapshot - could be enhanced with historical data
+  costTrend.push({
+    date: new Date(),
+    actualCost: totalActualCost,
+    budgetUsed: budgetUtilization,
+    projectedCost: estimatedTotalCost
+  })
+  
+  // Calculate cost by task (simplified)
+  const costByTask: Record<string, number> = {}
+  tasks.forEach(task => {
+    if (task.status === TaskStatus.COMPLETED) {
+      // Simple allocation based on task completion
+      costByTask[task.id] = totalActualCost / Math.max(taskProgress.completedTasks, 1)
+    }
+  })
+  
+  return {
+    totalBudget,
+    totalActualCost,
+    estimatedTotalCost,
+    remainingBudget,
+    budgetUtilization,
+    projectedOverrun,
+    materialCosts,
+    laborCosts,
+    machineryCosts,
+    taskRelatedCosts,
+    costByTaskType,
+    budgetAlerts,
+    costTrend,
+    workforceBreakdown: {
+      totalLaborHours: workforceData.totalLaborHours,
+      totalMachineryHours: workforceData.totalMachineryHours,
+      totalLaborCost: workforceData.totalLaborCost,
+      totalMachineryCost: workforceData.totalMachineryCost,
+      averageHourlyRates: {
+        labor: workforceData.totalLaborHours > 0 ? workforceData.totalLaborCost / workforceData.totalLaborHours : 0,
+        machinery: workforceData.totalMachineryHours > 0 ? workforceData.totalMachineryCost / workforceData.totalMachineryHours : 0
+      },
+      costByTask
+    }
+  }
+}
+
 // Progress tracking utilities
 export interface ProjectProgress {
   totalMaterials: number
@@ -265,6 +480,25 @@ export interface ProjectProgress {
   estimatedDaysRemaining?: number
   isOnSchedule: boolean
   milestones: ProjectMilestone[]
+}
+
+// Task-based progress tracking
+export interface TaskBasedProjectProgress {
+  taskProgress: TaskProgressSummary
+  completionPercentage: number
+  weightedProgress: number
+  estimatedDaysRemaining?: number
+  isOnSchedule: boolean
+  criticalTasks: ProjectTask[]
+  upcomingDeadlines: Array<{
+    task: ProjectTask
+    daysUntilDeadline: number
+  }>
+  progressByTaskType: Record<string, {
+    completed: number
+    total: number
+    percentage: number
+  }>
 }
 
 // ProjectMilestone is now defined in types.ts with enhanced functionality
@@ -356,6 +590,99 @@ export async function calculateProjectProgress(project: Project): Promise<Projec
     estimatedDaysRemaining,
     isOnSchedule,
     milestones
+  }
+}
+
+// New task-based progress calculation
+export async function calculateTaskBasedProjectProgress(project: Project): Promise<TaskBasedProjectProgress> {
+  const tasks = await getProjectTasks(project.id)
+  const taskProgress = calculateTaskProgress(tasks)
+  
+  // Use the weighted progress as the main completion percentage
+  const completionPercentage = taskProgress.weightedProgress
+  
+  // Calculate timeline estimation
+  let estimatedDaysRemaining: number | undefined
+  let isOnSchedule = true
+  
+  if (project.deadline && tasks.length > 0) {
+    const now = new Date()
+    const deadline = new Date(project.deadline)
+    const daysUntilDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    
+    // Enhanced estimation based on task progress and velocity
+    if (completionPercentage > 0) {
+      const projectStartDate = new Date(project.createdAt)
+      const daysSinceStart = Math.ceil((now.getTime() - projectStartDate.getTime()) / (1000 * 60 * 60 * 24))
+      const velocity = completionPercentage / Math.max(daysSinceStart, 1) // progress per day
+      
+      if (velocity > 0) {
+        const remainingProgress = 100 - completionPercentage
+        estimatedDaysRemaining = Math.ceil(remainingProgress / velocity)
+        isOnSchedule = estimatedDaysRemaining <= daysUntilDeadline
+      }
+    } else if (daysUntilDeadline > 0) {
+      // No progress yet, assume linear distribution
+      estimatedDaysRemaining = daysUntilDeadline
+      isOnSchedule = true // Optimistic assumption
+    }
+  }
+  
+  // Identify critical tasks (high priority, not completed, has dependencies or blocks others)
+  const criticalTasks = tasks.filter(task => 
+    task.status !== TaskStatus.COMPLETED && 
+    task.status !== TaskStatus.CANCELLED &&
+    (task.priority === 'critical' || task.priority === 'high' || 
+     task.dependencies.length > 0 || 
+     tasks.some(t => t.dependencies.includes(task.id)))
+  )
+  
+  // Find upcoming task deadlines
+  const upcomingDeadlines = tasks
+    .filter(task => 
+      task.scheduledEnd && 
+      task.status !== TaskStatus.COMPLETED && 
+      task.status !== TaskStatus.CANCELLED
+    )
+    .map(task => {
+      const daysUntilDeadline = Math.ceil(
+        (new Date(task.scheduledEnd!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+      )
+      return { task, daysUntilDeadline }
+    })
+    .filter(item => item.daysUntilDeadline >= 0 && item.daysUntilDeadline <= 14) // Next 2 weeks
+    .sort((a, b) => a.daysUntilDeadline - b.daysUntilDeadline)
+  
+  // Calculate progress by task type
+  const progressByTaskType: Record<string, { completed: number; total: number; percentage: number }> = {}
+  
+  tasks.forEach(task => {
+    const type = task.type
+    if (!progressByTaskType[type]) {
+      progressByTaskType[type] = { completed: 0, total: 0, percentage: 0 }
+    }
+    
+    progressByTaskType[type].total++
+    if (task.status === TaskStatus.COMPLETED) {
+      progressByTaskType[type].completed++
+    }
+  })
+  
+  // Calculate percentages
+  Object.keys(progressByTaskType).forEach(type => {
+    const data = progressByTaskType[type]
+    data.percentage = data.total > 0 ? (data.completed / data.total) * 100 : 0
+  })
+  
+  return {
+    taskProgress,
+    completionPercentage,
+    weightedProgress: taskProgress.weightedProgress,
+    estimatedDaysRemaining,
+    isOnSchedule,
+    criticalTasks,
+    upcomingDeadlines,
+    progressByTaskType
   }
 }
 

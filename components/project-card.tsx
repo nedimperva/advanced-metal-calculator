@@ -46,8 +46,8 @@ import { useProjects } from '@/contexts/project-context'
 import { 
   PROJECT_STATUS_LABELS, 
   PROJECT_STATUS_COLORS,
-  calculateProjectProgress,
-  calculateProjectCosts
+  calculateTaskBasedProjectProgress,
+  calculateTaskBasedBudget
 } from '@/lib/project-utils'
 import type { Project } from '@/lib/types'
 import { toast } from '@/hooks/use-toast'
@@ -78,20 +78,18 @@ export default function ProjectCard({
   const { deleteProject } = useProjects()
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState<any>(null)
-  const [costs, setCosts] = useState<any>(null)
+  const [budget, setBudget] = useState<any>(null)
 
   // Load project analytics on mount
   React.useEffect(() => {
     const loadAnalytics = async () => {
       try {
-        // TODO: Progress calculation currently depends on materials which were removed
-        // Will need to implement task-based progress calculation
-        /* const [progressData, costsData] = await Promise.all([
-          calculateProjectProgress(project),
-          calculateProjectCosts(project)
+        const [progressData, budgetData] = await Promise.all([
+          calculateTaskBasedProjectProgress(project),
+          calculateTaskBasedBudget(project)
         ])
         setProgress(progressData)
-        setCosts(costsData) */
+        setBudget(budgetData)
       } catch (error) {
         console.error('Failed to load project analytics:', error)
       }
@@ -213,13 +211,12 @@ export default function ProjectCard({
                   {calculationsCount} calculations
                 </div>
 
-                {/* Progress temporarily disabled - needs task-based calculation */}
-                {/* {progress && (
+                {progress && (
                   <div className="flex items-center gap-1">
                     <CheckCircle2 className="h-4 w-4" />
                     {progress.completionPercentage.toFixed(0)}% complete
                   </div>
-                )} */}
+                )}
               </div>
             </div>
 
@@ -399,9 +396,8 @@ export default function ProjectCard({
       </CardHeader>
       
       <CardContent className="pt-0 space-y-4">
-        {/* Progress Indicator - temporarily disabled */}
-        {/* TODO: Implement task-based progress calculation */}
-        {/* {progress && (
+        {/* Progress Indicator */}
+        {progress && (
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium">Progress</span>
@@ -410,8 +406,13 @@ export default function ProjectCard({
               </span>
             </div>
             <Progress value={progress.completionPercentage} className="h-2" />
+            {progress.taskProgress.totalTasks > 0 && (
+              <div className="text-xs text-muted-foreground mt-1">
+                {progress.taskProgress.completedTasks}/{progress.taskProgress.totalTasks} tasks completed
+              </div>
+            )}
           </div>
-        )} */}
+        )}
 
         {/* Project Metrics */}
         <div className="grid grid-cols-2 gap-4 text-sm">
@@ -500,29 +501,47 @@ export default function ProjectCard({
           </div>
         )}
 
-        {/* Budget Utilization - temporarily disabled */}
-        {/* TODO: Budget tracking will need to be recalculated without materials */}
-        {/* {costs && project.totalBudget && (
+        {/* Budget Utilization */}
+        {budget && project.totalBudget && (
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium">Budget Used</span>
               <span className={cn(
                 "text-sm",
-                costs.budgetUtilization > 100 ? "text-destructive" : 
-                costs.budgetUtilization > 80 ? "text-orange-600" : "text-muted-foreground"
+                budget.budgetUtilization > 100 ? "text-destructive" : 
+                budget.budgetUtilization > 80 ? "text-orange-600" : "text-muted-foreground"
               )}>
-                {costs.budgetUtilization.toFixed(0)}%
+                {budget.budgetUtilization.toFixed(0)}%
               </span>
             </div>
             <Progress 
-              value={Math.min(costs.budgetUtilization, 100)} 
+              value={Math.min(budget.budgetUtilization, 100)} 
               className={cn(
                 "h-2",
-                costs.budgetUtilization > 100 && "[&>div]:bg-destructive"
+                budget.budgetUtilization > 100 && "[&>div]:bg-destructive"
               )}
             />
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>${budget.totalActualCost.toFixed(0)} used</span>
+              <span>${budget.remainingBudget.toFixed(0)} remaining</span>
+            </div>
+            {budget.budgetAlerts.length > 0 && (
+              <div className="mt-2">
+                {budget.budgetAlerts.slice(0, 1).map((alert, index) => (
+                  <div key={index} className={cn(
+                    "text-xs px-2 py-1 rounded",
+                    alert.type === 'critical' ? "bg-destructive/10 text-destructive" :
+                    alert.type === 'warning' ? "bg-orange-50 text-orange-600" :
+                    "bg-blue-50 text-blue-600"
+                  )}>
+                    <AlertTriangle className="h-3 w-3 inline mr-1" />
+                    {alert.message}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )} */}
+        )}
       </CardContent>
     </Card>
   )
