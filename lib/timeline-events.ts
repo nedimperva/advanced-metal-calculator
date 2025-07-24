@@ -32,6 +32,6 @@ export const timelineEventEmitter = new TimelineEventEmitter()
 
 // Helper function to trigger timeline updates
 export function triggerTimelineUpdate(projectId: string) {
-  console.log('Triggering timeline update for project:', projectId)
+  // Trigger timeline update for project
   timelineEventEmitter.emit(projectId)
 } 

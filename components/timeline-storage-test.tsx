@@ -23,7 +23,6 @@ export function TimelineStorageTest({ project }: TimelineStorageTestProps) {
       const loaded = getTimelineEvents(project.id)
       setEvents(loaded)
       addTestResult(`✅ Loaded ${loaded.length} events from localStorage`)
-      console.log('Loaded events:', loaded)
     } catch (error) {
       addTestResult(`❌ Failed to load events: ${error}`)
       console.error('Load error:', error)
@@ -40,7 +39,6 @@ export function TimelineStorageTest({ project }: TimelineStorageTestProps) {
       })
       
       addTestResult(`✅ Saved event: ${testEvent.title}`)
-      console.log('Saved event:', testEvent)
       
       // The event listener should automatically update the UI
       addTestResult(`⏱️ Waiting for automatic update...`)

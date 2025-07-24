@@ -239,7 +239,6 @@ export default function ProjectCard({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation()
-                  console.log('Edit button clicked (first instance)')
                   onEdit?.()
                 }}>
                   <Edit className="h-4 w-4 mr-2" />
@@ -354,7 +353,6 @@ export default function ProjectCard({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => {
                 e.stopPropagation()
-                console.log('Edit button clicked (second instance)')
                 onEdit?.()
               }}>
                 <Edit className="h-4 w-4 mr-2" />

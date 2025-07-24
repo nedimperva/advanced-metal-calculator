@@ -172,7 +172,6 @@ export default function ProjectDetails({
       })
       
       // Navigation will be handled by parent component
-      console.log('Project deleted, navigate back to projects')
     } catch (error) {
       console.error('Failed to delete project:', error)
       toast({

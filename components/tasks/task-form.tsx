@@ -465,21 +465,8 @@ export default function TaskForm({
 
           {/* Timeline Event Linking */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2">
               <Label>Link to Timeline Events</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  console.log('🔍 Available timeline events:', availableTimelineEvents)
-                  console.log('  Project ID:', projectId)
-                  console.log('  Events count:', availableTimelineEvents.length)
-                }}
-                className="text-xs h-6 px-2"
-              >
-                Debug Events
-              </Button>
             </div>
             {availableTimelineEvents.length > 0 ? (
               <>

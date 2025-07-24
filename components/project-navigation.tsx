@@ -84,7 +84,6 @@ function EditProjectModal({ project, isOpen, onClose, onSave }: EditProjectModal
   const { t } = useI18n()
   const [isLoading, setIsLoading] = useState(false)
   
-  console.log('EditProjectModal component render - isOpen:', isOpen)
   const [formData, setFormData] = useState({
     name: project.name,
     description: project.description,
@@ -341,23 +340,18 @@ export function ProjectNavigation({
   
   // Debug modal state changes
   useEffect(() => {
-    console.log('showEditModal state changed to:', showEditModal)
   }, [showEditModal])
 
   // Handle navigation actions
   const handleBack = () => {
     // Navigation will be handled by parent component within tab system
-    console.log('Navigate back to projects')
   }
 
   const handleEdit = (e?: React.MouseEvent) => {
     e?.preventDefault()
     e?.stopPropagation()
-    console.log('handleEdit called - before modal state change')
     if (project) {
-      console.log('Setting modal to true for project:', project.name)
       setShowEditModal(true)
-      console.log('Modal state should be true now')
     }
   }
 
@@ -379,7 +373,6 @@ export function ProjectNavigation({
   const handleExport = () => {
     // This would trigger export functionality
     // Implementation depends on the export format needed
-    console.log('Export project:', project?.id)
   }
 
   const handleDelete = async () => {
@@ -387,7 +380,6 @@ export function ProjectNavigation({
       try {
         await deleteProject(project.id)
         // Navigation will be handled by parent component
-        console.log('Project deleted, navigate back to projects')
       } catch (error) {
         console.error('Failed to delete project:', error)
       }
@@ -397,7 +389,6 @@ export function ProjectNavigation({
   const handleAddCalculation = () => {
     if (project) {
       // Calculator navigation will be handled by parent component
-      console.log('Navigate to calculator with project:', project.id)
     }
   }
 
@@ -601,7 +592,6 @@ export function ProjectSelector({ currentProject, className }: ProjectSelectorPr
 
   const handleProjectSelect = (projectId: string) => {
     // Project navigation will be handled by parent component
-    console.log('Select project:', projectId)
   }
 
   const recentProjects = projects.slice(0, 5)
@@ -639,7 +629,7 @@ export function ProjectSelector({ currentProject, className }: ProjectSelectorPr
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => console.log('View all projects')}>
+        <DropdownMenuItem onClick={() => {}}>
           <Eye className="h-4 w-4 mr-2" />
           View All Projects
         </DropdownMenuItem>

@@ -65,7 +65,7 @@ export function saveTimelineEvent(projectId: string, event: Omit<StoredTimelineE
     allEvents.push(newEvent)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(allEvents))
     
-    console.log('Saved timeline event:', newEvent.title, 'Total events for project:', allEvents.filter(e => e.projectId === projectId).length)
+    // Timeline event saved successfully
     
     // Trigger update notification
     import('./timeline-events').then(({ triggerTimelineUpdate }) => {
@@ -103,7 +103,7 @@ export function updateTimelineEvent(eventId: string, updates: Partial<Omit<Store
     allEvents[eventIndex] = updatedEvent
     localStorage.setItem(STORAGE_KEY, JSON.stringify(allEvents))
     
-    console.log('Updated timeline event:', updatedEvent.title)
+    // Timeline event updated successfully
     return updatedEvent
   } catch (error) {
     console.error('Error updating timeline event:', error)
@@ -125,7 +125,7 @@ export function deleteTimelineEvent(eventId: string): boolean {
     if (filtered.length === initialLength) return false // Event not found
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
-    console.log('Deleted timeline event:', eventId)
+    // Timeline event deleted successfully
     return true
   } catch (error) {
     console.error('Error deleting timeline event:', error)
