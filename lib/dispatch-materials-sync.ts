@@ -387,9 +387,26 @@ export async function getProjectMaterialAllocationSummary(projectId: string): Pr
     }
   })
 
-  // Calculate cost analysis (simplified - would need budgeted costs for full analysis)
+  // Calculate cost analysis with real project budget data
   summary.costAnalysis.actualCost = summary.totalCost
-  summary.costAnalysis.budgetedCost = summary.totalCost // TODO: Get from project budget
+  
+  // Get real project budget from project data
+  try {
+    const { getProject } = await import('./database')
+    const project = await getProject(projectId)
+    
+    if (project?.totalBudget) {
+      // Use actual project budget
+      summary.costAnalysis.budgetedCost = project.totalBudget
+    } else {
+      // Fallback to estimated budget based on materials
+      summary.costAnalysis.budgetedCost = summary.totalCost * 1.2 // 20% buffer estimate
+    }
+  } catch (error) {
+    console.warn('Could not fetch project budget, using estimated budget')
+    summary.costAnalysis.budgetedCost = summary.totalCost * 1.2 // 20% buffer estimate
+  }
+  
   summary.costAnalysis.variance = summary.costAnalysis.actualCost - summary.costAnalysis.budgetedCost
   summary.costAnalysis.variancePercentage = summary.costAnalysis.budgetedCost > 0 
     ? (summary.costAnalysis.variance / summary.costAnalysis.budgetedCost) * 100 
