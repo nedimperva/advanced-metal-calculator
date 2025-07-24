@@ -327,8 +327,10 @@ export default function ManagementPage() {
   }
 
   const handleProjectEdit = (project: Project) => {
+    console.log('handleProjectEdit called with project:', project.name)
     setEditingProject(project)
     setShowEditModal(true)
+    console.log('Modal state set to true')
   }
 
   const handleCreateProject = () => {
@@ -392,7 +394,12 @@ export default function ManagementPage() {
               <div className="flex items-center space-x-4">
                 <Button
                   variant="ghost"
-                  onClick={() => setSelectedProjectId(null)}
+                  onClick={() => {
+                    setSelectedProjectId(null)
+                    // Reset edit modal state when navigating back
+                    setShowEditModal(false)
+                    setEditingProject(null)
+                  }}
                   className="flex items-center space-x-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -412,9 +419,44 @@ export default function ManagementPage() {
             
             <UnifiedProjectDetails 
               project={selectedProject} 
-              onBack={() => setSelectedProjectId(null)}
+              onBack={() => {
+                setSelectedProjectId(null)
+                // Reset edit modal state when navigating back
+                setShowEditModal(false)
+                setEditingProject(null)
+              }}
               onEdit={handleProjectEdit}
             />
+
+            {/* Edit Project Modal - Also available in project details view */}
+            {editingProject && (
+              <EditProjectModal
+                project={editingProject}
+                isOpen={showEditModal}
+                onClose={() => {
+                  setShowEditModal(false)
+                  setEditingProject(null)
+                }}
+                onSave={async (updatedProject) => {
+                  try {
+                    await updateProject({ ...editingProject, ...updatedProject })
+                    setShowEditModal(false)
+                    setEditingProject(null)
+                    toast({
+                      title: 'Project Updated',
+                      description: `"${updatedProject.name}" has been updated successfully`,
+                    })
+                  } catch (error) {
+                    console.error('Failed to update project:', error)
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to update project. Please try again.',
+                      variant: 'destructive',
+                    })
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
       </ErrorBoundary>
@@ -466,11 +508,13 @@ export default function ManagementPage() {
                 <MobileProjectDashboard 
                   onProjectSelect={handleProjectSelect}
                   onCreateProject={handleCreateProject}
+                  onEditProject={handleProjectEdit}
                 />
               ) : (
                 <ProjectDashboard 
                   onProjectSelect={handleProjectSelect}
                   onCreateProject={handleCreateProject}
+                  onEditProject={handleProjectEdit}
                 />
               )}
             </TabsContent>
