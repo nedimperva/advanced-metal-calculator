@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 // Navigation is now handled within the tab system - no router needed
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -96,6 +96,25 @@ function EditProjectModal({ project, isOpen, onClose, onSave }: EditProjectModal
     tags: project.tags.join(', ')
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Reset form data when project changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        totalBudget: project.totalBudget?.toString() || '',
+        currency: project.currency,
+        notes: project.notes,
+        client: project.client || '',
+        location: project.location || '',
+        deadline: project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '',
+        tags: project.tags.join(', ')
+      })
+      setErrors({})
+    }
+  }, [project, isOpen])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -415,6 +434,15 @@ export function ProjectNavigation({
         <div className="flex items-center gap-2">
           {project && (
             <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEdit}
+                className="flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                Edit Project
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
