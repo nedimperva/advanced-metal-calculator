@@ -8,6 +8,9 @@
     "start": "cross-env NODE_ENV=production node server.js",
     "start:next": "next start -H 0.0.0.0 -p ${PORT:-10000}",
     "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "prestart": ""
   },
   "dependencies": {
@@ -64,11 +67,16 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.4",
+    "@types/jest": "^30.0.0",
     "@types/node": "22.15.32",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "babel-jest": "^30.0.5",
     "eslint": "9.28.0",
     "eslint-config-next": "15.3.3",
+    "jest": "^30.0.5",
+    "jest-environment-jsdom": "^30.0.5",
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
     "typescript": "5.8.3"

@@ -25,21 +25,19 @@ import {
  */
 
 // Mapping between dispatch material status and project material status
-const DISPATCH_TO_PROJECT_STATUS_MAP: Record<DispatchMaterialStatus, ProjectMaterialStatus> = {
-  'pending': ProjectMaterialStatus.ORDERED,
-  'shipped': ProjectMaterialStatus.ORDERED,
-  'arrived': ProjectMaterialStatus.DELIVERED,
-  'inspected': ProjectMaterialStatus.DELIVERED,
-  'allocated': ProjectMaterialStatus.DELIVERED,
-  'used': ProjectMaterialStatus.INSTALLED
+const DISPATCH_TO_PROJECT_STATUS_MAP: Partial<Record<DispatchMaterialStatus, ProjectMaterialStatus>> = {
+  [DispatchMaterialStatus.PENDING]: ProjectMaterialStatus.ORDERED,
+  [DispatchMaterialStatus.ARRIVED]: ProjectMaterialStatus.DELIVERED,
+  [DispatchMaterialStatus.ALLOCATED]: ProjectMaterialStatus.DELIVERED,
+  [DispatchMaterialStatus.USED]: ProjectMaterialStatus.INSTALLED
 }
 
 // Reverse mapping for project to dispatch status sync
-const PROJECT_TO_DISPATCH_STATUS_MAP: Record<ProjectMaterialStatus, DispatchMaterialStatus> = {
-  [ProjectMaterialStatus.REQUIRED]: 'pending',
-  [ProjectMaterialStatus.ORDERED]: 'shipped',
-  [ProjectMaterialStatus.DELIVERED]: 'arrived',
-  [ProjectMaterialStatus.INSTALLED]: 'used'
+const PROJECT_TO_DISPATCH_STATUS_MAP: Partial<Record<ProjectMaterialStatus, DispatchMaterialStatus>> = {
+  [ProjectMaterialStatus.REQUIRED]: DispatchMaterialStatus.PENDING,
+  [ProjectMaterialStatus.ORDERED]: DispatchMaterialStatus.PENDING,
+  [ProjectMaterialStatus.DELIVERED]: DispatchMaterialStatus.ARRIVED,
+  [ProjectMaterialStatus.INSTALLED]: DispatchMaterialStatus.USED
 }
 
 interface SyncResult {
@@ -56,6 +54,22 @@ interface MaterialAllocation {
   remainingQuantity: number
   allocationDate: Date
   notes?: string
+}
+
+interface SyncTransaction {
+  id: string
+  projectMaterialId: string
+  dispatchMaterialId: string
+  changes: Partial<DispatchMaterial>
+  previousState: DispatchMaterial
+  timestamp: Date
+  status: 'pending' | 'completed' | 'failed' | 'rolled_back'
+}
+
+interface SyncError extends Error {
+  syncTransactionId?: string
+  recoverable: boolean
+  rollbackRequired: boolean
 }
 
 /**
@@ -223,16 +237,13 @@ export async function updateStockFromDispatchDelivery(
       currentStock: dispatchMaterial.quantity,
       availableStock: dispatchMaterial.quantity,
       reservedStock: 0,
-      unitWeight: dispatchMaterial.unitWeight,
-      totalWeight: dispatchMaterial.totalWeight,
-      unitCost: dispatchMaterial.unitCost,
-      totalValue: dispatchMaterial.totalCost,
-      currency: dispatchMaterial.currency || 'USD',
+      minimumStock: 0,
+      maximumStock: dispatchMaterial.quantity * 2,
+      unitCost: dispatchMaterial.unitCost || 0,
+      totalValue: dispatchMaterial.totalCost || 0,
       location: dispatchMaterial.location || 'Warehouse',
       supplier: dispatchNote.supplier?.name || 'Unknown',
-      supplierRef: dispatchNote.orderNumber,
-      notes: `Delivered via dispatch note ${dispatchNote.dispatchNumber}`,
-      lastStockUpdate: new Date()
+      notes: `Delivered via dispatch note ${dispatchNote.dispatchNumber}`
     }
 
     // Create stock entry
@@ -245,9 +256,8 @@ export async function updateStockFromDispatchDelivery(
       quantity: dispatchMaterial.quantity,
       unitCost: dispatchMaterial.unitCost,
       totalCost: dispatchMaterial.totalCost,
-      currency: dispatchMaterial.currency || 'USD',
       referenceId: dispatchNote.id,
-      referenceType: 'DISPATCH',
+      referenceType: 'PROJECT', // Using PROJECT as closest match to DISPATCH
       transactionDate: dispatchNote.actualDeliveryDate || new Date(),
       notes: `Material delivery from dispatch ${dispatchNote.dispatchNumber}`,
       createdBy: 'system'
@@ -265,23 +275,115 @@ export async function updateStockFromDispatchDelivery(
  * Sync project material status changes back to dispatch materials
  */
 export async function syncProjectToDispatchMaterials(
-  projectMaterial: ProjectMaterial
+  projectMaterial: ProjectMaterial,
+  options: {
+    validateBeforeSync?: boolean
+    preserveQuantityDifferences?: boolean
+    updateTimestamps?: boolean
+  } = {}
 ): Promise<void> {
   if (projectMaterial.source !== ProjectMaterialSource.DISPATCH || !projectMaterial.sourceId) {
     return // Only sync materials that came from dispatch
   }
 
+  const {
+    validateBeforeSync = true,
+    preserveQuantityDifferences = true,
+    updateTimestamps = true
+  } = options
+
   try {
-    // This would require implementing updateDispatchMaterial function in database.ts
-    // For now, we'll just log the sync requirement
-    console.log(`Sync required: Project material ${projectMaterial.id} status changed to ${projectMaterial.status}`)
+    // Get the current dispatch material to compare
+    const { getDispatchMaterialById } = await import('./database')
+    const currentDispatchMaterial = await getDispatchMaterialById(projectMaterial.sourceId)
     
-    // TODO: Implement bidirectional sync
-    // const dispatchStatus = PROJECT_TO_DISPATCH_STATUS_MAP[projectMaterial.status]
-    // await updateDispatchMaterial(projectMaterial.sourceId, { status: dispatchStatus })
+    if (!currentDispatchMaterial) {
+      console.warn(`Dispatch material ${projectMaterial.sourceId} not found, cannot sync`)
+      return
+    }
+
+    // Validate sync compatibility if requested
+    if (validateBeforeSync) {
+      const validationResult = validateSyncCompatibility(projectMaterial, currentDispatchMaterial)
+      if (!validationResult.canSync) {
+        console.warn(`Sync validation failed for ${projectMaterial.id}: ${validationResult.reason}`)
+        return
+      }
+    }
+
+    // Prepare dispatch material updates
+    const dispatchUpdates: Partial<DispatchMaterial> = {}
+
+    // Map project status to dispatch status
+    if (projectMaterial.status in PROJECT_TO_DISPATCH_STATUS_MAP) {
+      const newDispatchStatus = PROJECT_TO_DISPATCH_STATUS_MAP[projectMaterial.status]
+      
+      // Only update if status is progressing forward (no regression)
+      if (shouldUpdateDispatchStatus(currentDispatchMaterial.status, newDispatchStatus)) {
+        dispatchUpdates.status = newDispatchStatus
+      }
+    }
+
+    // Sync quantity changes if not preserving differences
+    if (!preserveQuantityDifferences) {
+      // Update delivered quantity based on project material status
+      if (projectMaterial.status === ProjectMaterialStatus.DELIVERED || 
+          projectMaterial.status === ProjectMaterialStatus.INSTALLED) {
+        dispatchUpdates.deliveredQuantity = projectMaterial.quantity
+      }
+    }
+
+    // Sync location if it was updated in project
+    if (projectMaterial.location && projectMaterial.location !== currentDispatchMaterial.location) {
+      dispatchUpdates.location = projectMaterial.location
+    }
+
+    // Sync notes (combine with existing notes)
+    if (projectMaterial.notes) {
+      const syncNote = `Project sync: ${projectMaterial.notes}`
+      dispatchUpdates.notes = currentDispatchMaterial.notes 
+        ? `${currentDispatchMaterial.notes}\n\n${syncNote}`
+        : syncNote
+    }
+
+    // Add timestamps if requested
+    if (updateTimestamps) {
+      const now = new Date()
+      
+      // Set inspection date when material is delivered
+      if (dispatchUpdates.status === 'arrived' && !currentDispatchMaterial.inspectionDate) {
+        dispatchUpdates.inspectionDate = now
+      }
+      
+      // Add usage history when material is used
+      if (dispatchUpdates.status === 'used') {
+        const usageEntry = {
+          date: now,
+          quantityUsed: projectMaterial.quantity,
+          notes: `Used in project ${projectMaterial.projectId} via sync from project material ${projectMaterial.id}`
+        }
+        
+        dispatchUpdates.usageHistory = [
+          ...(currentDispatchMaterial.usageHistory || []),
+          usageEntry
+        ]
+      }
+    }
+
+    // Apply updates if there are any changes
+    if (Object.keys(dispatchUpdates).length > 0) {
+      const { updateDispatchMaterial } = await import('./database')
+      await updateDispatchMaterial(projectMaterial.sourceId, dispatchUpdates)
+      
+      console.log(`Successfully synced project material ${projectMaterial.id} to dispatch material ${projectMaterial.sourceId}`)
+      console.log(`Updates applied:`, Object.keys(dispatchUpdates).join(', '))
+    } else {
+      console.log(`No sync updates needed for project material ${projectMaterial.id}`)
+    }
     
   } catch (error) {
     console.error(`Failed to sync project material ${projectMaterial.id} to dispatch:`, error)
+    throw error // Re-throw to allow caller to handle sync failures
   }
 }
 
@@ -467,6 +569,233 @@ function convertDispatchDimensionsToProjectDimensions(
   })
   
   return converted
+}
+
+/**
+ * Validate if project and dispatch materials can be synced
+ */
+function validateSyncCompatibility(
+  projectMaterial: ProjectMaterial,
+  dispatchMaterial: DispatchMaterial
+): { canSync: boolean; reason?: string } {
+  // Check if materials are fundamentally the same
+  if (projectMaterial.profile !== dispatchMaterial.profile) {
+    return {
+      canSync: false,
+      reason: `Profile mismatch: project has '${projectMaterial.profile}', dispatch has '${dispatchMaterial.profile}'`
+    }
+  }
+
+  if (projectMaterial.grade !== dispatchMaterial.grade) {
+    return {
+      canSync: false,
+      reason: `Grade mismatch: project has '${projectMaterial.grade}', dispatch has '${dispatchMaterial.grade}'`
+    }
+  }
+
+  // Check for critical dimension mismatches
+  const criticalDimensions = ['length', 'width', 'height', 'thickness', 'diameter']
+  for (const dim of criticalDimensions) {
+    const projectDim = projectMaterial.dimensions[dim]
+    const dispatchDim = dispatchMaterial.dimensions[dim]
+    
+    if (projectDim !== undefined && dispatchDim !== undefined && 
+        Math.abs(projectDim - dispatchDim) > 0.01) { // Allow 0.01 tolerance
+      return {
+        canSync: false,
+        reason: `Dimension mismatch for ${dim}: project has ${projectDim}, dispatch has ${dispatchDim}`
+      }
+    }
+  }
+
+  return { canSync: true }
+}
+
+/**
+ * Enhanced sync with transaction support and rollback capability
+ */
+export async function syncProjectToDispatchMaterialsWithTransaction(
+  projectMaterial: ProjectMaterial,
+  options: {
+    validateBeforeSync?: boolean
+    preserveQuantityDifferences?: boolean
+    updateTimestamps?: boolean
+    enableRollback?: boolean
+  } = {}
+): Promise<{ success: boolean; transactionId?: string; error?: SyncError }> {
+  const transactionId = `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  
+  try {
+    // Get current dispatch material state for rollback
+    const { getDispatchMaterialById } = await import('./database')
+    const currentDispatchMaterial = await getDispatchMaterialById(projectMaterial.sourceId!)
+    
+    if (!currentDispatchMaterial) {
+      const error: SyncError = new Error(`Dispatch material ${projectMaterial.sourceId} not found`) as SyncError
+      error.recoverable = false
+      error.rollbackRequired = false
+      return { success: false, error }
+    }
+
+    // Create transaction record
+    const transaction: SyncTransaction = {
+      id: transactionId,
+      projectMaterialId: projectMaterial.id,
+      dispatchMaterialId: projectMaterial.sourceId!,
+      changes: {},
+      previousState: currentDispatchMaterial,
+      timestamp: new Date(),
+      status: 'pending'
+    }
+
+    // Perform the sync with enhanced error handling
+    try {
+      await syncProjectToDispatchMaterials(projectMaterial, options)
+      transaction.status = 'completed'
+      return { success: true, transactionId }
+    } catch (syncError) {
+      transaction.status = 'failed'
+      
+      const error: SyncError = new Error(`Sync failed: ${syncError}`) as SyncError
+      error.syncTransactionId = transactionId
+      error.recoverable = true
+      error.rollbackRequired = options.enableRollback !== false
+      
+      // Attempt rollback if enabled
+      if (error.rollbackRequired) {
+        try {
+          await rollbackSyncTransaction(transaction)
+          error.rollbackRequired = false
+        } catch (rollbackError) {
+          console.error(`Rollback failed for transaction ${transactionId}:`, rollbackError)
+          error.recoverable = false
+        }
+      }
+      
+      return { success: false, transactionId, error }
+    }
+    
+  } catch (error) {
+    const syncError: SyncError = new Error(`Transaction setup failed: ${error}`) as SyncError
+    syncError.recoverable = false
+    syncError.rollbackRequired = false
+    return { success: false, error: syncError }
+  }
+}
+
+/**
+ * Rollback a failed sync transaction
+ */
+async function rollbackSyncTransaction(transaction: SyncTransaction): Promise<void> {
+  try {
+    const { updateDispatchMaterial } = await import('./database')
+    
+    // Restore previous state
+    await updateDispatchMaterial(transaction.dispatchMaterialId, transaction.previousState)
+    
+    transaction.status = 'rolled_back'
+    console.log(`Successfully rolled back sync transaction ${transaction.id}`)
+    
+  } catch (error) {
+    console.error(`Failed to rollback sync transaction ${transaction.id}:`, error)
+    throw error
+  }
+}
+
+/**
+ * Batch sync multiple project materials with enhanced error handling
+ */
+export async function batchSyncProjectToDispatchMaterials(
+  projectMaterials: ProjectMaterial[],
+  options: {
+    validateBeforeSync?: boolean
+    preserveQuantityDifferences?: boolean
+    updateTimestamps?: boolean
+    enableRollback?: boolean
+    continueOnError?: boolean
+  } = {}
+): Promise<{
+  successful: string[]
+  failed: Array<{ materialId: string; error: SyncError; transactionId?: string }>
+  totalProcessed: number
+}> {
+  const { continueOnError = true } = options
+  const results = {
+    successful: [] as string[],
+    failed: [] as Array<{ materialId: string; error: SyncError; transactionId?: string }>,
+    totalProcessed: 0
+  }
+
+  for (const material of projectMaterials) {
+    try {
+      results.totalProcessed++
+      
+      const syncResult = await syncProjectToDispatchMaterialsWithTransaction(material, options)
+      
+      if (syncResult.success) {
+        results.successful.push(material.id)
+      } else {
+        results.failed.push({
+          materialId: material.id,
+          error: syncResult.error!,
+          transactionId: syncResult.transactionId
+        })
+        
+        // Stop processing if continueOnError is false
+        if (!continueOnError) {
+          break
+        }
+      }
+      
+    } catch (error) {
+      const syncError: SyncError = new Error(`Batch sync failed for material ${material.id}: ${error}`) as SyncError
+      syncError.recoverable = false
+      syncError.rollbackRequired = false
+      
+      results.failed.push({
+        materialId: material.id,
+        error: syncError
+      })
+      
+      if (!continueOnError) {
+        break
+      }
+    }
+  }
+
+  return results
+}
+
+/**
+ * Determine if dispatch status should be updated based on current and new status
+ */
+function shouldUpdateDispatchStatus(
+  currentStatus: DispatchMaterialStatus,
+  newStatus: DispatchMaterialStatus
+): boolean {
+  // Define status progression order
+  const statusOrder: DispatchMaterialStatus[] = [
+    DispatchMaterialStatus.PENDING, 
+    DispatchMaterialStatus.ARRIVED, 
+    DispatchMaterialStatus.ALLOCATED, 
+    DispatchMaterialStatus.USED
+  ]
+  
+  // Allow status to progress to damaged from any status
+  if (newStatus === DispatchMaterialStatus.DAMAGED) {
+    return true
+  }
+  
+  // Don't regress from damaged unless to used
+  if (currentStatus === DispatchMaterialStatus.DAMAGED && newStatus !== DispatchMaterialStatus.USED) {
+    return false
+  }
+  
+  const currentIndex = statusOrder.indexOf(currentStatus)
+  const newIndex = statusOrder.indexOf(newStatus)
+  
+  // Allow progression forward, not backward
+  return newIndex >= currentIndex
 }
 
 function combineNotes(existingNotes?: string, dispatchNotes?: string): string | undefined {

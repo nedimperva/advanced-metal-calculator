@@ -789,3 +789,144 @@ export interface MaterialStockTransaction {
   createdBy?: string
   notes?: string
 }
+
+// ============================================================================
+// SYNC OPERATION TYPES
+// ============================================================================
+
+// Sync operation status
+export enum SyncStatus {
+  PENDING = 'pending',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  ROLLED_BACK = 'rolled_back'
+}
+
+// Sync operation type
+export enum SyncOperationType {
+  DISPATCH_TO_PROJECT = 'dispatch_to_project',
+  PROJECT_TO_DISPATCH = 'project_to_dispatch',
+  BIDIRECTIONAL = 'bidirectional'
+}
+
+// Sync conflict resolution strategy
+export enum SyncConflictResolution {
+  PRESERVE_SOURCE = 'preserve_source',
+  PRESERVE_TARGET = 'preserve_target',
+  MERGE = 'merge',
+  MANUAL = 'manual'
+}
+
+// Enhanced sync options
+export interface SyncOptions {
+  validateBeforeSync?: boolean
+  preserveQuantityDifferences?: boolean
+  updateTimestamps?: boolean
+  enableRollback?: boolean
+  conflictResolution?: SyncConflictResolution
+  continueOnError?: boolean
+  batchSize?: number
+}
+
+// Sync validation result
+export interface SyncValidationResult {
+  canSync: boolean
+  warnings: string[]
+  errors: string[]
+  conflicts: Array<{
+    field: string
+    sourceValue: any
+    targetValue: any
+    resolution: SyncConflictResolution
+  }>
+}
+
+// Enhanced sync result with detailed information
+export interface DetailedSyncResult {
+  operationType: SyncOperationType
+  status: SyncStatus
+  transactionId?: string
+  startTime: Date
+  endTime?: Date
+  duration?: number
+  
+  // Counts
+  totalItems: number
+  processedItems: number
+  successfulItems: number
+  failedItems: number
+  skippedItems: number
+  
+  // Details
+  successful: Array<{
+    id: string
+    type: 'project_material' | 'dispatch_material'
+    changes: string[]
+  }>
+  
+  failed: Array<{
+    id: string
+    type: 'project_material' | 'dispatch_material'
+    error: string
+    recoverable: boolean
+    rollbackRequired: boolean
+  }>
+  
+  skipped: Array<{
+    id: string
+    type: 'project_material' | 'dispatch_material'
+    reason: string
+  }>
+  
+  warnings: string[]
+  conflicts: Array<{
+    id: string
+    field: string
+    resolution: SyncConflictResolution
+    details: string
+  }>
+}
+
+// Sync audit log entry
+export interface SyncAuditLog {
+  id: string
+  operationType: SyncOperationType
+  status: SyncStatus
+  projectId?: string
+  dispatchNoteId?: string
+  materialIds: string[]
+  
+  // Execution details
+  startTime: Date
+  endTime?: Date
+  duration?: number
+  executedBy?: string
+  
+  // Results
+  result: DetailedSyncResult
+  
+  // Recovery information
+  rollbackData?: any
+  canRollback: boolean
+  
+  // Metadata
+  version: string
+  metadata?: Record<string, any>
+  createdAt: Date
+}
+
+// Real-time sync event for UI updates
+export interface SyncEvent {
+  type: 'sync_started' | 'sync_progress' | 'sync_completed' | 'sync_failed' | 'sync_rolled_back'
+  transactionId: string
+  timestamp: Date
+  data: {
+    progress?: number
+    currentItem?: string
+    totalItems?: number
+    processedItems?: number
+    message?: string
+    error?: string
+  }
+}

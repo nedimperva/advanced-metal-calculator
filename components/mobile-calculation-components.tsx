@@ -121,7 +121,7 @@ export function MobileCalculationHistory({
 
     if (historyFilters.dateRange && historyFilters.dateRange !== 'all') {
       const now = new Date()
-      let cutoffDate = new Date()
+      const cutoffDate = new Date()
       
       switch (historyFilters.dateRange) {
         case 'today':

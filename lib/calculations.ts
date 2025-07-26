@@ -767,7 +767,7 @@ export function calculateBucklingAnalysis(
   // Determine buckling mode and safety factor
   let bucklingMode: 'elastic' | 'inelastic' | 'short'
   let safetyFactor: number
-  let comments: string[] = []
+  const comments: string[] = []
 
   if (slendernessRatio > 120) {
     bucklingMode = 'elastic'
