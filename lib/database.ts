@@ -597,6 +597,176 @@ export async function deleteProject(id: string): Promise<void> {
   await deleteRecord(STORES.PROJECTS, id)
 }
 
+/**
+ * Comprehensive cascade delete function for projects
+ * Deletes all related records in the correct order to maintain referential integrity
+ */
+export async function deleteProjectCascade(projectId: string): Promise<void> {
+  // Step 1: Validate project exists and get dependencies BEFORE starting transaction
+  const project = await getProject(projectId)
+  if (!project) {
+    throw new Error(`Project with ID ${projectId} not found`)
+  }
+
+  // Step 2: Check for critical dependencies that might prevent deletion
+  const dependencyErrors = await validateProjectDeletion(projectId)
+  if (dependencyErrors.length > 0) {
+    throw new Error(`Cannot delete project: ${dependencyErrors.join(', ')}`)
+  }
+
+  // Step 3: Get all related data BEFORE starting transaction
+  const [dispatchNotes, timesheets, assignments, tasks, materials] = await Promise.all([
+    getDispatchNotesByProject(projectId),
+    getProjectTimesheets(projectId),
+    getProjectAssignments(projectId),
+    getProjectTasks(projectId),
+    getProjectMaterials(projectId)
+  ])
+
+  // Step 4: Get dispatch materials for all dispatch notes
+  const dispatchMaterials: DispatchMaterial[] = []
+  for (const dispatchNote of dispatchNotes) {
+    try {
+      const materials = await getDispatchMaterials(dispatchNote.id)
+      dispatchMaterials.push(...materials)
+    } catch (error) {
+      // Continue if dispatch materials not found
+    }
+  }
+
+  // Step 5: Get material stock transactions
+  const stockTransactions = await getMaterialStockTransactionsByProject(projectId)
+
+  // Step 6: Get all tasks to update dependencies
+  const allTasks = await getAllRecords(STORES.PROJECT_TASKS) as ProjectTask[]
+  const deletedTaskIds = new Set(tasks.map(t => t.id))
+  const tasksToUpdate = allTasks.filter(task => 
+    task.projectId !== projectId && 
+    task.dependencies && 
+    task.dependencies.some(depId => deletedTaskIds.has(depId))
+  ).map(task => ({
+    ...task,
+    dependencies: task.dependencies!.filter(depId => !deletedTaskIds.has(depId)),
+    updatedAt: new Date()
+  }))
+
+  // Step 7: Start transaction and perform all deletes synchronously
+  const db = await getDatabase()
+  const transaction = db.transaction([
+    STORES.PROJECTS,
+    STORES.PROJECT_MATERIALS,
+    STORES.PROJECT_TASKS,
+    STORES.PROJECT_ASSIGNMENTS,
+    STORES.DAILY_TIMESHEETS,
+    STORES.WORK_ENTRIES,
+    STORES.DISPATCH_NOTES,
+    STORES.DISPATCH_MATERIALS,
+    STORES.MATERIAL_STOCK_TRANSACTIONS
+  ], 'readwrite')
+
+  return new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(new Error(`Transaction failed: ${transaction.error?.message}`))
+    transaction.onabort = () => reject(new Error('Transaction was aborted'))
+
+    try {
+      // Delete in reverse dependency order
+
+      // 7a. Delete material stock transactions
+      const stockTransactionStore = transaction.objectStore(STORES.MATERIAL_STOCK_TRANSACTIONS)
+      stockTransactions.forEach(trans => {
+        stockTransactionStore.delete(trans.id)
+      })
+
+      // 7b. Delete dispatch materials
+      const dispatchMaterialStore = transaction.objectStore(STORES.DISPATCH_MATERIALS)
+      dispatchMaterials.forEach(material => {
+        dispatchMaterialStore.delete(material.id)
+      })
+
+      // 7c. Delete dispatch notes
+      const dispatchNoteStore = transaction.objectStore(STORES.DISPATCH_NOTES)
+      dispatchNotes.forEach(dispatchNote => {
+        dispatchNoteStore.delete(dispatchNote.id)
+      })
+
+      // 7d. Delete daily timesheets
+      const timesheetStore = transaction.objectStore(STORES.DAILY_TIMESHEETS)
+      timesheets.forEach(timesheet => {
+        timesheetStore.delete(timesheet.id)
+      })
+
+      // 7e. Delete project assignments
+      const assignmentStore = transaction.objectStore(STORES.PROJECT_ASSIGNMENTS)
+      assignments.forEach(assignment => {
+        assignmentStore.delete(assignment.id)
+      })
+
+      // 7f. Update task dependencies
+      const taskStore = transaction.objectStore(STORES.PROJECT_TASKS)
+      tasksToUpdate.forEach(task => {
+        taskStore.put(task)
+      })
+
+      // 7g. Delete project tasks
+      tasks.forEach(task => {
+        taskStore.delete(task.id)
+      })
+
+      // 7h. Delete project materials
+      const materialStore = transaction.objectStore(STORES.PROJECT_MATERIALS)
+      materials.forEach(material => {
+        materialStore.delete(material.id)
+      })
+
+      // 7i. Finally, delete the project itself
+      const projectStore = transaction.objectStore(STORES.PROJECTS)
+      projectStore.delete(projectId)
+
+    } catch (error) {
+      transaction.abort()
+      reject(new Error(`Failed to delete project cascade: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+/**
+ * Validates whether a project can be safely deleted
+ * Returns array of error messages if deletion should be prevented
+ */
+async function validateProjectDeletion(projectId: string): Promise<string[]> {
+  const errors: string[] = []
+
+  try {
+    // Check for active dispatch notes that might be critical
+    const dispatchNotes = await getDispatchNotesByProject(projectId)
+    const activeDispatches = dispatchNotes.filter(d => 
+      d.status === 'pending' || d.status === 'shipped'
+    )
+    
+    if (activeDispatches.length > 0) {
+      errors.push(`${activeDispatches.length} active dispatch notes must be completed first`)
+    }
+
+    // Check for recent timesheets (within last 7 days) that might indicate active work
+    const timesheets = await getProjectTimesheets(projectId)
+    const recentTimesheets = timesheets.filter(t => {
+      const daysDiff = (Date.now() - new Date(t.date).getTime()) / (1000 * 60 * 60 * 24)
+      return daysDiff <= 7
+    })
+
+    if (recentTimesheets.length > 0) {
+      errors.push(`Project has recent activity (${recentTimesheets.length} timesheets in last 7 days)`)
+    }
+
+  } catch (error) {
+    errors.push(`Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+
+  return errors
+}
+
+
 export async function getProjectsByStatus(status: ProjectStatus): Promise<Project[]> {
   const db = await getDatabase()
   return new Promise((resolve, reject) => {
@@ -2518,6 +2688,36 @@ export async function getMaterialStockTransactions(materialStockId: string): Pro
       
       request.onerror = () => {
         reject(new Error(`Failed to get material stock transactions: ${request.error?.message}`))
+      }
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+export async function getMaterialStockTransactionsByProject(projectId: string): Promise<MaterialStockTransaction[]> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await getDatabase()
+      const transaction = db.transaction([STORES.MATERIAL_STOCK_TRANSACTIONS], 'readonly')
+      const store = transaction.objectStore(STORES.MATERIAL_STOCK_TRANSACTIONS)
+      
+      const request = store.getAll()
+      
+      request.onsuccess = () => {
+        const allTransactions = request.result as MaterialStockTransaction[]
+        const projectTransactions = allTransactions.filter(t => 
+          t.referenceId === projectId && t.referenceType === 'PROJECT'
+        ).map(trans => ({
+          ...trans,
+          transactionDate: new Date(trans.transactionDate),
+          createdAt: new Date(trans.createdAt)
+        }))
+        resolve(projectTransactions)
+      }
+      
+      request.onerror = () => {
+        reject(new Error(`Failed to get material stock transactions by project: ${request.error?.message}`))
       }
     } catch (error) {
       reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))

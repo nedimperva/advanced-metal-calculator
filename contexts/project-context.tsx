@@ -8,6 +8,7 @@ import {
   createProject as dbCreateProject,
   updateProject as dbUpdateProject,
   deleteProject as dbDeleteProject,
+  deleteProjectCascade as dbDeleteProjectCascade,
   getProject as dbGetProject,
   getAllProjects as dbGetAllProjects,
   getProjectsByStatus,
@@ -246,7 +247,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const deleteProject = useCallback(async (projectId: string) => {
     try {
       const project = state.projects.find(p => p.id === projectId)
-      await dbDeleteProject(projectId)
+      await dbDeleteProjectCascade(projectId)
       await refreshProjects()
       
       // Clear current project if it was deleted
