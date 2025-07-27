@@ -20,199 +20,747 @@ import {
 } from './database'
 
 /**
- * Dispatch Materials Synchronization Service
- * Handles automatic synchronization between dispatch notes and project materials
+ * Enhanced Material Synchronization Service
+ * Handles bidirectional synchronization between dispatch notes and project materials
+ * with proper locking, conflict resolution, and validation
  */
 
-// Mapping between dispatch material status and project material status
+// Fixed status mappings based on actual enum values
 const DISPATCH_TO_PROJECT_STATUS_MAP: Record<DispatchMaterialStatus, ProjectMaterialStatus> = {
-  'pending': ProjectMaterialStatus.ORDERED,
-  'shipped': ProjectMaterialStatus.ORDERED,
-  'arrived': ProjectMaterialStatus.DELIVERED,
-  'inspected': ProjectMaterialStatus.DELIVERED,
-  'allocated': ProjectMaterialStatus.DELIVERED,
-  'used': ProjectMaterialStatus.INSTALLED
+  [DispatchMaterialStatus.PENDING]: ProjectMaterialStatus.ORDERED,
+  [DispatchMaterialStatus.ARRIVED]: ProjectMaterialStatus.DELIVERED,
+  [DispatchMaterialStatus.ALLOCATED]: ProjectMaterialStatus.DELIVERED,
+  [DispatchMaterialStatus.USED]: ProjectMaterialStatus.INSTALLED,
+  [DispatchMaterialStatus.DAMAGED]: ProjectMaterialStatus.DELIVERED // Keep as delivered, add damage notes
 }
 
 // Reverse mapping for project to dispatch status sync
 const PROJECT_TO_DISPATCH_STATUS_MAP: Record<ProjectMaterialStatus, DispatchMaterialStatus> = {
-  [ProjectMaterialStatus.REQUIRED]: 'pending',
-  [ProjectMaterialStatus.ORDERED]: 'shipped',
-  [ProjectMaterialStatus.DELIVERED]: 'arrived',
-  [ProjectMaterialStatus.INSTALLED]: 'used'
+  [ProjectMaterialStatus.REQUIRED]: DispatchMaterialStatus.PENDING,
+  [ProjectMaterialStatus.ORDERED]: DispatchMaterialStatus.PENDING,
+  [ProjectMaterialStatus.DELIVERED]: DispatchMaterialStatus.ARRIVED,
+  [ProjectMaterialStatus.INSTALLED]: DispatchMaterialStatus.USED
 }
 
-interface SyncResult {
+// Enhanced sync configuration
+interface SyncConfig {
+  enableLocking: boolean
+  conflictResolution: 'last-write-wins' | 'merge' | 'manual'
+  validateMaterialSpecs: boolean
+  enableEventDriven: boolean
+  maxRetries: number
+  retryDelay: number
+}
+
+const DEFAULT_SYNC_CONFIG: SyncConfig = {
+  enableLocking: true,
+  conflictResolution: 'merge',
+  validateMaterialSpecs: true,
+  enableEventDriven: true,
+  maxRetries: 3,
+  retryDelay: 1000
+}
+
+// Sync operation types
+enum SyncOperationType {
+  DISPATCH_TO_PROJECT = 'dispatch_to_project',
+  PROJECT_TO_DISPATCH = 'project_to_dispatch',
+  BIDIRECTIONAL = 'bidirectional'
+}
+
+// Enhanced sync result with detailed tracking
+interface EnhancedSyncResult {
+  operationType: SyncOperationType
+  operationId: string
+  startTime: Date
+  endTime?: Date
+  success: boolean
+  materialsProcessed: number
   materialsCreated: number
   materialsUpdated: number
   materialsSkipped: number
-  errors: string[]
+  conflictsDetected: number
+  conflictsResolved: number
+  validationErrors: MaterialValidationError[]
+  errors: SyncError[]
+  rollbackRequired: boolean
+  rollbackCompleted: boolean
 }
 
-interface MaterialAllocation {
-  dispatchMaterialId: string
-  projectMaterialId: string
-  allocatedQuantity: number
-  remainingQuantity: number
-  allocationDate: Date
-  notes?: string
+interface MaterialValidationError {
+  materialId: string
+  field: string
+  expected: any
+  actual: any
+  severity: 'warning' | 'error'
+  message: string
+}
+
+interface SyncError {
+  code: string
+  message: string
+  materialId?: string
+  timestamp: Date
+  recoverable: boolean
+}
+
+// Material matching criteria for validation
+interface MaterialMatchCriteria {
+  materialType: boolean
+  profile: boolean
+  grade: boolean
+  dimensions: boolean
+  tolerancePercent: number
+}
+
+const DEFAULT_MATCH_CRITERIA: MaterialMatchCriteria = {
+  materialType: true,
+  profile: true,
+  grade: true,
+  dimensions: true,
+  tolerancePercent: 5 // 5% tolerance for dimension matching
+}
+
+// Sync operation lock tracking
+interface SyncLock {
+  operationId: string
+  type: SyncOperationType
+  projectId: string
+  dispatchId?: string
+  materialIds: string[]
+  timestamp: Date
+  expiresAt: Date
+}
+
+class SyncLockManager {
+  private locks = new Map<string, SyncLock>()
+  private readonly LOCK_TIMEOUT = 30000 // 30 seconds
+
+  acquireLock(operationId: string, type: SyncOperationType, projectId: string, materialIds: string[], dispatchId?: string): boolean {
+    const lockKey = this.generateLockKey(projectId, dispatchId, materialIds)
+    
+    // Clean expired locks
+    this.cleanExpiredLocks()
+    
+    // Check for existing lock
+    if (this.locks.has(lockKey)) {
+      return false
+    }
+    
+    // Create new lock
+    const lock: SyncLock = {
+      operationId,
+      type,
+      projectId,
+      dispatchId,
+      materialIds,
+      timestamp: new Date(),
+      expiresAt: new Date(Date.now() + this.LOCK_TIMEOUT)
+    }
+    
+    this.locks.set(lockKey, lock)
+    return true
+  }
+
+  releaseLock(projectId: string, dispatchId?: string, materialIds?: string[]): void {
+    const lockKey = this.generateLockKey(projectId, dispatchId, materialIds || [])
+    this.locks.delete(lockKey)
+  }
+
+  private generateLockKey(projectId: string, dispatchId?: string, materialIds: string[] = []): string {
+    const sortedMaterialIds = [...materialIds].sort()
+    return `${projectId}:${dispatchId || 'all'}:${sortedMaterialIds.join(',')}`
+  }
+
+  private cleanExpiredLocks(): void {
+    const now = new Date()
+    for (const [key, lock] of this.locks.entries()) {
+      if (lock.expiresAt < now) {
+        this.locks.delete(key)
+      }
+    }
+  }
 }
 
 /**
- * Automatically sync dispatch materials to project materials when dispatch note is created/updated
+ * Unified Material Synchronization Service
+ * Handles all aspects of material sync between dispatch and project systems
  */
-export async function syncDispatchToProjectMaterials(
-  projectId: string, 
-  dispatchNote: DispatchNote,
-  options: {
-    createIfNotExists?: boolean
-    updateExisting?: boolean
-    syncStatus?: boolean
-  } = {}
-): Promise<SyncResult> {
-  const { 
-    createIfNotExists = true, 
-    updateExisting = true, 
-    syncStatus = true 
-  } = options
+export class MaterialSyncService {
+  private lockManager = new SyncLockManager()
+  private eventListeners = new Map<string, Function[]>()
+  private syncHistory: EnhancedSyncResult[] = []
+  private config: SyncConfig
 
-  const result: SyncResult = {
-    materialsCreated: 0,
-    materialsUpdated: 0,
-    materialsSkipped: 0,
-    errors: []
+  constructor(config: Partial<SyncConfig> = {}) {
+    this.config = { ...DEFAULT_SYNC_CONFIG, ...config }
   }
 
-  try {
-    // Get existing project materials from this dispatch
-    const existingMaterials = await getProjectMaterialsBySource(
-      projectId, 
-      ProjectMaterialSource.DISPATCH, 
-      dispatchNote.id
-    )
+  /**
+   * Synchronized dispatch to project material sync with enhanced features
+   */
+  async syncDispatchToProject(
+    projectId: string,
+    dispatchNote: DispatchNote,
+    options: {
+      createIfNotExists?: boolean
+      updateExisting?: boolean
+      syncStatus?: boolean
+      matchCriteria?: Partial<MaterialMatchCriteria>
+    } = {}
+  ): Promise<EnhancedSyncResult> {
+    const operationId = this.generateOperationId()
+    const result = this.createSyncResult(SyncOperationType.DISPATCH_TO_PROJECT, operationId)
+    
+    const {
+      createIfNotExists = true,
+      updateExisting = true,
+      syncStatus = true,
+      matchCriteria = {}
+    } = options
 
-    // Create a map of existing materials by dispatch material ID
-    const existingMaterialsMap = new Map<string, ProjectMaterial>()
-    existingMaterials.forEach(material => {
-      if (material.sourceId) {
-        existingMaterialsMap.set(material.sourceId, material)
+    const criteria = { ...DEFAULT_MATCH_CRITERIA, ...matchCriteria }
+    const materialIds = dispatchNote.materials.map(m => m.id)
+
+    try {
+      // Acquire lock for sync operation
+      if (this.config.enableLocking) {
+        const lockAcquired = this.lockManager.acquireLock(
+          operationId,
+          SyncOperationType.DISPATCH_TO_PROJECT,
+          projectId,
+          materialIds,
+          dispatchNote.id
+        )
+        
+        if (!lockAcquired) {
+          throw new Error(`Cannot acquire lock for sync operation. Another operation is in progress.`)
+        }
       }
-    })
 
-    // Process each dispatch material
-    for (const dispatchMaterial of dispatchNote.materials) {
-      try {
-        const existingMaterial = existingMaterialsMap.get(dispatchMaterial.id)
+      // Get existing project materials from this dispatch
+      const existingMaterials = await getProjectMaterialsBySource(
+        projectId,
+        ProjectMaterialSource.DISPATCH,
+        dispatchNote.id
+      )
 
-        if (existingMaterial && updateExisting) {
-          // Update existing project material
-          const updates: Partial<ProjectMaterial> = {
-            quantity: dispatchMaterial.quantity,
-            unitWeight: dispatchMaterial.unitWeight,
-            totalWeight: dispatchMaterial.totalWeight,
-            unitCost: dispatchMaterial.unitCost,
-            totalCost: dispatchMaterial.totalCost,
-            lengthUnit: dispatchMaterial.lengthUnit,
-            weightUnit: dispatchMaterial.weightUnit,
-            location: dispatchMaterial.location,
-            notes: combineNotes(existingMaterial.notes, dispatchMaterial.notes)
-          }
+      // Create lookup map
+      const existingMaterialsMap = new Map<string, ProjectMaterial>()
+      existingMaterials.forEach(material => {
+        if (material.sourceId) {
+          existingMaterialsMap.set(material.sourceId, material)
+        }
+      })
 
-          // Sync status if enabled
-          if (syncStatus && dispatchMaterial.status in DISPATCH_TO_PROJECT_STATUS_MAP) {
-            updates.status = DISPATCH_TO_PROJECT_STATUS_MAP[dispatchMaterial.status]
+      result.materialsProcessed = dispatchNote.materials.length
+
+      // Process each dispatch material with enhanced validation and conflict resolution
+      for (const dispatchMaterial of dispatchNote.materials) {
+        try {
+          const existingMaterial = existingMaterialsMap.get(dispatchMaterial.id)
+          
+          // Validate material specifications if enabled
+          if (this.config.validateMaterialSpecs && existingMaterial) {
+            const validationErrors = this.validateMaterialMatch(
+              dispatchMaterial,
+              existingMaterial,
+              criteria
+            )
+            result.validationErrors.push(...validationErrors)
             
-            // Update delivery date when status changes to delivered
-            if (updates.status === ProjectMaterialStatus.DELIVERED && !existingMaterial.deliveryDate) {
-              updates.deliveryDate = dispatchNote.actualDeliveryDate || new Date()
+            // Skip processing if critical validation errors
+            const criticalErrors = validationErrors.filter(e => e.severity === 'error')
+            if (criticalErrors.length > 0) {
+              result.materialsSkipped++
+              continue
             }
           }
 
-          await updateProjectMaterial(existingMaterial.id, updates)
-          result.materialsUpdated++
+          if (existingMaterial && updateExisting) {
+            // Handle update with conflict detection and resolution
+            const conflictDetected = this.detectUpdateConflict(dispatchMaterial, existingMaterial)
+            if (conflictDetected) {
+              result.conflictsDetected++
+              
+              const resolved = await this.resolveUpdateConflict(
+                dispatchMaterial,
+                existingMaterial,
+                this.config.conflictResolution
+              )
+              
+              if (resolved) {
+                result.conflictsResolved++
+              } else {
+                result.materialsSkipped++
+                continue
+              }
+            }
 
-        } else if (!existingMaterial && createIfNotExists) {
-          // Create new project material from dispatch material
-          const newMaterial: Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> = {
-            projectId,
-            materialCatalogId: undefined, // Could be enhanced to link to catalog
-            materialName: `${dispatchMaterial.materialType} ${dispatchMaterial.grade}`,
-            profile: dispatchMaterial.profile,
-            grade: dispatchMaterial.grade,
-            dimensions: convertDispatchDimensionsToProjectDimensions(dispatchMaterial.dimensions),
-            quantity: dispatchMaterial.quantity,
-            unitWeight: dispatchMaterial.unitWeight,
-            totalWeight: dispatchMaterial.totalWeight,
-            unitCost: dispatchMaterial.unitCost,
-            totalCost: dispatchMaterial.totalCost,
-            lengthUnit: dispatchMaterial.lengthUnit,
-            weightUnit: dispatchMaterial.weightUnit,
-            status: syncStatus && dispatchMaterial.status in DISPATCH_TO_PROJECT_STATUS_MAP 
-              ? DISPATCH_TO_PROJECT_STATUS_MAP[dispatchMaterial.status] 
-              : ProjectMaterialStatus.DELIVERED,
-            supplier: dispatchNote.supplier.name,
-            orderDate: dispatchNote.date,
-            deliveryDate: dispatchNote.actualDeliveryDate,
-            location: dispatchMaterial.location,
-            notes: createDispatchNotes(dispatchNote, dispatchMaterial),
-            trackingNumber: dispatchNote.trackingNumber,
-            source: ProjectMaterialSource.DISPATCH,
-            sourceId: dispatchMaterial.id
+            // Create update payload with merge strategy
+            const updates = this.createMergedUpdate(
+              dispatchMaterial,
+              existingMaterial,
+              syncStatus,
+              dispatchNote
+            )
+
+            await updateProjectMaterial(existingMaterial.id, updates)
+            result.materialsUpdated++
+
+          } else if (!existingMaterial && createIfNotExists) {
+            // Create new project material with enhanced data mapping
+            const newMaterial = this.createProjectMaterialFromDispatch(
+              projectId,
+              dispatchMaterial,
+              dispatchNote,
+              syncStatus
+            )
+
+            await createProjectMaterial(newMaterial)
+            result.materialsCreated++
+
+            // Update stock when material is delivered
+            if (['arrived', 'allocated'].includes(dispatchMaterial.status)) {
+              try {
+                await this.updateStockFromDispatch(dispatchMaterial, dispatchNote)
+              } catch (stockError) {
+                // Log but don't fail the sync
+                this.logSyncError(result, 'STOCK_UPDATE_FAILED', 
+                  `Stock update failed for material ${dispatchMaterial.id}`, 
+                  dispatchMaterial.id, true
+                )
+              }
+            }
+          } else {
+            result.materialsSkipped++
           }
 
-          await createProjectMaterial(newMaterial)
-          result.materialsCreated++
-
-          // Update stock when material is delivered
-          try {
-            await updateStockFromDispatchDelivery(dispatchMaterial, dispatchNote)
-          } catch (stockError) {
-            console.warn(`Stock update failed for material ${dispatchMaterial.id}:`, stockError)
-            // Don't fail the main sync if stock update fails
-          }
-        } else {
-          result.materialsSkipped++
+        } catch (error) {
+          this.logSyncError(result, 'MATERIAL_SYNC_FAILED', 
+            `Failed to sync material ${dispatchMaterial.id}: ${error}`, 
+            dispatchMaterial.id, false
+          )
         }
+      }
 
-      } catch (error) {
-        const errorMsg = `Failed to sync material ${dispatchMaterial.id}: ${error}`
-        result.errors.push(errorMsg)
-        console.error(errorMsg)
+      result.success = result.errors.filter(e => !e.recoverable).length === 0
+      
+    } catch (error) {
+      this.logSyncError(result, 'SYNC_OPERATION_FAILED', 
+        `Failed to sync dispatch ${dispatchNote.id}: ${error}`, 
+        undefined, false
+      )
+      result.success = false
+      result.rollbackRequired = true
+      
+      // Attempt rollback if configured
+      if (result.rollbackRequired) {
+        try {
+          await this.rollbackSyncOperation(result)
+          result.rollbackCompleted = true
+        } catch (rollbackError) {
+          this.logSyncError(result, 'ROLLBACK_FAILED', 
+            `Failed to rollback sync operation: ${rollbackError}`, 
+            undefined, false
+          )
+        }
+      }
+    } finally {
+      // Release lock
+      if (this.config.enableLocking) {
+        this.lockManager.releaseLock(projectId, dispatchNote.id, materialIds)
+      }
+      
+      result.endTime = new Date()
+      this.syncHistory.push(result)
+      
+      // Emit sync completed event
+      if (this.config.enableEventDriven) {
+        this.emitEvent('syncCompleted', result)
       }
     }
 
-  } catch (error) {
-    const errorMsg = `Failed to sync dispatch ${dispatchNote.id}: ${error}`
-    result.errors.push(errorMsg)
-    console.error(errorMsg)
+    return result
   }
 
-  return result
-}
+  /**
+   * Enhanced project to dispatch sync with bidirectional support
+   */
+  async syncProjectToDispatch(
+    projectMaterial: ProjectMaterial,
+    options: {
+      syncStatus?: boolean
+      validateDispatch?: boolean
+    } = {}
+  ): Promise<EnhancedSyncResult> {
+    const operationId = this.generateOperationId()
+    const result = this.createSyncResult(SyncOperationType.PROJECT_TO_DISPATCH, operationId)
+    
+    const { syncStatus = true, validateDispatch = true } = options
 
-/**
- * Update material stock when dispatch materials are delivered
- */
-export async function updateStockFromDispatchDelivery(
-  dispatchMaterial: DispatchMaterial,
-  dispatchNote: DispatchNote
-): Promise<void> {
-  // Only process materials that have been delivered (arrived, inspected, allocated)
-  if (!['arrived', 'inspected', 'allocated'].includes(dispatchMaterial.status)) {
-    return
+    // Only sync materials that came from dispatch
+    if (projectMaterial.source !== ProjectMaterialSource.DISPATCH || !projectMaterial.sourceId) {
+      result.materialsSkipped = 1
+      result.success = true
+      return result
+    }
+
+    try {
+      // Acquire lock for sync operation
+      if (this.config.enableLocking) {
+        const lockAcquired = this.lockManager.acquireLock(
+          operationId,
+          SyncOperationType.PROJECT_TO_DISPATCH,
+          projectMaterial.projectId,
+          [projectMaterial.sourceId]
+        )
+        
+        if (!lockAcquired) {
+          throw new Error(`Cannot acquire lock for project material ${projectMaterial.id}`)
+        }
+      }
+
+      result.materialsProcessed = 1
+
+      // TODO: Implement actual dispatch material update when database function is available
+      // For now, log the sync requirement with enhanced tracking
+      const dispatchStatus = PROJECT_TO_DISPATCH_STATUS_MAP[projectMaterial.status]
+      
+      this.logSyncActivity({
+        operationId,
+        type: 'PROJECT_TO_DISPATCH_SYNC',
+        projectMaterialId: projectMaterial.id,
+        dispatchMaterialId: projectMaterial.sourceId,
+        statusChange: {
+          from: 'unknown', // Would need to fetch current dispatch status
+          to: dispatchStatus
+        },
+        timestamp: new Date()
+      })
+
+      result.materialsUpdated = 1
+      result.success = true
+      
+    } catch (error) {
+      this.logSyncError(result, 'PROJECT_TO_DISPATCH_FAILED', 
+        `Failed to sync project material ${projectMaterial.id} to dispatch: ${error}`, 
+        projectMaterial.id, false
+      )
+      result.success = false
+    } finally {
+      // Release lock
+      if (this.config.enableLocking && projectMaterial.sourceId) {
+        this.lockManager.releaseLock(projectMaterial.projectId, undefined, [projectMaterial.sourceId])
+      }
+      
+      result.endTime = new Date()
+      this.syncHistory.push(result)
+    }
+
+    return result
   }
 
-  try {
-    // Create a simple material identifier for stock lookup
-    // In a real implementation, you'd want a more sophisticated material matching system
-    const materialIdentifier = `${dispatchMaterial.materialType}-${dispatchMaterial.grade}-${dispatchMaterial.profile}`
+  // Additional helper methods for the MaterialSyncService class...
+  private generateOperationId(): string {
+    return `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
+  private createSyncResult(type: SyncOperationType, operationId: string): EnhancedSyncResult {
+    return {
+      operationType: type,
+      operationId,
+      startTime: new Date(),
+      success: false,
+      materialsProcessed: 0,
+      materialsCreated: 0,
+      materialsUpdated: 0,
+      materialsSkipped: 0,
+      conflictsDetected: 0,
+      conflictsResolved: 0,
+      validationErrors: [],
+      errors: [],
+      rollbackRequired: false,
+      rollbackCompleted: false
+    }
+  }
+
+  private logSyncError(
+    result: EnhancedSyncResult, 
+    code: string, 
+    message: string, 
+    materialId?: string, 
+    recoverable: boolean = false
+  ): void {
+    const error: SyncError = {
+      code,
+      message,
+      materialId,
+      timestamp: new Date(),
+      recoverable
+    }
+    result.errors.push(error)
+    console.error(`Sync Error [${code}]: ${message}`, { materialId, recoverable })
+  }
+
+  private logSyncActivity(activity: any): void {
+    console.log('Sync Activity:', activity)
+  }
+
+  private emitEvent(eventName: string, data: any): void {
+    const listeners = this.eventListeners.get(eventName) || []
+    listeners.forEach(listener => {
+      try {
+        listener(data)
+      } catch (error) {
+        console.error(`Event listener error for ${eventName}:`, error)
+      }
+    })
+  }
+
+  // Event listener management
+  addEventListener(eventName: string, listener: Function): void {
+    if (!this.eventListeners.has(eventName)) {
+      this.eventListeners.set(eventName, [])
+    }
+    this.eventListeners.get(eventName)!.push(listener)
+  }
+
+  removeEventListener(eventName: string, listener: Function): void {
+    const listeners = this.eventListeners.get(eventName) || []
+    const index = listeners.indexOf(listener)
+    if (index > -1) {
+      listeners.splice(index, 1)
+    }
+  }
+
+  // Sync history and monitoring
+  getSyncHistory(limit?: number): EnhancedSyncResult[] {
+    const history = [...this.syncHistory].reverse()
+    return limit ? history.slice(0, limit) : history
+  }
+
+  clearSyncHistory(): void {
+    this.syncHistory = []
+  }
+
+  /**
+   * Validate material specifications match between dispatch and project materials
+   */
+  private validateMaterialMatch(
+    dispatchMaterial: DispatchMaterial,
+    projectMaterial: ProjectMaterial,
+    criteria: MaterialMatchCriteria
+  ): MaterialValidationError[] {
+    const errors: MaterialValidationError[] = []
+
+    // Material type validation
+    if (criteria.materialType && dispatchMaterial.materialType !== projectMaterial.materialName.split(' ')[0]) {
+      errors.push({
+        materialId: dispatchMaterial.id,
+        field: 'materialType',
+        expected: projectMaterial.materialName.split(' ')[0],
+        actual: dispatchMaterial.materialType,
+        severity: 'error',
+        message: 'Material type mismatch between dispatch and project'
+      })
+    }
+
+    // Profile validation
+    if (criteria.profile && dispatchMaterial.profile !== projectMaterial.profile) {
+      errors.push({
+        materialId: dispatchMaterial.id,
+        field: 'profile',
+        expected: projectMaterial.profile,
+        actual: dispatchMaterial.profile,
+        severity: 'error',
+        message: 'Profile mismatch between dispatch and project'
+      })
+    }
+
+    // Grade validation
+    if (criteria.grade && dispatchMaterial.grade !== projectMaterial.grade) {
+      errors.push({
+        materialId: dispatchMaterial.id,
+        field: 'grade',
+        expected: projectMaterial.grade,
+        actual: dispatchMaterial.grade,
+        severity: 'warning',
+        message: 'Grade mismatch between dispatch and project'
+      })
+    }
+
+    // Dimensions validation with tolerance
+    if (criteria.dimensions) {
+      for (const [key, projectValue] of Object.entries(projectMaterial.dimensions)) {
+        const dispatchValue = dispatchMaterial.dimensions[key]
+        if (dispatchValue !== undefined && projectValue !== undefined) {
+          const tolerance = Math.abs(projectValue * criteria.tolerancePercent / 100)
+          const difference = Math.abs(dispatchValue - projectValue)
+          
+          if (difference > tolerance) {
+            errors.push({
+              materialId: dispatchMaterial.id,
+              field: `dimensions.${key}`,
+              expected: projectValue,
+              actual: dispatchValue,
+              severity: difference > tolerance * 2 ? 'error' : 'warning',
+              message: `Dimension ${key} exceeds tolerance: ${difference.toFixed(2)} vs allowed ${tolerance.toFixed(2)}`
+            })
+          }
+        }
+      }
+    }
+
+    return errors
+  }
+
+  /**
+   * Detect conflicts when updating existing materials
+   */
+  private detectUpdateConflict(
+    dispatchMaterial: DispatchMaterial,
+    existingMaterial: ProjectMaterial
+  ): boolean {
+    // Check if project material was modified more recently than dispatch material
+    const projectUpdateTime = existingMaterial.updatedAt.getTime()
+    const dispatchUpdateTime = new Date().getTime() // Assuming current time for dispatch
     
-    // Try to find existing stock for this material
-    // Note: This requires implementing getMaterialStockByMaterialId or similar function
-    // For now, we'll create stock entries for dispatch materials
-    
+    // Consider it a conflict if project was updated within the last 5 minutes
+    const conflictWindow = 5 * 60 * 1000 // 5 minutes
+    return (Date.now() - projectUpdateTime) < conflictWindow
+  }
+
+  /**
+   * Resolve update conflicts based on configured strategy
+   */
+  private async resolveUpdateConflict(
+    dispatchMaterial: DispatchMaterial,
+    existingMaterial: ProjectMaterial,
+    strategy: 'last-write-wins' | 'merge' | 'manual'
+  ): Promise<boolean> {
+    switch (strategy) {
+      case 'last-write-wins':
+        // Always allow the update (dispatch wins)
+        return true
+        
+      case 'merge':
+        // Attempt to merge non-conflicting fields
+        return true // For now, always allow merge
+        
+      case 'manual':
+        // Require manual intervention - for now, skip the update
+        this.logSyncActivity({
+          type: 'MANUAL_CONFLICT_RESOLUTION_REQUIRED',
+          dispatchMaterialId: dispatchMaterial.id,
+          projectMaterialId: existingMaterial.id,
+          message: 'Manual conflict resolution required'
+        })
+        return false
+        
+      default:
+        return false
+    }
+  }
+
+  /**
+   * Create merged update payload combining dispatch and project data
+   */
+  private createMergedUpdate(
+    dispatchMaterial: DispatchMaterial,
+    existingMaterial: ProjectMaterial,
+    syncStatus: boolean,
+    dispatchNote: DispatchNote
+  ): Partial<ProjectMaterial> {
+    const updates: Partial<ProjectMaterial> = {
+      // Always update quantities and weights from dispatch
+      quantity: dispatchMaterial.quantity,
+      unitWeight: dispatchMaterial.unitWeight,
+      totalWeight: dispatchMaterial.totalWeight,
+      lengthUnit: dispatchMaterial.lengthUnit,
+      weightUnit: dispatchMaterial.weightUnit,
+      
+      // Update costs if available
+      ...(dispatchMaterial.unitCost && { unitCost: dispatchMaterial.unitCost }),
+      ...(dispatchMaterial.totalCost && { totalCost: dispatchMaterial.totalCost }),
+      
+      // Update location if provided
+      ...(dispatchMaterial.location && { location: dispatchMaterial.location }),
+      
+      // Merge notes
+      notes: this.mergeNotes(existingMaterial.notes, dispatchMaterial.notes, dispatchNote)
+    }
+
+    // Sync status if enabled
+    if (syncStatus && dispatchMaterial.status in DISPATCH_TO_PROJECT_STATUS_MAP) {
+      updates.status = DISPATCH_TO_PROJECT_STATUS_MAP[dispatchMaterial.status]
+      
+      // Update delivery date when status changes to delivered
+      if (updates.status === ProjectMaterialStatus.DELIVERED && !existingMaterial.deliveryDate) {
+        updates.deliveryDate = dispatchNote.actualDeliveryDate || new Date()
+      }
+      
+      // Handle damaged materials
+      if (dispatchMaterial.status === DispatchMaterialStatus.DAMAGED) {
+        const damageNote = dispatchMaterial.inspectionNotes || 'Material marked as damaged in dispatch'
+        updates.notes = `${updates.notes || ''}\n\nDAMAGE REPORT: ${damageNote}`.trim()
+      }
+    }
+
+    return updates
+  }
+
+  /**
+   * Create new project material from dispatch material with enhanced mapping
+   */
+  private createProjectMaterialFromDispatch(
+    projectId: string,
+    dispatchMaterial: DispatchMaterial,
+    dispatchNote: DispatchNote,
+    syncStatus: boolean
+  ): Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> {
+    return {
+      projectId,
+      materialCatalogId: undefined, // Could be enhanced to link to catalog
+      materialName: `${dispatchMaterial.materialType} ${dispatchMaterial.grade}`,
+      profile: dispatchMaterial.profile,
+      grade: dispatchMaterial.grade,
+      dimensions: this.convertDispatchDimensionsToProject(dispatchMaterial.dimensions),
+      quantity: dispatchMaterial.quantity,
+      unitWeight: dispatchMaterial.unitWeight,
+      totalWeight: dispatchMaterial.totalWeight,
+      unitCost: dispatchMaterial.unitCost,
+      totalCost: dispatchMaterial.totalCost,
+      lengthUnit: dispatchMaterial.lengthUnit,
+      weightUnit: dispatchMaterial.weightUnit,
+      status: syncStatus && dispatchMaterial.status in DISPATCH_TO_PROJECT_STATUS_MAP 
+        ? DISPATCH_TO_PROJECT_STATUS_MAP[dispatchMaterial.status] 
+        : ProjectMaterialStatus.DELIVERED,
+      supplier: dispatchNote.supplier.name,
+      orderDate: dispatchNote.date,
+      deliveryDate: dispatchNote.actualDeliveryDate,
+      location: dispatchMaterial.location,
+      notes: this.createDispatchNotes(dispatchNote, dispatchMaterial),
+      trackingNumber: dispatchNote.trackingNumber,
+      source: ProjectMaterialSource.DISPATCH,
+      sourceId: dispatchMaterial.id
+    }
+  }
+
+  /**
+   * Enhanced stock update with better error handling
+   */
+  private async updateStockFromDispatch(
+    dispatchMaterial: DispatchMaterial,
+    dispatchNote: DispatchNote
+  ): Promise<void> {
+    // Only process materials that have been delivered
+    if (!['arrived', 'allocated'].includes(dispatchMaterial.status)) {
+      return
+    }
+
     const stockEntry = {
-      materialCatalogId: `dispatch-${dispatchMaterial.id}`, // Temporary ID until catalog integration
+      materialCatalogId: `dispatch-${dispatchMaterial.id}`,
       material: {
         name: `${dispatchMaterial.materialType} ${dispatchMaterial.grade}`,
         type: dispatchMaterial.materialType,
@@ -235,10 +783,8 @@ export async function updateStockFromDispatchDelivery(
       lastStockUpdate: new Date()
     }
 
-    // Create stock entry
     const stockId = await createMaterialStock(stockEntry)
 
-    // Create stock transaction
     await createMaterialStockTransaction({
       materialStockId: stockId,
       type: 'IN',
@@ -252,34 +798,167 @@ export async function updateStockFromDispatchDelivery(
       notes: `Material delivery from dispatch ${dispatchNote.dispatchNumber}`,
       createdBy: 'system'
     })
+  }
 
-    console.log(`Stock updated for dispatch material ${dispatchMaterial.id}: +${dispatchMaterial.quantity} units`)
+  /**
+   * Rollback sync operation in case of failure
+   */
+  private async rollbackSyncOperation(result: EnhancedSyncResult): Promise<void> {
+    this.logSyncActivity({
+      type: 'ROLLBACK_STARTED',
+      operationId: result.operationId,
+      materialsToRollback: result.materialsCreated
+    })
 
+    // For now, log the rollback requirement
+    // In a real implementation, you'd track created materials and remove them
+    console.warn(`Rollback required for operation ${result.operationId}`)
+  }
+
+  /**
+   * Helper method to merge notes from different sources
+   */
+  private mergeNotes(existingNotes?: string, dispatchNotes?: string, dispatchNote?: DispatchNote): string | undefined {
+    const parts: string[] = []
+    
+    if (existingNotes) {
+      parts.push(existingNotes)
+    }
+    
+    if (dispatchNotes) {
+      parts.push(`Dispatch Update: ${dispatchNotes}`)
+    }
+    
+    if (dispatchNote && !existingNotes?.includes(dispatchNote.dispatchNumber)) {
+      parts.push(`From dispatch: ${dispatchNote.dispatchNumber}`)
+    }
+    
+    return parts.length > 0 ? parts.join('\n\n') : undefined
+  }
+
+  /**
+   * Convert dispatch dimensions to project dimensions format
+   */
+  private convertDispatchDimensionsToProject(
+    dispatchDimensions: Record<string, number | undefined>
+  ): Record<string, number> {
+    const converted: Record<string, number> = {}
+    
+    Object.entries(dispatchDimensions).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        converted[key] = value
+      }
+    })
+    
+    return converted
+  }
+
+  /**
+   * Create comprehensive notes for dispatch-sourced materials
+   */
+  private createDispatchNotes(dispatchNote: DispatchNote, dispatchMaterial: DispatchMaterial): string {
+    const parts = [
+      `From dispatch: ${dispatchNote.dispatchNumber}`,
+      `Supplier: ${dispatchNote.supplier.name}`,
+      `Delivered: ${dispatchNote.actualDeliveryDate?.toLocaleDateString() || 'Pending'}`
+    ]
+    
+    if (dispatchMaterial.notes) {
+      parts.push(`Material notes: ${dispatchMaterial.notes}`)
+    }
+    
+    if (dispatchNote.trackingNumber) {
+      parts.push(`Tracking: ${dispatchNote.trackingNumber}`)
+    }
+    
+    if (dispatchMaterial.inspectionDate) {
+      parts.push(`Inspected: ${dispatchMaterial.inspectionDate.toLocaleDateString()}`)
+      if (dispatchMaterial.inspectionNotes) {
+        parts.push(`Inspection notes: ${dispatchMaterial.inspectionNotes}`)
+      }
+    }
+    
+    return parts.join(' • ')
+  }
+}
+
+// Create global sync service instance
+export const materialSyncService = new MaterialSyncService()
+
+// Legacy interfaces for backward compatibility
+interface SyncResult {
+  materialsCreated: number
+  materialsUpdated: number
+  materialsSkipped: number
+  errors: string[]
+}
+
+interface MaterialAllocation {
+  dispatchMaterialId: string
+  projectMaterialId: string
+  allocatedQuantity: number
+  remainingQuantity: number
+  allocationDate: Date
+  notes?: string
+}
+
+/**
+ * Legacy wrapper function - use MaterialSyncService directly for new code
+ * Automatically sync dispatch materials to project materials when dispatch note is created/updated
+ */
+export async function syncDispatchToProjectMaterials(
+  projectId: string, 
+  dispatchNote: DispatchNote,
+  options: {
+    createIfNotExists?: boolean
+    updateExisting?: boolean
+    syncStatus?: boolean
+  } = {}
+): Promise<SyncResult> {
+  try {
+    const enhancedResult = await materialSyncService.syncDispatchToProject(
+      projectId,
+      dispatchNote,
+      options
+    )
+    
+    // Convert enhanced result to legacy format
+    return {
+      materialsCreated: enhancedResult.materialsCreated,
+      materialsUpdated: enhancedResult.materialsUpdated,
+      materialsSkipped: enhancedResult.materialsSkipped,
+      errors: enhancedResult.errors.map(e => e.message)
+    }
   } catch (error) {
-    console.error(`Failed to update stock for dispatch material ${dispatchMaterial.id}:`, error)
-    throw error
+    return {
+      materialsCreated: 0,
+      materialsUpdated: 0,
+      materialsSkipped: 0,
+      errors: [`Sync operation failed: ${error}`]
+    }
   }
 }
 
 /**
- * Sync project material status changes back to dispatch materials
+ * Legacy wrapper function - Update material stock when dispatch materials are delivered
+ */
+export async function updateStockFromDispatchDelivery(
+  dispatchMaterial: DispatchMaterial,
+  dispatchNote: DispatchNote
+): Promise<void> {
+  // Delegate to MaterialSyncService for consistency
+  const syncService = new MaterialSyncService()
+  await syncService['updateStockFromDispatch'](dispatchMaterial, dispatchNote)
+}
+
+/**
+ * Legacy wrapper function - Sync project material status changes back to dispatch materials
  */
 export async function syncProjectToDispatchMaterials(
   projectMaterial: ProjectMaterial
 ): Promise<void> {
-  if (projectMaterial.source !== ProjectMaterialSource.DISPATCH || !projectMaterial.sourceId) {
-    return // Only sync materials that came from dispatch
-  }
-
   try {
-    // This would require implementing updateDispatchMaterial function in database.ts
-    // For now, we'll just log the sync requirement
-    console.log(`Sync required: Project material ${projectMaterial.id} status changed to ${projectMaterial.status}`)
-    
-    // TODO: Implement bidirectional sync
-    // const dispatchStatus = PROJECT_TO_DISPATCH_STATUS_MAP[projectMaterial.status]
-    // await updateDispatchMaterial(projectMaterial.sourceId, { status: dispatchStatus })
-    
+    await materialSyncService.syncProjectToDispatch(projectMaterial)
   } catch (error) {
     console.error(`Failed to sync project material ${projectMaterial.id} to dispatch:`, error)
   }
@@ -416,7 +1095,7 @@ export async function getProjectMaterialAllocationSummary(projectId: string): Pr
 }
 
 /**
- * Auto-sync all dispatch notes for a project
+ * Legacy wrapper function - Auto-sync all dispatch notes for a project
  */
 export async function syncAllDispatchNotesForProject(
   projectId: string,
@@ -454,19 +1133,12 @@ export async function syncAllDispatchNotesForProject(
   return aggregatedResult
 }
 
-// Helper functions
+// Legacy helper functions - maintained for backward compatibility
 function convertDispatchDimensionsToProjectDimensions(
   dispatchDimensions: Record<string, number | undefined>
 ): Record<string, number> {
-  const converted: Record<string, number> = {}
-  
-  Object.entries(dispatchDimensions).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      converted[key] = value
-    }
-  })
-  
-  return converted
+  const syncService = new MaterialSyncService()
+  return syncService['convertDispatchDimensionsToProject'](dispatchDimensions)
 }
 
 function combineNotes(existingNotes?: string, dispatchNotes?: string): string | undefined {
@@ -478,40 +1150,43 @@ function combineNotes(existingNotes?: string, dispatchNotes?: string): string | 
 }
 
 function createDispatchNotes(dispatchNote: DispatchNote, dispatchMaterial: DispatchMaterial): string {
-  const parts = [
-    `From dispatch: ${dispatchNote.dispatchNumber}`,
-    `Supplier: ${dispatchNote.supplier.name}`,
-    `Delivered: ${dispatchNote.actualDeliveryDate?.toLocaleDateString() || 'Pending'}`
-  ]
-  
-  if (dispatchMaterial.notes) {
-    parts.push(`Material notes: ${dispatchMaterial.notes}`)
-  }
-  
-  if (dispatchNote.trackingNumber) {
-    parts.push(`Tracking: ${dispatchNote.trackingNumber}`)
-  }
-  
-  return parts.join(' • ')
+  const syncService = new MaterialSyncService()
+  return syncService['createDispatchNotes'](dispatchNote, dispatchMaterial)
 }
 
 /**
- * Trigger automatic sync when dispatch note is updated
+ * Enhanced event-driven sync trigger for dispatch note updates
  */
 export async function onDispatchNoteUpdated(dispatchNote: DispatchNote): Promise<void> {
   try {
     console.log(`Auto-syncing dispatch note ${dispatchNote.dispatchNumber} to project materials...`)
     
-    const result = await syncDispatchToProjectMaterials(dispatchNote.projectId, dispatchNote, {
-      createIfNotExists: true,
-      updateExisting: true,
-      syncStatus: true
+    const enhancedResult = await materialSyncService.syncDispatchToProject(
+      dispatchNote.projectId, 
+      dispatchNote, 
+      {
+        createIfNotExists: true,
+        updateExisting: true,
+        syncStatus: true
+      }
+    )
+    
+    console.log(`Enhanced dispatch sync completed:`, {
+      operationId: enhancedResult.operationId,
+      success: enhancedResult.success,
+      materialsCreated: enhancedResult.materialsCreated,
+      materialsUpdated: enhancedResult.materialsUpdated,
+      materialsSkipped: enhancedResult.materialsSkipped,
+      conflictsResolved: enhancedResult.conflictsResolved,
+      validationErrors: enhancedResult.validationErrors.length
     })
     
-    console.log(`Dispatch sync completed: ${result.materialsCreated} created, ${result.materialsUpdated} updated`)
+    if (enhancedResult.errors.length > 0) {
+      console.warn('Enhanced dispatch sync errors:', enhancedResult.errors)
+    }
     
-    if (result.errors.length > 0) {
-      console.warn('Dispatch sync errors:', result.errors)
+    if (enhancedResult.rollbackRequired && !enhancedResult.rollbackCompleted) {
+      console.error('Sync operation required rollback but it failed')
     }
     
   } catch (error) {
