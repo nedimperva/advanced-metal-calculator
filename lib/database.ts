@@ -602,9 +602,56 @@ export async function deleteProject(id: string): Promise<void> {
  * Deletes all related records in the correct order to maintain referential integrity
  */
 export async function deleteProjectCascade(projectId: string): Promise<void> {
+  // Step 1: Validate project exists and get dependencies BEFORE starting transaction
+  const project = await getProject(projectId)
+  if (!project) {
+    throw new Error(`Project with ID ${projectId} not found`)
+  }
+
+  // Step 2: Check for critical dependencies that might prevent deletion
+  const dependencyErrors = await validateProjectDeletion(projectId)
+  if (dependencyErrors.length > 0) {
+    throw new Error(`Cannot delete project: ${dependencyErrors.join(', ')}`)
+  }
+
+  // Step 3: Get all related data BEFORE starting transaction
+  const [dispatchNotes, timesheets, assignments, tasks, materials] = await Promise.all([
+    getDispatchNotesByProject(projectId),
+    getProjectTimesheets(projectId),
+    getProjectAssignments(projectId),
+    getProjectTasks(projectId),
+    getProjectMaterials(projectId)
+  ])
+
+  // Step 4: Get dispatch materials for all dispatch notes
+  const dispatchMaterials: DispatchMaterial[] = []
+  for (const dispatchNote of dispatchNotes) {
+    try {
+      const materials = await getDispatchMaterials(dispatchNote.id)
+      dispatchMaterials.push(...materials)
+    } catch (error) {
+      // Continue if dispatch materials not found
+    }
+  }
+
+  // Step 5: Get material stock transactions
+  const stockTransactions = await getMaterialStockTransactionsByProject(projectId)
+
+  // Step 6: Get all tasks to update dependencies
+  const allTasks = await getAllRecords(STORES.PROJECT_TASKS) as ProjectTask[]
+  const deletedTaskIds = new Set(tasks.map(t => t.id))
+  const tasksToUpdate = allTasks.filter(task => 
+    task.projectId !== projectId && 
+    task.dependencies && 
+    task.dependencies.some(depId => deletedTaskIds.has(depId))
+  ).map(task => ({
+    ...task,
+    dependencies: task.dependencies!.filter(depId => !deletedTaskIds.has(depId)),
+    updatedAt: new Date()
+  }))
+
+  // Step 7: Start transaction and perform all deletes synchronously
   const db = await getDatabase()
-  
-  // Start a transaction to ensure atomicity
   const transaction = db.transaction([
     STORES.PROJECTS,
     STORES.PROJECT_MATERIALS,
@@ -617,110 +664,70 @@ export async function deleteProjectCascade(projectId: string): Promise<void> {
     STORES.MATERIAL_STOCK_TRANSACTIONS
   ], 'readwrite')
 
-  try {
-    // Step 1: Validate project exists and get dependencies
-    const project = await getProject(projectId)
-    if (!project) {
-      throw new Error(`Project with ID ${projectId} not found`)
-    }
+  return new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve()
+    transaction.onerror = () => reject(new Error(`Transaction failed: ${transaction.error?.message}`))
+    transaction.onabort = () => reject(new Error('Transaction was aborted'))
 
-    // Step 2: Check for critical dependencies that might prevent deletion
-    const dependencyErrors = await validateProjectDeletion(projectId)
-    if (dependencyErrors.length > 0) {
-      throw new Error(`Cannot delete project: ${dependencyErrors.join(', ')}`)
-    }
+    try {
+      // Delete in reverse dependency order
 
-    // Step 3: Delete in reverse dependency order
-
-    // 3a. Delete material stock transactions referencing this project
-    await deleteMaterialStockTransactionsByProject(projectId, transaction)
-
-    // 3b. Delete dispatch materials first (they reference dispatch notes)
-    const dispatchNotes = await getDispatchNotesByProject(projectId)
-    for (const dispatchNote of dispatchNotes) {
-      await deleteDispatchMaterialsByNote(dispatchNote.id, transaction)
-    }
-
-    // 3c. Delete dispatch notes
-    for (const dispatchNote of dispatchNotes) {
-      const store = transaction.objectStore(STORES.DISPATCH_NOTES)
-      await new Promise<void>((resolve, reject) => {
-        const request = store.delete(dispatchNote.id)
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(new Error(`Failed to delete dispatch note: ${request.error?.message}`))
+      // 7a. Delete material stock transactions
+      const stockTransactionStore = transaction.objectStore(STORES.MATERIAL_STOCK_TRANSACTIONS)
+      stockTransactions.forEach(trans => {
+        stockTransactionStore.delete(trans.id)
       })
-    }
 
-    // 3d. Delete work entries associated with project timesheets
-    const timesheets = await getProjectTimesheets(projectId)
-    for (const timesheet of timesheets) {
-      await deleteWorkEntriesByTimesheet(timesheet.id, transaction)
-    }
-
-    // 3e. Delete daily timesheets
-    for (const timesheet of timesheets) {
-      const store = transaction.objectStore(STORES.DAILY_TIMESHEETS)
-      await new Promise<void>((resolve, reject) => {
-        const request = store.delete(timesheet.id)
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(new Error(`Failed to delete timesheet: ${request.error?.message}`))
+      // 7b. Delete dispatch materials
+      const dispatchMaterialStore = transaction.objectStore(STORES.DISPATCH_MATERIALS)
+      dispatchMaterials.forEach(material => {
+        dispatchMaterialStore.delete(material.id)
       })
-    }
 
-    // 3f. Delete project assignments
-    const assignments = await getProjectAssignments(projectId)
-    for (const assignment of assignments) {
-      const store = transaction.objectStore(STORES.PROJECT_ASSIGNMENTS)
-      await new Promise<void>((resolve, reject) => {
-        const request = store.delete(assignment.id)
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(new Error(`Failed to delete assignment: ${request.error?.message}`))
+      // 7c. Delete dispatch notes
+      const dispatchNoteStore = transaction.objectStore(STORES.DISPATCH_NOTES)
+      dispatchNotes.forEach(dispatchNote => {
+        dispatchNoteStore.delete(dispatchNote.id)
       })
-    }
 
-    // 3g. Update task dependencies - remove references to tasks being deleted
-    await updateTaskDependenciesOnProjectDeletion(projectId, transaction)
-
-    // 3h. Delete project tasks
-    const tasks = await getProjectTasks(projectId)
-    for (const task of tasks) {
-      const store = transaction.objectStore(STORES.PROJECT_TASKS)
-      await new Promise<void>((resolve, reject) => {
-        const request = store.delete(task.id)
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(new Error(`Failed to delete task: ${request.error?.message}`))
+      // 7d. Delete daily timesheets
+      const timesheetStore = transaction.objectStore(STORES.DAILY_TIMESHEETS)
+      timesheets.forEach(timesheet => {
+        timesheetStore.delete(timesheet.id)
       })
-    }
 
-    // 3i. Delete project materials
-    const materials = await getProjectMaterials(projectId)
-    for (const material of materials) {
-      const store = transaction.objectStore(STORES.PROJECT_MATERIALS)
-      await new Promise<void>((resolve, reject) => {
-        const request = store.delete(material.id)
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(new Error(`Failed to delete material: ${request.error?.message}`))
+      // 7e. Delete project assignments
+      const assignmentStore = transaction.objectStore(STORES.PROJECT_ASSIGNMENTS)
+      assignments.forEach(assignment => {
+        assignmentStore.delete(assignment.id)
       })
+
+      // 7f. Update task dependencies
+      const taskStore = transaction.objectStore(STORES.PROJECT_TASKS)
+      tasksToUpdate.forEach(task => {
+        taskStore.put(task)
+      })
+
+      // 7g. Delete project tasks
+      tasks.forEach(task => {
+        taskStore.delete(task.id)
+      })
+
+      // 7h. Delete project materials
+      const materialStore = transaction.objectStore(STORES.PROJECT_MATERIALS)
+      materials.forEach(material => {
+        materialStore.delete(material.id)
+      })
+
+      // 7i. Finally, delete the project itself
+      const projectStore = transaction.objectStore(STORES.PROJECTS)
+      projectStore.delete(projectId)
+
+    } catch (error) {
+      transaction.abort()
+      reject(new Error(`Failed to delete project cascade: ${error instanceof Error ? error.message : 'Unknown error'}`))
     }
-
-    // 3j. Finally, delete the project itself
-    const projectStore = transaction.objectStore(STORES.PROJECTS)
-    await new Promise<void>((resolve, reject) => {
-      const request = projectStore.delete(projectId)
-      request.onsuccess = () => resolve()
-      request.onerror = () => reject(new Error(`Failed to delete project: ${request.error?.message}`))
-    })
-
-    // Wait for transaction to complete
-    await new Promise<void>((resolve, reject) => {
-      transaction.oncomplete = () => resolve()
-      transaction.onerror = () => reject(new Error(`Transaction failed: ${transaction.error?.message}`))
-    })
-
-  } catch (error) {
-    // Transaction will auto-rollback on error
-    throw new Error(`Failed to delete project cascade: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  }
+  })
 }
 
 /**
@@ -734,7 +741,7 @@ async function validateProjectDeletion(projectId: string): Promise<string[]> {
     // Check for active dispatch notes that might be critical
     const dispatchNotes = await getDispatchNotesByProject(projectId)
     const activeDispatches = dispatchNotes.filter(d => 
-      d.status === 'PENDING' || d.status === 'IN_TRANSIT'
+      d.status === 'pending' || d.status === 'shipped'
     )
     
     if (activeDispatches.length > 0) {
@@ -759,191 +766,6 @@ async function validateProjectDeletion(projectId: string): Promise<string[]> {
   return errors
 }
 
-/**
- * Deletes material stock transactions that reference the project
- */
-async function deleteMaterialStockTransactionsByProject(projectId: string, transaction: IDBTransaction): Promise<void> {
-  const store = transaction.objectStore(STORES.MATERIAL_STOCK_TRANSACTIONS)
-  
-  return new Promise((resolve, reject) => {
-    const request = store.getAll()
-    request.onsuccess = () => {
-      const transactions = request.result as MaterialStockTransaction[]
-      const projectTransactions = transactions.filter(t => 
-        t.referenceId === projectId && t.referenceType === 'PROJECT'
-      )
-      
-      let deletedCount = 0
-      if (projectTransactions.length === 0) {
-        resolve()
-        return
-      }
-
-      projectTransactions.forEach(trans => {
-        const deleteRequest = store.delete(trans.id)
-        deleteRequest.onsuccess = () => {
-          deletedCount++
-          if (deletedCount === projectTransactions.length) {
-            resolve()
-          }
-        }
-        deleteRequest.onerror = () => {
-          reject(new Error(`Failed to delete stock transaction: ${deleteRequest.error?.message}`))
-        }
-      })
-    }
-    request.onerror = () => {
-      reject(new Error(`Failed to get stock transactions: ${request.error?.message}`))
-    }
-  })
-}
-
-/**
- * Deletes dispatch materials for a specific dispatch note
- */
-async function deleteDispatchMaterialsByNote(dispatchNoteId: string, transaction: IDBTransaction): Promise<void> {
-  const store = transaction.objectStore(STORES.DISPATCH_MATERIALS)
-  
-  return new Promise((resolve, reject) => {
-    const index = store.index('dispatchNoteId')
-    const request = index.getAll(dispatchNoteId)
-    
-    request.onsuccess = () => {
-      const materials = request.result
-      if (materials.length === 0) {
-        resolve()
-        return
-      }
-
-      let deletedCount = 0
-      materials.forEach(material => {
-        const deleteRequest = store.delete(material.id)
-        deleteRequest.onsuccess = () => {
-          deletedCount++
-          if (deletedCount === materials.length) {
-            resolve()
-          }
-        }
-        deleteRequest.onerror = () => {
-          reject(new Error(`Failed to delete dispatch material: ${deleteRequest.error?.message}`))
-        }
-      })
-    }
-    request.onerror = () => {
-      reject(new Error(`Failed to get dispatch materials: ${request.error?.message}`))
-    }
-  })
-}
-
-/**
- * Deletes work entries for a specific timesheet
- */
-async function deleteWorkEntriesByTimesheet(timesheetId: string, transaction: IDBTransaction): Promise<void> {
-  const store = transaction.objectStore(STORES.WORK_ENTRIES)
-  
-  return new Promise((resolve, reject) => {
-    const request = store.getAll()
-    request.onsuccess = () => {
-      const allEntries = request.result as WorkEntry[]
-      // Find work entries that belong to this timesheet
-      // Note: This assumes work entries are linked to timesheets through some relationship
-      // You may need to adjust this based on your actual data structure
-      const timesheetEntries = allEntries.filter(entry => {
-        // This is a placeholder - adjust based on how work entries relate to timesheets
-        return entry.id.includes(timesheetId) || entry.id.startsWith(`${timesheetId}_`)
-      })
-      
-      if (timesheetEntries.length === 0) {
-        resolve()
-        return
-      }
-
-      let deletedCount = 0
-      timesheetEntries.forEach(entry => {
-        const deleteRequest = store.delete(entry.id)
-        deleteRequest.onsuccess = () => {
-          deletedCount++
-          if (deletedCount === timesheetEntries.length) {
-            resolve()
-          }
-        }
-        deleteRequest.onerror = () => {
-          reject(new Error(`Failed to delete work entry: ${deleteRequest.error?.message}`))
-        }
-      })
-    }
-    request.onerror = () => {
-      reject(new Error(`Failed to get work entries: ${request.error?.message}`))
-    }
-  })
-}
-
-/**
- * Updates task dependencies by removing references to tasks being deleted
- */
-async function updateTaskDependenciesOnProjectDeletion(projectId: string, transaction: IDBTransaction): Promise<void> {
-  const store = transaction.objectStore(STORES.PROJECT_TASKS)
-  
-  return new Promise((resolve, reject) => {
-    // Get tasks being deleted
-    const deletedTasksRequest = store.index('projectId').getAll(projectId)
-    
-    deletedTasksRequest.onsuccess = () => {
-      const deletedTasks = deletedTasksRequest.result as ProjectTask[]
-      const deletedTaskIds = new Set(deletedTasks.map(t => t.id))
-      
-      // Get all tasks to check for dependencies
-      const allTasksRequest = store.getAll()
-      
-      allTasksRequest.onsuccess = () => {
-        const allTasks = allTasksRequest.result as ProjectTask[]
-        const tasksToUpdate: ProjectTask[] = []
-        
-        // Find tasks with dependencies on deleted tasks
-        allTasks.forEach(task => {
-          if (task.projectId !== projectId && task.dependencies) {
-            const updatedDependencies = task.dependencies.filter(depId => !deletedTaskIds.has(depId))
-            if (updatedDependencies.length !== task.dependencies.length) {
-              tasksToUpdate.push({
-                ...task,
-                dependencies: updatedDependencies,
-                updatedAt: new Date()
-              })
-            }
-          }
-        })
-        
-        if (tasksToUpdate.length === 0) {
-          resolve()
-          return
-        }
-        
-        // Update tasks with cleaned dependencies
-        let updatedCount = 0
-        tasksToUpdate.forEach(task => {
-          const updateRequest = store.put(task)
-          updateRequest.onsuccess = () => {
-            updatedCount++
-            if (updatedCount === tasksToUpdate.length) {
-              resolve()
-            }
-          }
-          updateRequest.onerror = () => {
-            reject(new Error(`Failed to update task dependencies: ${updateRequest.error?.message}`))
-          }
-        })
-      }
-      
-      allTasksRequest.onerror = () => {
-        reject(new Error(`Failed to get all tasks: ${allTasksRequest.error?.message}`))
-      }
-    }
-    
-    deletedTasksRequest.onerror = () => {
-      reject(new Error(`Failed to get deleted tasks: ${deletedTasksRequest.error?.message}`))
-    }
-  })
-}
 
 export async function getProjectsByStatus(status: ProjectStatus): Promise<Project[]> {
   const db = await getDatabase()
@@ -2866,6 +2688,36 @@ export async function getMaterialStockTransactions(materialStockId: string): Pro
       
       request.onerror = () => {
         reject(new Error(`Failed to get material stock transactions: ${request.error?.message}`))
+      }
+    } catch (error) {
+      reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
+    }
+  })
+}
+
+export async function getMaterialStockTransactionsByProject(projectId: string): Promise<MaterialStockTransaction[]> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const db = await getDatabase()
+      const transaction = db.transaction([STORES.MATERIAL_STOCK_TRANSACTIONS], 'readonly')
+      const store = transaction.objectStore(STORES.MATERIAL_STOCK_TRANSACTIONS)
+      
+      const request = store.getAll()
+      
+      request.onsuccess = () => {
+        const allTransactions = request.result as MaterialStockTransaction[]
+        const projectTransactions = allTransactions.filter(t => 
+          t.referenceId === projectId && t.referenceType === 'PROJECT'
+        ).map(trans => ({
+          ...trans,
+          transactionDate: new Date(trans.transactionDate),
+          createdAt: new Date(trans.createdAt)
+        }))
+        resolve(projectTransactions)
+      }
+      
+      request.onerror = () => {
+        reject(new Error(`Failed to get material stock transactions by project: ${request.error?.message}`))
       }
     } catch (error) {
       reject(new Error(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`))
