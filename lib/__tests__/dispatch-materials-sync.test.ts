@@ -20,8 +20,12 @@ jest.mock('../database', () => ({
   createProjectMaterial: jest.fn(),
   updateProjectMaterial: jest.fn(),
   getDispatchNotesByProject: jest.fn(),
+  getProjectMaterials: jest.fn(),
   createMaterialStock: jest.fn(),
-  createMaterialStockTransaction: jest.fn()
+  createMaterialStockTransaction: jest.fn(),
+  reserveMaterialStock: jest.fn(),
+  unreserveMaterialStock: jest.fn(),
+  getMaterialStockByMaterialId: jest.fn()
 }))
 
 const mockDatabase = require('../database')
@@ -347,6 +351,158 @@ describe('MaterialSyncService Integration Tests', () => {
     })
   })
 
+  describe('Stock Reservation and Management', () => {
+    it('should automatically reserve stock when dispatch materials are delivered', async () => {
+      mockDatabase.getProjectMaterialsBySource.mockResolvedValue([])
+      mockDatabase.createProjectMaterial.mockResolvedValue(undefined)
+      mockDatabase.createMaterialStock.mockResolvedValue('stock-123')
+      mockDatabase.createMaterialStockTransaction.mockResolvedValue(undefined)
+      mockDatabase.reserveMaterialStock.mockResolvedValue(undefined)
+
+      const result = await syncService.syncDispatchToProject(mockProjectId, mockDispatchNote)
+
+      expect(result.success).toBe(true)
+      expect(result.materialsCreated).toBe(1)
+      
+      // Verify stock was created with proper reservation
+      const stockCreateCall = mockDatabase.createMaterialStock.mock.calls[0]
+      expect(stockCreateCall[0].reservedStock).toBe(mockDispatchMaterial.quantity)
+      expect(stockCreateCall[0].availableStock).toBe(0)
+      
+      // Verify reservation was made
+      expect(mockDatabase.reserveMaterialStock).toHaveBeenCalledWith(
+        `dispatch-${mockDispatchMaterial.id}`,
+        mockDispatchMaterial.quantity,
+        mockProjectId
+      )
+      
+      // Verify reservation transaction was created
+      const reservationTransaction = mockDatabase.createMaterialStockTransaction.mock.calls.find(
+        call => call[0].type === 'RESERVE'
+      )
+      expect(reservationTransaction).toBeDefined()
+      expect(reservationTransaction[0].referenceId).toBe(mockProjectId)
+    })
+
+    it('should unreserve stock when materials are marked as installed', async () => {
+      const installedMaterial = {
+        ...mockDispatchMaterial,
+        status: DispatchMaterialStatus.USED
+      }
+      
+      const installedDispatchNote = {
+        ...mockDispatchNote,
+        materials: [installedMaterial]
+      }
+      
+      mockDatabase.getProjectMaterialsBySource.mockResolvedValue([mockProjectMaterial])
+      mockDatabase.updateProjectMaterial.mockResolvedValue(undefined)
+      mockDatabase.unreserveMaterialStock.mockResolvedValue(undefined)
+      mockDatabase.getMaterialStockByMaterialId.mockResolvedValue({ id: 'stock-123' })
+      mockDatabase.createMaterialStockTransaction.mockResolvedValue(undefined)
+
+      const result = await syncService.syncDispatchToProject(mockProjectId, installedDispatchNote)
+
+      expect(result.success).toBe(true)
+      
+      // Verify unreservation was called
+      expect(mockDatabase.unreserveMaterialStock).toHaveBeenCalledWith(
+        `dispatch-${installedMaterial.id}`,
+        installedMaterial.quantity,
+        mockProjectId
+      )
+      
+      // Verify usage transaction was created
+      const usageTransaction = mockDatabase.createMaterialStockTransaction.mock.calls.find(
+        call => call[0].type === 'OUT'
+      )
+      expect(usageTransaction).toBeDefined()
+      expect(usageTransaction[0].referenceType).toBe('PROJECT_USAGE')
+    })
+
+    it('should get project reserved materials summary', async () => {
+      const mockStock = {
+        id: 'stock-123',
+        reservedStock: 10,
+        availableStock: 0,
+        location: 'Warehouse A',
+        unitCost: 150,
+        currency: 'USD'
+      }
+      
+      mockDatabase.getProjectMaterials.mockResolvedValue([mockProjectMaterial])
+      mockDatabase.getMaterialStockByMaterialId.mockResolvedValue(mockStock)
+
+      const summary = await syncService.getProjectReservedMaterials(mockProjectId)
+
+      expect(summary.totalReserved).toBe(10)
+      expect(summary.reservedMaterials).toHaveLength(1)
+      expect(summary.reservedMaterials[0]).toMatchObject({
+        materialName: mockProjectMaterial.materialName,
+        profile: mockProjectMaterial.profile,
+        grade: mockProjectMaterial.grade,
+        reservedQuantity: 10,
+        location: 'Warehouse A'
+      })
+    })
+
+    it('should handle manual stock reservation for projects', async () => {
+      const materialCatalogId = 'catalog-123'
+      const quantity = 5
+      const notes = 'Manual reservation for urgent need'
+      
+      const mockStock = {
+        id: 'stock-456',
+        unitCost: 100,
+        currency: 'USD'
+      }
+      
+      mockDatabase.reserveMaterialStock.mockResolvedValue(undefined)
+      mockDatabase.getMaterialStockByMaterialId.mockResolvedValue(mockStock)
+      mockDatabase.createMaterialStockTransaction.mockResolvedValue(undefined)
+
+      const result = await syncService.reserveStockForProject(
+        materialCatalogId,
+        quantity,
+        mockProjectId,
+        notes
+      )
+
+      expect(result).toBe(true)
+      expect(mockDatabase.reserveMaterialStock).toHaveBeenCalledWith(
+        materialCatalogId,
+        quantity,
+        mockProjectId
+      )
+      
+      // Verify reservation transaction was created with custom notes
+      const transactionCall = mockDatabase.createMaterialStockTransaction.mock.calls[0]
+      expect(transactionCall[0].type).toBe('RESERVE')
+      expect(transactionCall[0].notes).toBe(notes)
+    })
+
+    it('should handle stock reservation failures gracefully', async () => {
+      mockDatabase.getProjectMaterialsBySource.mockResolvedValue([])
+      mockDatabase.createProjectMaterial.mockResolvedValue(undefined)
+      mockDatabase.createMaterialStock.mockResolvedValue('stock-123')
+      mockDatabase.createMaterialStockTransaction.mockResolvedValue(undefined)
+      mockDatabase.reserveMaterialStock.mockRejectedValue(new Error('Insufficient stock'))
+
+      const result = await syncService.syncDispatchToProject(mockProjectId, mockDispatchNote)
+
+      // Sync should still succeed even if reservation fails
+      expect(result.success).toBe(true)
+      expect(result.materialsCreated).toBe(1)
+      
+      // Should have created an error note transaction
+      const errorTransaction = mockDatabase.createMaterialStockTransaction.mock.calls.find(
+        call => call[0].referenceType === 'ERROR'
+      )
+      expect(errorTransaction).toBeDefined()
+      expect(errorTransaction[0].notes).toContain('WARNING: Failed to reserve material')
+    })
+  })
+
   describe('Integration with Legacy Functions', () => {
     it('should maintain backward compatibility with existing sync functions', async () => {
       const { syncDispatchToProjectMaterials } = require('../dispatch-materials-sync')
@@ -361,6 +517,27 @@ describe('MaterialSyncService Integration Tests', () => {
       expect(legacyResult).toHaveProperty('materialsSkipped')
       expect(legacyResult).toHaveProperty('errors')
       expect(legacyResult.materialsCreated).toBe(1)
+    })
+    
+    it('should export new stock reservation functions', async () => {
+      const { getProjectReservedMaterials, reserveStockForProject } = require('../dispatch-materials-sync')
+      
+      // Test that functions are exported and callable
+      expect(typeof getProjectReservedMaterials).toBe('function')
+      expect(typeof reserveStockForProject).toBe('function')
+      
+      // Mock successful calls
+      mockDatabase.getProjectMaterials.mockResolvedValue([])
+      mockDatabase.reserveMaterialStock.mockResolvedValue(undefined)
+      mockDatabase.getMaterialStockByMaterialId.mockResolvedValue({ id: 'stock-123', unitCost: 100 })
+      mockDatabase.createMaterialStockTransaction.mockResolvedValue(undefined)
+      
+      const summary = await getProjectReservedMaterials(mockProjectId)
+      const reservationResult = await reserveStockForProject('catalog-123', 5, mockProjectId)
+      
+      expect(summary).toHaveProperty('totalReserved')
+      expect(summary).toHaveProperty('reservedMaterials')
+      expect(reservationResult).toBe(true)
     })
   })
 })

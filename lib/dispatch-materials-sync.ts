@@ -16,7 +16,9 @@ import {
   getMaterialStockByMaterialId,
   updateMaterialStock,
   createMaterialStockTransaction,
-  createMaterialStock
+  createMaterialStock,
+  reserveMaterialStock,
+  unreserveMaterialStock
 } from './database'
 
 /**
@@ -307,6 +309,19 @@ export class MaterialSyncService {
 
             await updateProjectMaterial(existingMaterial.id, updates)
             result.materialsUpdated++
+
+            // Handle stock changes when material status changes
+            if (updates.status && updates.status !== existingMaterial.status) {
+              try {
+                await this.handleMaterialUsage(dispatchMaterial, dispatchNote, updates.status)
+              } catch (stockError) {
+                // Log but don't fail the sync
+                this.logSyncError(result, 'STOCK_USAGE_UPDATE_FAILED', 
+                  `Stock usage update failed for material ${dispatchMaterial.id}`, 
+                  dispatchMaterial.id, true
+                )
+              }
+            }
 
           } else if (!existingMaterial && createIfNotExists) {
             // Create new project material with enhanced data mapping
@@ -748,7 +763,7 @@ export class MaterialSyncService {
   }
 
   /**
-   * Enhanced stock update with better error handling
+   * Enhanced stock update with automatic project reservation
    */
   private async updateStockFromDispatch(
     dispatchMaterial: DispatchMaterial,
@@ -759,8 +774,11 @@ export class MaterialSyncService {
       return
     }
 
+    const materialCatalogId = `dispatch-${dispatchMaterial.id}`
+
+    // Create stock entry with materials reserved for the project
     const stockEntry = {
-      materialCatalogId: `dispatch-${dispatchMaterial.id}`,
+      materialCatalogId,
       material: {
         name: `${dispatchMaterial.materialType} ${dispatchMaterial.grade}`,
         type: dispatchMaterial.materialType,
@@ -769,8 +787,9 @@ export class MaterialSyncService {
         dimensions: dispatchMaterial.dimensions
       },
       currentStock: dispatchMaterial.quantity,
-      availableStock: dispatchMaterial.quantity,
-      reservedStock: 0,
+      // Since this material is delivered for a specific project, reserve it immediately
+      availableStock: 0, // No available stock - all reserved
+      reservedStock: dispatchMaterial.quantity, // All stock reserved for project
       unitWeight: dispatchMaterial.unitWeight,
       totalWeight: dispatchMaterial.totalWeight,
       unitCost: dispatchMaterial.unitCost,
@@ -779,12 +798,13 @@ export class MaterialSyncService {
       location: dispatchMaterial.location || 'Warehouse',
       supplier: dispatchNote.supplier?.name || 'Unknown',
       supplierRef: dispatchNote.orderNumber,
-      notes: `Delivered via dispatch note ${dispatchNote.dispatchNumber}`,
+      notes: `Delivered via dispatch note ${dispatchNote.dispatchNumber} - Reserved for project ${dispatchNote.projectId}`,
       lastStockUpdate: new Date()
     }
 
     const stockId = await createMaterialStock(stockEntry)
 
+    // Create stock transaction for the incoming material
     await createMaterialStockTransaction({
       materialStockId: stockId,
       type: 'IN',
@@ -798,6 +818,91 @@ export class MaterialSyncService {
       notes: `Material delivery from dispatch ${dispatchNote.dispatchNumber}`,
       createdBy: 'system'
     })
+
+    // Reserve the material stock for the project
+    try {
+      await reserveMaterialStock(materialCatalogId, dispatchMaterial.quantity, dispatchNote.projectId)
+      
+      // Create a reservation transaction to track the project allocation
+      await createMaterialStockTransaction({
+        materialStockId: stockId,
+        type: 'RESERVE',
+        quantity: dispatchMaterial.quantity,
+        unitCost: dispatchMaterial.unitCost,
+        totalCost: dispatchMaterial.totalCost,
+        currency: dispatchMaterial.currency || 'USD',
+        referenceId: dispatchNote.projectId,
+        referenceType: 'PROJECT',
+        transactionDate: new Date(),
+        notes: `Material reserved for project ${dispatchNote.projectId} from dispatch ${dispatchNote.dispatchNumber}`,
+        createdBy: 'system'
+      })
+
+      console.log(`Stock updated and reserved for dispatch material ${dispatchMaterial.id}: +${dispatchMaterial.quantity} units reserved for project ${dispatchNote.projectId}`)
+      
+    } catch (reservationError) {
+      console.warn(`Failed to reserve stock for project ${dispatchNote.projectId}:`, reservationError)
+      
+      // If reservation fails, log but don't fail the entire operation
+      // The stock was still created, just not properly reserved
+      await createMaterialStockTransaction({
+        materialStockId: stockId,
+        type: 'NOTE',
+        quantity: 0,
+        unitCost: 0,
+        totalCost: 0,
+        currency: dispatchMaterial.currency || 'USD',
+        referenceId: dispatchNote.projectId,
+        referenceType: 'ERROR',
+        transactionDate: new Date(),
+        notes: `WARNING: Failed to reserve material for project ${dispatchNote.projectId}: ${reservationError}`,
+        createdBy: 'system'
+      })
+    }
+  }
+
+  /**
+   * Handle stock unreservation when materials are used/installed
+   */
+  private async handleMaterialUsage(
+    dispatchMaterial: DispatchMaterial,
+    dispatchNote: DispatchNote,
+    newStatus: ProjectMaterialStatus
+  ): Promise<void> {
+    // Only handle stock changes for materials that are being used/installed
+    if (newStatus !== ProjectMaterialStatus.INSTALLED) {
+      return
+    }
+
+    const materialCatalogId = `dispatch-${dispatchMaterial.id}`
+
+    try {
+      // Unreserve the material stock since it's now used
+      await unreserveMaterialStock(materialCatalogId, dispatchMaterial.quantity, dispatchNote.projectId)
+      
+      // Create a transaction to track the material usage
+      const stockId = await getMaterialStockByMaterialId(materialCatalogId)
+      if (stockId) {
+        await createMaterialStockTransaction({
+          materialStockId: stockId.id,
+          type: 'OUT',
+          quantity: dispatchMaterial.quantity,
+          unitCost: dispatchMaterial.unitCost,
+          totalCost: dispatchMaterial.totalCost,
+          currency: dispatchMaterial.currency || 'USD',
+          referenceId: dispatchNote.projectId,
+          referenceType: 'PROJECT_USAGE',
+          transactionDate: new Date(),
+          notes: `Material used in project ${dispatchNote.projectId} from dispatch ${dispatchNote.dispatchNumber}`,
+          createdBy: 'system'
+        })
+      }
+
+      console.log(`Material ${dispatchMaterial.id} unreserved and marked as used for project ${dispatchNote.projectId}`)
+      
+    } catch (error) {
+      console.warn(`Failed to unreserve stock for used material ${dispatchMaterial.id}:`, error)
+    }
   }
 
   /**
@@ -879,6 +984,103 @@ export class MaterialSyncService {
     }
     
     return parts.join(' • ')
+  }
+
+  /**
+   * Get reserved materials summary for a project
+   */
+  async getProjectReservedMaterials(projectId: string): Promise<{
+    totalReserved: number
+    reservedMaterials: Array<{
+      materialCatalogId: string
+      materialName: string
+      profile: string
+      grade: string
+      reservedQuantity: number
+      totalWeight: number
+      totalValue: number
+      location: string
+      supplier: string
+      dispatchNumber: string
+      reservationDate: Date
+    }>
+  }> {
+    const result = {
+      totalReserved: 0,
+      reservedMaterials: [] as any[]
+    }
+
+    // Get project materials that came from dispatch
+    const projectMaterials = await getProjectMaterials(projectId)
+    const dispatchMaterials = projectMaterials.filter(
+      material => material.source === ProjectMaterialSource.DISPATCH && material.sourceId
+    )
+
+    for (const projectMaterial of dispatchMaterials) {
+      try {
+        const materialCatalogId = `dispatch-${projectMaterial.sourceId}`
+        const stock = await getMaterialStockByMaterialId(materialCatalogId)
+        
+        if (stock && stock.reservedStock > 0) {
+          result.reservedMaterials.push({
+            materialCatalogId,
+            materialName: projectMaterial.materialName,
+            profile: projectMaterial.profile,
+            grade: projectMaterial.grade,
+            reservedQuantity: stock.reservedStock,
+            totalWeight: projectMaterial.totalWeight,
+            totalValue: projectMaterial.totalCost || 0,
+            location: stock.location || 'Unknown',
+            supplier: projectMaterial.supplier || 'Unknown',
+            dispatchNumber: projectMaterial.notes?.match(/dispatch: ([^\s•]+)/)?.[1] || 'Unknown',
+            reservationDate: projectMaterial.deliveryDate || projectMaterial.createdAt
+          })
+          
+          result.totalReserved += stock.reservedStock
+        }
+      } catch (error) {
+        console.warn(`Failed to get stock info for material ${projectMaterial.sourceId}:`, error)
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * Manually reserve additional stock for a project (for materials not from dispatch)
+   */
+  async reserveStockForProject(
+    materialCatalogId: string,
+    quantity: number,
+    projectId: string,
+    notes?: string
+  ): Promise<boolean> {
+    try {
+      await reserveMaterialStock(materialCatalogId, quantity, projectId)
+      
+      // Create reservation transaction
+      const stock = await getMaterialStockByMaterialId(materialCatalogId)
+      if (stock) {
+        await createMaterialStockTransaction({
+          materialStockId: stock.id,
+          type: 'RESERVE',
+          quantity,
+          unitCost: stock.unitCost || 0,
+          totalCost: (stock.unitCost || 0) * quantity,
+          currency: stock.currency || 'USD',
+          referenceId: projectId,
+          referenceType: 'PROJECT',
+          transactionDate: new Date(),
+          notes: notes || `Manual reservation for project ${projectId}`,
+          createdBy: 'system'
+        })
+      }
+      
+      return true
+    } catch (error) {
+      console.error(`Failed to reserve stock for project ${projectId}:`, error)
+      return false
+    }
   }
 }
 
@@ -1152,6 +1354,25 @@ function combineNotes(existingNotes?: string, dispatchNotes?: string): string | 
 function createDispatchNotes(dispatchNote: DispatchNote, dispatchMaterial: DispatchMaterial): string {
   const syncService = new MaterialSyncService()
   return syncService['createDispatchNotes'](dispatchNote, dispatchMaterial)
+}
+
+/**
+ * Get reserved materials for a project
+ */
+export async function getProjectReservedMaterials(projectId: string) {
+  return await materialSyncService.getProjectReservedMaterials(projectId)
+}
+
+/**
+ * Reserve stock for a project manually
+ */
+export async function reserveStockForProject(
+  materialCatalogId: string,
+  quantity: number,
+  projectId: string,
+  notes?: string
+): Promise<boolean> {
+  return await materialSyncService.reserveStockForProject(materialCatalogId, quantity, projectId, notes)
 }
 
 /**
