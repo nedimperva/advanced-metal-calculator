@@ -48,6 +48,18 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Report to error logging service (e.g., Sentry, LogRocket)
     this.reportError(error, errorInfo)
+
+    // Attempt auto-recovery for chunk loading errors once per session
+    const isChunkLoadError =
+      error?.name === 'ChunkLoadError' || /ChunkLoadError|Loading chunk .* failed/i.test(error?.message || '')
+
+    if (isChunkLoadError && typeof window !== 'undefined') {
+      const hasAttempted = sessionStorage.getItem('attemptedChunkRecovery') === '1'
+      if (!hasAttempted) {
+        sessionStorage.setItem('attemptedChunkRecovery', '1')
+        this.handleClearAppCache()
+      }
+    }
   }
 
   private reportError = (error: Error, errorInfo: ErrorInfo) => {
@@ -73,6 +85,34 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleGoHome = () => {
     window.location.href = '/'
+  }
+
+  private handleClearAppCache = async () => {
+    try {
+      if (typeof window !== 'undefined') {
+        // Unregister all service workers
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations()
+          await Promise.all(registrations.map((registration) => registration.unregister()))
+        }
+
+        // Delete all caches
+        if ('caches' in window) {
+          const cacheKeys = await caches.keys()
+          await Promise.all(cacheKeys.map((key) => caches.delete(key)))
+        }
+
+        // Clear storage
+        try { localStorage.clear() } catch {}
+        try { sessionStorage.clear() } catch {}
+
+        // Give the browser a moment, then reload
+        setTimeout(() => window.location.reload(), 100)
+      }
+    } catch (e) {
+      console.error('Failed to clear app cache', e)
+      window.location.reload()
+    }
   }
 
   private handleReset = () => {
@@ -148,6 +188,10 @@ export class ErrorBoundary extends Component<Props, State> {
                 <Button onClick={this.handleGoHome} variant="default" className="flex items-center gap-2">
                   <Home className="h-4 w-4" />
                   Go Home
+                </Button>
+                <Button onClick={this.handleClearAppCache} variant="destructive" className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Clear app cache & reload
                 </Button>
               </div>
 

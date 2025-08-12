@@ -325,7 +325,7 @@ export class MaterialSyncService {
 
           } else if (!existingMaterial && createIfNotExists) {
             // Create new project material with enhanced data mapping
-            const newMaterial = this.createProjectMaterialFromDispatch(
+            const newMaterial = await this.createProjectMaterialFromDispatch(
               projectId,
               dispatchMaterial,
               dispatchNote,
@@ -728,24 +728,46 @@ export class MaterialSyncService {
   /**
    * Create new project material from dispatch material with enhanced mapping
    */
-  private createProjectMaterialFromDispatch(
+  private async createProjectMaterialFromDispatch(
     projectId: string,
     dispatchMaterial: DispatchMaterial,
     dispatchNote: DispatchNote,
     syncStatus: boolean
-  ): Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'> {
+  ): Promise<Omit<ProjectMaterial, 'id' | 'createdAt' | 'updatedAt'>> {
+    // Try to resolve a real catalog/stock record to align pricing and availability
+    const resolved = {
+      id: undefined as string | undefined,
+      unitCost: dispatchMaterial.unitCost,
+    }
+    try {
+      // Prefer an existing stock record created for this dispatch
+      const stockId = `dispatch-${dispatchMaterial.id}`
+      const stock = await getMaterialStockByMaterialId(stockId)
+      if (stock) {
+        resolved.id = stock.materialCatalogId
+        if (!resolved.unitCost || resolved.unitCost <= 0) {
+          resolved.unitCost = stock.unitCost
+        }
+      }
+    } catch {}
+
+    const unit = (dispatchMaterial as any).unit || dispatchMaterial.weightUnit || 'kg'
+    const unitCost = resolved.unitCost || dispatchMaterial.unitCost || 0
+    const totalCost = dispatchMaterial.totalCost || (unitCost > 0 ? unitCost * dispatchMaterial.quantity : 0)
+
     return {
       projectId,
-      materialCatalogId: undefined, // Could be enhanced to link to catalog
+      materialCatalogId: resolved.id, // link when possible so UI can read stock
       materialName: `${dispatchMaterial.materialType} ${dispatchMaterial.grade}`,
       profile: dispatchMaterial.profile,
       grade: dispatchMaterial.grade,
       dimensions: this.convertDispatchDimensionsToProject(dispatchMaterial.dimensions),
       quantity: dispatchMaterial.quantity,
+      unit: unit,
       unitWeight: dispatchMaterial.unitWeight,
       totalWeight: dispatchMaterial.totalWeight,
-      unitCost: dispatchMaterial.unitCost,
-      totalCost: dispatchMaterial.totalCost,
+      unitCost: unitCost,
+      totalCost: totalCost,
       lengthUnit: dispatchMaterial.lengthUnit,
       weightUnit: dispatchMaterial.weightUnit,
       status: syncStatus && dispatchMaterial.status in DISPATCH_TO_PROJECT_STATUS_MAP 

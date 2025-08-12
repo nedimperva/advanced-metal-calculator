@@ -52,22 +52,15 @@ import {
   MoreVertical,
   Package,
   Calculator,
-  Import,
   Truck,
   CheckCircle2,
   Clock,
   AlertTriangle,
   DollarSign,
-  Calendar,
   FileText,
-  Edit,
   Trash2,
   BarChart3,
-  TrendingUp,
-  MapPin,
-  Tag,
   Loader2,
-  Eye,
   Archive
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -121,7 +114,7 @@ const MATERIAL_STATUS_CONFIG = {
   [ProjectMaterialStatus.DELIVERED]: {
     color: 'text-green-600 bg-green-50 border-green-200',
     icon: CheckCircle2,
-    label: 'Delivered'
+    label: 'Reserved'
   },
   [ProjectMaterialStatus.INSTALLED]: {
     color: 'text-gray-600 bg-gray-50 border-gray-200',
@@ -140,119 +133,85 @@ const MATERIAL_SOURCE_ICONS = {
 
 interface MaterialCardProps {
   material: ProjectMaterial
-  onEdit: () => void
   onDelete: () => void
   onStatusChange: (status: ProjectMaterialStatus) => void
   isMobile: boolean
+  stockInfo?: MaterialStock | null
+  fallbackUnitCost?: number | null
 }
 
-function MaterialCard({ material, onEdit, onDelete, onStatusChange, isMobile }: MaterialCardProps) {
+function MaterialCard({ material, onDelete, onStatusChange, isMobile, stockInfo, fallbackUnitCost }: MaterialCardProps) {
   const { t } = useI18n()
   const statusConfig = MATERIAL_STATUS_CONFIG[material.status]
-  const SourceIcon = MATERIAL_SOURCE_ICONS[material.source]
 
   return (
     <Card className="hover:bg-muted/30 transition-colors">
       <CardContent className={cn("p-4", isMobile && "p-3")}>
-        <div className={cn("flex gap-3", isMobile ? "flex-col space-y-3" : "items-start")}>
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <Package className={cn("text-muted-foreground shrink-0 mt-1", isMobile ? "h-4 w-4" : "h-5 w-5")} />
-            
-            <div className="flex-1 min-w-0">
-              {/* Header */}
-              <div className="flex flex-col gap-2 mb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className={cn("font-medium leading-tight", isMobile ? "text-sm break-words" : "text-base")}>
-                    {material.materialName}
-                  </h4>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <SourceIcon className="h-3 w-3 text-muted-foreground" />
-                    <Badge variant="outline" className={cn("text-xs", statusConfig.color)}>
-                      {statusConfig.label}
-                    </Badge>
-                  </div>
-                </div>
-                
-                {/* Specifications */}
-                <div className="flex flex-wrap gap-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {material.profile} • {material.grade}
-                  </Badge>
-                </div>
-                
-                {/* Quantity and Pricing Information */}
-                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
-                  <div>
-                    <div className="text-muted-foreground text-xs">Quantity & Weight</div>
-                    <div className="font-medium">
-                      {material.quantity} {material.unit || 'pcs'} 
-                      {material.totalWeight > 0 && material.unit !== 'kg' && (
-                        <span className="text-muted-foreground ml-1">
-                          ({material.totalWeight.toFixed(2)} {material.weightUnit})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Pricing</div>
-                    <div className="font-medium">
-                      {material.unitCost && (
-                        <>
-                          {material.unitCost.toFixed(2)} KM/{material.unit || 'pc'}
-                          {material.totalCost && (
-                            <div className="text-green-600 font-semibold">
-                              Total: {material.totalCost.toFixed(2)} KM
-                            </div>
-                          )}
-                        </>
-                      )}
-                      {!material.unitCost && material.totalCost && (
-                        <div className="text-green-600 font-semibold">
-                          {material.totalCost.toFixed(2)} KM
-                        </div>
-                      )}
-                      {!material.unitCost && !material.totalCost && (
-                        <span className="text-muted-foreground">N/A</span>
-                      )}
-                    </div>
-                  </div>
+        <div className={cn("flex gap-3", isMobile ? "flex-col space-y-3" : "items-start")}>          
+          <Package className={cn("text-muted-foreground shrink-0 mt-1", isMobile ? "h-4 w-4" : "h-5 w-5")} />
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className={cn("font-medium leading-tight", isMobile ? "text-sm break-words" : "text-base")}>
+                {material.materialName}
+              </h4>
+              <Badge variant="outline" className={cn("text-xs", statusConfig.color)}>
+                {statusConfig.label}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+              <div>
+                <div className="text-muted-foreground text-xs">Quantity</div>
+                <div className="font-medium">
+                  {material.quantity} {material.unit || material.weightUnit || ''}
                 </div>
               </div>
+              <div>
+                <div className="text-muted-foreground text-xs">Price</div>
+                <div className="font-medium">
+                  {(() => {
+                    const unit = material.unit || material.weightUnit || 'unit'
+                    // Prefer stock price (Materials page is source of truth), then material fields, then catalog base price
+                    const unitCostCandidate = (
+                      (stockInfo?.unitCost !== undefined ? stockInfo.unitCost : undefined) ??
+                      material.unitCost ??
+                      (material as any)?.costPerUnit ??
+                      fallbackUnitCost
+                    )
+                    const unitCostNum = unitCostCandidate != null ? Number(unitCostCandidate) : undefined
+                    const unitCost = unitCostNum != null && unitCostNum > 0 && !Number.isNaN(unitCostNum) ? unitCostNum : undefined
 
-              {/* Dimensions */}
-              <div className={cn("text-muted-foreground", isMobile ? "text-xs" : "text-sm")}>
-                Dimensions: {Object.entries(material.dimensions)
-                  .map(([key, value]) => `${key}: ${value}`)
-                  .join(', ')} {material.lengthUnit}
-              </div>
+                    const providedTotal = material.totalCost != null ? Number(material.totalCost) : undefined
+                    const computedTotal = (providedTotal != null && providedTotal > 0)
+                      ? providedTotal
+                      : (unitCost != null ? unitCost * Number(material.quantity) : undefined)
 
-              {/* Supplier and Location */}
-              {(material.supplier || material.location) && (
-                <div className={cn("text-muted-foreground mt-1", isMobile ? "text-xs" : "text-sm")}>
-                  {material.supplier && <span>Supplier: {material.supplier}</span>}
-                  {material.supplier && material.location && <span> • </span>}
-                  {material.location && <span>Location: {material.location}</span>}
+                    return (
+                      <>
+                        {unitCost != null && (
+                          <div>{unitCost.toFixed(2)} KM/{unit}</div>
+                        )}
+                        {computedTotal != null && !Number.isNaN(computedTotal) ? (
+                          <div className="text-green-600 font-semibold">Total: {computedTotal.toFixed(2)} KM</div>
+                        ) : (
+                          <span className="text-muted-foreground">N/A</span>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
-              )}
-
-              {/* Notes */}
-              {material.notes && (
-                <div className={cn("text-muted-foreground mt-1 italic", isMobile ? "text-xs break-words" : "text-xs")}>
-                  {material.notes}
-                </div>
-              )}
-
-              {/* Dates */}
-              <div className={cn("text-muted-foreground mt-2 flex flex-wrap gap-2", isMobile ? "text-xs" : "text-xs")}>
-                <span>Added: {new Date(material.createdAt).toLocaleDateString()}</span>
-                {material.orderDate && <span>• Ordered: {new Date(material.orderDate).toLocaleDateString()}</span>}
-                {material.deliveryDate && <span>• Delivered: {new Date(material.deliveryDate).toLocaleDateString()}</span>}
               </div>
             </div>
+
+            {stockInfo && (
+              <div className="mt-1 text-xs text-muted-foreground">
+                Available: {stockInfo.availableStock} {material.unit || material.weightUnit || ''}
+              </div>
+            )}
           </div>
-          
-          {/* Actions */}
-          <div className={cn("flex gap-2 shrink-0", isMobile ? "w-full" : "items-center")}>
+
+          <div className={cn("flex gap-2 shrink-0", isMobile ? "w-full" : "items-center")}>            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size={isMobile ? "sm" : "sm"} className={cn(isMobile && "flex-1")}>
@@ -263,7 +222,7 @@ function MaterialCard({ material, onEdit, onDelete, onStatusChange, isMobile }: 
                 <DropdownMenuLabel>Change Status</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {Object.entries(MATERIAL_STATUS_CONFIG).map(([status, config]) => (
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     key={status}
                     onClick={() => onStatusChange(status as ProjectMaterialStatus)}
                     className="flex items-center gap-2"
@@ -282,11 +241,6 @@ function MaterialCard({ material, onEdit, onDelete, onStatusChange, isMobile }: 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={onEdit}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Material
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onDelete} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete Material
@@ -1206,21 +1160,57 @@ export default function EnhancedProjectMaterials({
   const [statusFilter, setStatusFilter] = useState<ProjectMaterialStatus | 'all'>('all')
   const [sourceFilter, setSourceFilter] = useState<ProjectMaterialSource | 'all'>('all')
   const [statistics, setStatistics] = useState<any>(null)
+  const [allStock, setAllStock] = useState<MaterialStock[]>([])
   const [showAllocation, setShowAllocation] = useState(false)
   const [showInstallDialog, setShowInstallDialog] = useState(false)
   const [installMaterial, setInstallMaterial] = useState<ProjectMaterial | null>(null)
   const [installQuantity, setInstallQuantity] = useState('')
   const [returnToStock, setReturnToStock] = useState(false)
   const [editingMaterial, setEditingMaterial] = useState<ProjectMaterial | null>(null)
+  const { materials: catalogMaterials } = useMaterialCatalog()
 
   // Load materials
   const loadMaterials = async () => {
     setIsLoading(true)
     try {
-      const projectMaterials = await getProjectMaterials(project.id)
-      const stats = await getProjectMaterialStatistics(project.id)
-      setMaterials(projectMaterials)
+      const [projectMaterials, stats, stock] = await Promise.all([
+        getProjectMaterials(project.id),
+        getProjectMaterialStatistics(project.id),
+        getAllMaterialStock()
+      ])
+      // Backfill missing unit/unitCost/catalog links from stock by name/profile/grade
+      const normalize = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+      const stripSteel = (s: string) => normalize(s).replace(/\bsteel\b/g, '').replace(/\s+/g, ' ').trim()
+      const reconciled = projectMaterials.map((m) => {
+        if (m.materialCatalogId && m.unitCost && m.unitCost > 0 && m.unit) return m
+        const byCatalog = m.materialCatalogId ? stock.find(s => s.materialCatalogId === m.materialCatalogId) : undefined
+        const mName = stripSteel(m.materialName)
+        // Try to resolve via catalog first (source of truth), then map to stock via catalog id
+        const catByName = catalogMaterials.find(cm => {
+          const cName = stripSteel(cm.name)
+          return cName === mName || cName.includes(mName) || mName.includes(cName)
+        })
+        const catByGrade = !catByName ? catalogMaterials.find(cm => normalize(cm.grade || '').includes(normalize(m.grade || '')) && stripSteel(cm.name).includes(stripSteel(m.profile || ''))) : undefined
+        const resolvedCatalogId = (catByName || catByGrade)?.id
+        const byCatalogFromCat = resolvedCatalogId ? stock.find(s => s.materialCatalogId === resolvedCatalogId) : undefined
+        // Fallback: try stock entries that stored nested material name (legacy)
+        const byNameLegacy = stock.find(s => {
+          const sName = stripSteel(((s as any).material?.name) || '')
+          return sName && (sName === mName || sName.includes(mName) || mName.includes(sName))
+        })
+        const resolved = byCatalog || byCatalogFromCat || byNameLegacy
+        if (!resolved) return m
+        return {
+          ...m,
+          materialCatalogId: m.materialCatalogId || resolved.materialCatalogId || resolvedCatalogId,
+          unit: m.unit || m.weightUnit || 'kg',
+          unitCost: (m.unitCost && m.unitCost > 0) ? m.unitCost : resolved.unitCost,
+          totalCost: m.totalCost && m.totalCost > 0 ? m.totalCost : (resolved.unitCost ? resolved.unitCost * m.quantity : m.totalCost)
+        }
+      })
+      setMaterials(reconciled)
       setStatistics(stats)
+      setAllStock(stock)
     } catch (error) {
       console.error('Failed to load materials:', error)
       toast({
@@ -1464,10 +1454,7 @@ export default function EnhancedProjectMaterials({
               Manage materials and track allocation for this project
             </p>
           </div>
-          <Button onClick={() => setShowAddModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Material
-          </Button>
+           {/* Add material action intentionally hidden to avoid duplicate creation flows */}
         </div>
 
         {/* Statistics Cards */}
@@ -1589,23 +1576,30 @@ export default function EnhancedProjectMaterials({
             <MaterialCard
               key={material.id}
               material={material}
-              onEdit={() => setEditingMaterial(material)}
               onDelete={() => handleDeleteMaterial(material.id)}
               onStatusChange={(status) => handleStatusChange(material.id, status)}
               isMobile={isMobile}
+              stockInfo={(() => {
+                const directId = material.materialCatalogId
+                const byNameId = !directId ? (catalogMaterials.find(cm => cm.name === material.materialName)?.id) : undefined
+                const resolvedId = directId || byNameId
+                if (!resolvedId) return null
+                return allStock.find(s => s.materialCatalogId === resolvedId) || null
+              })()}
+              fallbackUnitCost={(() => {
+                const directId = material.materialCatalogId
+                const byNameId = !directId ? (catalogMaterials.find(cm => cm.name === material.materialName)?.id) : undefined
+                const resolvedId = directId || byNameId
+                if (!resolvedId) return null
+                return catalogMaterials.find(cm => cm.id === resolvedId)?.basePrice ?? null
+              })()}
             />
           ))
         )}
         </div>
       </div>
 
-      {/* Add Material Modal */}
-      <AddMaterialModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onAdd={handleAddMaterial}
-        projectId={project.id}
-      />
+      {/* Add Material Modal - removed to avoid duplicating data models (use original stock/material flows instead) */}
 
       {/* Installation Dialog */}
       <Dialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
@@ -1684,47 +1678,7 @@ export default function EnhancedProjectMaterials({
         </DialogContent>
       </Dialog>
 
-      {/* Edit Material Modal */}
-      <Dialog open={!!editingMaterial} onOpenChange={() => setEditingMaterial(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Material</DialogTitle>
-            <DialogDescription>
-              Update material details, quantities, and specifications
-            </DialogDescription>
-          </DialogHeader>
-          
-          {editingMaterial && (
-            <EditMaterialForm 
-              material={editingMaterial}
-              onSave={async (updatedMaterial) => {
-                try {
-                  await updateProjectMaterial(editingMaterial.id, {
-                    ...updatedMaterial,
-                    updatedAt: new Date()
-                  })
-                  
-                  await loadMaterials()
-                  setEditingMaterial(null)
-                  
-                  toast({
-                    title: 'Material Updated',
-                    description: `${updatedMaterial.materialName} has been updated successfully`,
-                  })
-                } catch (error) {
-                  console.error('Failed to update material:', error)
-                  toast({
-                    title: 'Error',
-                    description: 'Failed to update material. Please try again.',
-                    variant: 'destructive',
-                  })
-                }
-              }}
-              onCancel={() => setEditingMaterial(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Edit Material Modal removed to rely on original data flows */}
     </div>
   )
 }
