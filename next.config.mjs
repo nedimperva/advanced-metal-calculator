@@ -40,6 +40,16 @@ export default withPWA({
     document: '/offline',
   },
   runtimeCaching: [
+    // Never cache Next.js build assets to avoid stale ChunkLoadError
+    {
+      urlPattern: /^\/_next\//,
+      handler: 'NetworkOnly',
+    },
+    // Never cache service worker related files
+    {
+      urlPattern: /\/(sw|workbox).*\.js$/,
+      handler: 'NetworkOnly',
+    },
     {
       urlPattern: /^https?.*/,
       handler: 'NetworkFirst',

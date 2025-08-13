@@ -84,8 +84,10 @@ import {
   updateDispatchNote,
   getDispatchNote,
   getAllMaterialCatalog,
-  createMaterialStock
+  createMaterialStock,
+  updateDispatchMaterial
 } from '@/lib/database'
+import { onDispatchNoteUpdated } from '@/lib/dispatch-materials-sync'
 
 interface DispatchRecord {
   id: string
@@ -402,110 +404,34 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
         actualDeliveryDate: new Date()
       })
       
-      // Update stock levels for each material
-      const [stockRecords, catalogMaterials] = await Promise.all([
-        getAllMaterialStock(),
-        getAllMaterialCatalog()
-      ])
-      
-      let stockUpdated = 0
-      
-      for (const material of dispatch.materials) {
-        // When marking as delivered, use ordered quantity if delivered quantity is 0
-        const deliveredQuantity = material.deliveredQuantity > 0 ? material.deliveredQuantity : material.orderedQuantity
-        if (deliveredQuantity <= 0) continue
-        
-        // Try to find stock record by matching material name with catalog
-        let stockRecord = null
-        
-        // First try to find by material name in catalog
-        const catalogMaterial = catalogMaterials.find(cm => 
-          cm.name.toLowerCase().includes(material.materialName.toLowerCase()) ||
-          material.materialName.toLowerCase().includes(cm.name.toLowerCase())
-        )
-        
-        if (catalogMaterial) {
-          // Find stock record by catalog material ID
-          stockRecord = stockRecords.find(stock => stock.materialCatalogId === catalogMaterial.id)
-        }
-        
-        // If still not found, try fuzzy matching by name
-        if (!stockRecord) {
-          const materialWords = material.materialName.toLowerCase().split(' ')
-          stockRecord = stockRecords.find(stock => {
-            const catalogMat = catalogMaterials.find(cm => cm.id === stock.materialCatalogId)
-            if (!catalogMat) return false
-            
-            const catalogWords = catalogMat.name.toLowerCase().split(' ')
-            return materialWords.some(word => 
-              catalogWords.some(cword => cword.includes(word) || word.includes(cword))
-            )
-          })
-        }
-        
-        // If no stock record found but we have a catalog material, create one
-        if (!stockRecord && catalogMaterial) {
-          const newStockId = await createMaterialStock({
-            materialCatalogId: catalogMaterial.id,
-            currentStock: 0,
-            reservedStock: 0,
-            availableStock: 0,
-            minimumStock: 10,
-            maximumStock: 1000,
-            unitCost: catalogMaterial.basePrice || 0,
-            totalValue: 0,
-            location: 'Warehouse',
-            supplier: 'Unknown',
-            notes: `Stock record created automatically from dispatch delivery`
-          })
-          
-          // Reload stock records to include the new one
-          const updatedStockRecords = await getAllMaterialStock()
-          stockRecord = updatedStockRecords.find(stock => stock.id === newStockId)
-        }
-        
-        if (stockRecord) {
-          // Update stock levels
-          const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(deliveredQuantity) || 0)
-          const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(deliveredQuantity) || 0)
-          const newTotalValue = newCurrentStock * (Number(stockRecord.unitCost) || 0)
-          
-          await updateMaterialStock({
-            ...stockRecord,
-            currentStock: newCurrentStock,
-            availableStock: newAvailableStock,
-            totalValue: newTotalValue,
-            lastStockUpdate: new Date(),
-            updatedAt: new Date()
-          })
-          
-          // Create transaction record
-          await createMaterialStockTransaction({
-            materialStockId: stockRecord.id,
-            type: 'IN',
-            quantity: deliveredQuantity,
-            unitCost: stockRecord.unitCost || 0,
-            totalCost: deliveredQuantity * (stockRecord.unitCost || 0),
-            referenceId: dispatchId,
-            referenceType: 'DISPATCH',
-            transactionDate: new Date(),
-            notes: `Delivered via dispatch ${dispatch.orderNumber}. Material: ${material.materialName}`,
-            createdBy: 'system'
-          })
-          
-          stockUpdated++
-        } else {
-          console.warn(`Could not find stock record for material: ${material.materialName}`)
+      // Ensure dispatch materials are marked as arrived for sync
+      const materialsForDispatch = await getDispatchMaterials(dispatchId)
+      for (const dm of materialsForDispatch) {
+        if (dm.status !== 'arrived' && dm.status !== 'allocated') {
+          await updateDispatchMaterial(dm.id, { status: 'arrived' })
         }
       }
+      // Reload materials with updated statuses
+      const updatedMaterials = await getDispatchMaterials(dispatchId)
+      
+      // Trigger enhanced sync so project materials are created and stock is reserved
+      await onDispatchNoteUpdated({
+        ...dispatchNote,
+        status: 'arrived' as any,
+        actualDeliveryDate: new Date(),
+        materials: updatedMaterials
+      } as any)
       
       // Reload dispatches to reflect changes
       await loadDispatches()
 
       toast({
         title: "Success",
-        description: `Dispatch marked as delivered. ${stockUpdated} materials added to stock.`
+        description: `Dispatch marked as delivered and synced to project materials.`
       })
+      
+      // Skip legacy stock update logic to avoid duplication
+      return
     } catch (error) {
       console.error('Failed to mark dispatch as delivered:', error)
       toast({
@@ -536,120 +462,37 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
         updatedAt: new Date()
       }
       
-      // If marking as delivered, also set actual delivery date and update stock
+      // If marking as delivered, also set actual delivery date and run enhanced sync
       if (newStatus === 'delivered' && !dispatchNote.actualDeliveryDate) {
-        updatedDispatchNote.actualDeliveryDate = new Date()
-      }
-      
-      await updateDispatchNote(updatedDispatchNote)
-      
-      // If changing to delivered, update stock levels
-      if (newStatus === 'delivered') {
-        const dispatch = dispatches.find(d => d.id === dispatchId)
-        if (dispatch) {
-          // Use the same stock update logic from handleMarkAsDelivered
-          const [stockRecords, catalogMaterials] = await Promise.all([
-            getAllMaterialStock(),
-            getAllMaterialCatalog()
-          ])
-          
-          let stockUpdated = 0
-          
-          for (const material of dispatch.materials) {
-            // When marking as delivered, use ordered quantity if delivered quantity is 0
-            const deliveredQuantity = material.deliveredQuantity > 0 ? material.deliveredQuantity : material.orderedQuantity
-            if (deliveredQuantity <= 0) continue
-            
-            // Find stock record by matching material name with catalog
-            let stockRecord = null
-            
-            const catalogMaterial = catalogMaterials.find(cm => 
-              cm.name.toLowerCase().includes(material.materialName.toLowerCase()) ||
-              material.materialName.toLowerCase().includes(cm.name.toLowerCase())
-            )
-            
-            if (catalogMaterial) {
-              stockRecord = stockRecords.find(stock => stock.materialCatalogId === catalogMaterial.id)
-            }
-            
-            if (!stockRecord) {
-              const materialWords = material.materialName.toLowerCase().split(' ')
-              stockRecord = stockRecords.find(stock => {
-                const catalogMat = catalogMaterials.find(cm => cm.id === stock.materialCatalogId)
-                if (!catalogMat) return false
-                
-                const catalogWords = catalogMat.name.toLowerCase().split(' ')
-                return materialWords.some(word => 
-                  catalogWords.some(cword => cword.includes(word) || word.includes(cword))
-                )
-              })
-            }
-            
-            // If no stock record found but we have a catalog material, create one
-            if (!stockRecord && catalogMaterial) {
-                  const newStockId = await createMaterialStock({
-                materialCatalogId: catalogMaterial.id,
-                currentStock: 0,
-                reservedStock: 0,
-                availableStock: 0,
-                minimumStock: 10,
-                maximumStock: 1000,
-                unitCost: catalogMaterial.basePrice || 0,
-                totalValue: 0,
-                location: 'Warehouse',
-                supplier: 'Unknown',
-                notes: `Stock record created automatically from dispatch delivery`
-              })
-              
-              // Reload stock records to include the new one
-              const updatedStockRecords = await getAllMaterialStock()
-              stockRecord = updatedStockRecords.find(stock => stock.id === newStockId)
-            }
-            
-            if (stockRecord) {
-              const newCurrentStock = (Number(stockRecord.currentStock) || 0) + (Number(deliveredQuantity) || 0)
-              const newAvailableStock = (Number(stockRecord.availableStock) || 0) + (Number(deliveredQuantity) || 0)
-              const newTotalValue = newCurrentStock * (Number(stockRecord.unitCost) || 0)
-              
-              await updateMaterialStock({
-                ...stockRecord,
-                currentStock: newCurrentStock,
-                availableStock: newAvailableStock,
-                totalValue: newTotalValue,
-                lastStockUpdate: new Date(),
-                updatedAt: new Date()
-              })
-              
-              await createMaterialStockTransaction({
-                materialStockId: stockRecord.id,
-                type: 'IN',
-                quantity: deliveredQuantity,
-                unitCost: stockRecord.unitCost || 0,
-                totalCost: deliveredQuantity * (stockRecord.unitCost || 0),
-                referenceId: dispatchId,
-                referenceType: 'DISPATCH',
-                transactionDate: new Date(),
-                notes: `Delivered via dispatch ${dispatch.orderNumber}. Material: ${material.materialName}`,
-                createdBy: 'system'
-              })
-              
-              stockUpdated++
-            } else {
-              console.warn(`Could not find stock record for material: ${material.materialName}`)
-            }
+        updatedDispatchNote.actualDeliveryDate = new Date() as any
+        await updateDispatchNote(updatedDispatchNote as any)
+        
+        // Ensure dispatch materials are marked as arrived for sync
+        const materialsForDispatch = await getDispatchMaterials(dispatchId)
+        for (const dm of materialsForDispatch) {
+          if (dm.status !== 'arrived' && dm.status !== 'allocated') {
+            await updateDispatchMaterial(dm.id, { status: 'arrived' })
           }
         }
+        const updatedMaterials = await getDispatchMaterials(dispatchId)
+        
+        await onDispatchNoteUpdated({
+          ...updatedDispatchNote,
+          status: 'arrived' as any,
+          materials: updatedMaterials
+        } as any)
+        
+        await loadDispatches()
+        toast({
+          title: "Success",
+          description: `Dispatch marked as delivered and synced to project materials.`
+        })
+        return
       }
       
-      // Reload dispatches to reflect changes
-      await loadDispatches()
+      await updateDispatchNote(updatedDispatchNote as any)
       
-      toast({
-        title: "Success",
-        description: newStatus === 'delivered' ? 
-          `Dispatch marked as delivered. Materials added to stock.` :
-          `Dispatch status updated to ${newStatus}`
-      })
+      // Legacy path for other statuses continues below
     } catch (error) {
       console.error('Failed to update dispatch status:', error)
       toast({
