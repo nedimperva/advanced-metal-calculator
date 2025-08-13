@@ -44,11 +44,13 @@ export default withPWA({
     {
       urlPattern: /^\/_next\//,
       handler: 'NetworkOnly',
+      options: {},
     },
     // Never cache service worker related files
     {
       urlPattern: /\/(sw|workbox).*\.js$/,
       handler: 'NetworkOnly',
+      options: {},
     },
     {
       urlPattern: /^https?.*/,
