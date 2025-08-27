@@ -26,6 +26,9 @@ import { format } from "date-fns"
 import type { DispatchNote, DispatchStatus } from '@/lib/types'
 import { useMaterials } from '@/contexts/material-context'
 import { useI18n } from '@/contexts/i18n-context'
+import { toast } from '@/hooks/use-toast'
+import { onDispatchNoteUpdated } from '@/lib/dispatch-materials-sync'
+import { getDispatchNote as dbGetDispatchNote, getDispatchMaterials as dbGetDispatchMaterials } from '@/lib/database'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,7 +74,8 @@ export function DispatchNotesList({
     setStatusFilter,
     clearFilters,
     getDispatchSummary,
-    deleteDispatchNote
+    deleteDispatchNote,
+    refreshMaterials
   } = useMaterials()
   const { t } = useI18n()
 
@@ -91,6 +95,22 @@ export function DispatchNotesList({
       } catch (error) {
         console.error('Failed to delete dispatch note:', error)
       }
+    }
+  }
+
+  const handleSyncNow = async (dispatch: DispatchNote) => {
+    try {
+      const fresh = await dbGetDispatchNote(dispatch.id)
+      if (fresh) {
+        const materials = await dbGetDispatchMaterials(dispatch.id)
+        await onDispatchNoteUpdated({ ...fresh, materials } as any)
+      } else {
+        await onDispatchNoteUpdated(dispatch)
+      }
+      await refreshMaterials()
+      toast({ title: t('success'), description: t('synchronized') })
+    } catch (error) {
+      toast({ title: t('syncFailed'), description: error instanceof Error ? error.message : t('unknownError'), variant: 'destructive' })
     }
   }
 
@@ -306,6 +326,9 @@ export function DispatchNotesList({
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onEditDispatch(dispatch)}>
                         {t('edit')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleSyncNow(dispatch)}>
+                        Sync now
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={() => handleDeleteDispatch(dispatch.id)}

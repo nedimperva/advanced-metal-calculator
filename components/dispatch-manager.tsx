@@ -73,21 +73,9 @@ import { useI18n } from '@/contexts/i18n-context'
 import { useMaterialCatalog } from '@/contexts/material-catalog-context'
 import { useProjects } from '@/contexts/project-context'
 import { LoadingSpinner } from '@/components/loading-states'
-import { 
-  getAllMaterialStock,
-  updateMaterialStock,
-  createMaterialStockTransaction,
-  createDispatchNote,
-  getAllDispatchNotes,
-  createDispatchMaterial,
-  getDispatchMaterials,
-  updateDispatchNote,
-  getDispatchNote,
-  getAllMaterialCatalog,
-  createMaterialStock,
-  updateDispatchMaterial
-} from '@/lib/database'
+import { useMaterials } from '@/contexts/material-context'
 import { onDispatchNoteUpdated } from '@/lib/dispatch-materials-sync'
+import { getDispatchNote as dbGetDispatchNote, getDispatchMaterials as dbGetDispatchMaterials } from '@/lib/database'
 
 interface DispatchRecord {
   id: string
@@ -95,7 +83,7 @@ interface DispatchRecord {
   supplierName: string
   expectedDate: string
   actualDate?: string
-  status: 'pending' | 'in_transit' | 'delivered' | 'cancelled'
+  status: 'pending' | 'shipped' | 'arrived' | 'cancelled'
   materials: MaterialDelivery[]
   notes: string
   createdAt: string
@@ -120,6 +108,14 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   const { t } = useI18n()
   const { materials: catalogMaterials, loadMaterials, createMaterial } = useMaterialCatalog()
   const { projects, currentProject } = useProjects()
+  const {
+    dispatchNotes,
+    refreshMaterials,
+    createDispatchNote: ctxCreateDispatchNote,
+    addMaterialToDispatch: ctxAddMaterialToDispatch,
+    updateDispatchStatus: ctxUpdateDispatchStatus,
+    markDispatchArrived: ctxMarkDispatchArrived
+  } = useMaterials()
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const [mounted, setMounted] = useState(false)
   
@@ -159,73 +155,32 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
   const [open, setOpen] = useState(false)
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null)
 
-  const loadDispatches = async () => {
+  const toDateStr = (value?: Date) => value ? new Date(value).toISOString().split('T')[0] : ''
+
+  const rebuildDispatches = () => {
     try {
       setIsLoading(true)
-      const dispatchNotes = await getAllDispatchNotes()
-      
-      // Helper function to safely convert dates
-      const safeDate = (dateValue: any): string => {
-        if (!dateValue) return ''
-        try {
-          const date = new Date(dateValue)
-          if (isNaN(date.getTime())) return ''
-          return date.toISOString().split('T')[0]
-        } catch {
-          return ''
-        }
-      }
-
-      const safeISODate = (dateValue: any): string => {
-        if (!dateValue) return new Date().toISOString()
-        try {
-          const date = new Date(dateValue)
-          if (isNaN(date.getTime())) return new Date().toISOString()
-          return date.toISOString()
-        } catch {
-          return new Date().toISOString()
-        }
-      }
-
-      // Convert to DispatchRecord format and load materials for each
-      const dispatchRecords: DispatchRecord[] = []
-      
-      for (const note of dispatchNotes) {
-        // Get materials for this dispatch
-        const dispatchMaterials = await getDispatchMaterials(note.id)
-        
-        const materials: MaterialDelivery[] = dispatchMaterials.map(dm => ({
+      const records: DispatchRecord[] = dispatchNotes.map(note => ({
+        id: note.id,
+        orderNumber: (note as any).orderNumber || note.dispatchNumber || 'N/A',
+        supplierName: note.supplier?.name || 'Unknown Supplier',
+        expectedDate: toDateStr(note.expectedDeliveryDate),
+        actualDate: note.actualDeliveryDate ? toDateStr(note.actualDeliveryDate) : undefined,
+        status: note.status as 'pending' | 'shipped' | 'arrived' | 'cancelled',
+        materials: (note.materials || []).map(dm => ({
           id: dm.id,
-          materialName: dm.materialType + ' ' + dm.profile + ' ' + dm.grade,
-          materialId: dm.id, // Use dispatch material ID since we don't have catalog ID
+          materialName: `${dm.materialType} ${dm.profile} ${dm.grade}`,
+          materialId: dm.id,
           orderedQuantity: Number(dm.orderedQuantity) || 0,
           deliveredQuantity: Number(dm.deliveredQuantity) || 0,
-          unit: dm.unit || 'kg',
+          unit: (dm as any).unit || dm.weightUnit || 'kg',
           notes: dm.notes || ''
-        }))
-        
-        dispatchRecords.push({
-          id: note.id,
-          orderNumber: note.dispatchNumber || note.orderNumber || 'N/A',
-          supplierName: note.supplier?.name || 'Unknown Supplier',
-          expectedDate: safeDate(note.expectedDeliveryDate),
-          actualDate: note.actualDeliveryDate ? safeDate(note.actualDeliveryDate) : undefined,
-          status: note.status as 'pending' | 'in_transit' | 'delivered' | 'cancelled',
-          materials: materials,
-          notes: note.notes || '',
-          createdAt: safeISODate(note.createdAt),
-          updatedAt: safeISODate(note.updatedAt)
-        })
-      }
-      
-      setDispatches(dispatchRecords)
-    } catch (error) {
-      console.error('Failed to load dispatches:', error)
-      toast({
-        title: "Error",
-        description: "Failed to load dispatch records",
-        variant: "destructive"
-      })
+        })),
+        notes: note.notes || '',
+        createdAt: new Date(note.createdAt).toISOString(),
+        updatedAt: new Date(note.updatedAt).toISOString()
+      }))
+      setDispatches(records)
     } finally {
       setIsLoading(false)
     }
@@ -233,9 +188,13 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
 
   useEffect(() => {
     setMounted(true)
-    loadDispatches()
+    refreshMaterials()
     loadMaterials()
-  }, []) // Empty dependency array - only run once on mount
+  }, [])
+
+  useEffect(() => {
+    rebuildDispatches()
+  }, [dispatchNotes])
 
   // Prevent hydration mismatch
   if (!mounted) {
@@ -257,7 +216,6 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
     }
 
     try {
-      // Create dispatch note in database
       const dispatchNoteData = {
         projectId: newDispatch.projectId,
         dispatchNumber: newDispatch.orderNumber,
@@ -265,7 +223,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
         expectedDeliveryDate: newDispatch.expectedDate ? new Date(newDispatch.expectedDate) : undefined,
         supplier: { 
           name: newDispatch.supplierName,
-          contactPerson: '',
+          contact: '',
           phone: '',
           email: '',
           address: ''
@@ -273,44 +231,39 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
         status: 'pending' as const,
         notes: newDispatch.notes
       }
-      
-      const dispatchId = await createDispatchNote(dispatchNoteData)
-      
-      // Create dispatch materials for each material
+      const dispatchId = await ctxCreateDispatchNote(dispatchNoteData as any)
+
       for (const material of newDispatch.materials) {
-        // Find the catalog material for better data
         const catalogMaterial = catalogMaterials.find(cm => cm.id === material.materialId)
-        
-        await createDispatchMaterial({
-          dispatchNoteId: dispatchId,
+        await ctxAddMaterialToDispatch(dispatchId, {
+          materialCatalogId: catalogMaterial?.id,
           materialType: catalogMaterial?.type || material.materialName.split(' ')[0] || 'Steel',
-          profile: catalogMaterial?.category || 'Standard',
+          profile: (catalogMaterial as any)?.category || 'Standard',
           grade: catalogMaterial?.name || 'Standard',
           dimensions: {
-            length: catalogMaterial?.standardLength || 0,
-            width: catalogMaterial?.standardWidth || 0,
-            height: catalogMaterial?.standardHeight || 0,
-            thickness: catalogMaterial?.standardThickness || 0
+            length: (catalogMaterial as any)?.standardLength || 0,
+            width: (catalogMaterial as any)?.standardWidth || 0,
+            height: (catalogMaterial as any)?.standardHeight || 0,
+            thickness: (catalogMaterial as any)?.standardThickness || 0
           },
           quantity: material.orderedQuantity || 0,
           orderedQuantity: material.orderedQuantity || 0,
           deliveredQuantity: material.deliveredQuantity || 0,
-          unitWeight: catalogMaterial?.density || 1,
-          totalWeight: (material.orderedQuantity || 0) * (catalogMaterial?.density || 1),
-          lengthUnit: catalogMaterial?.lengthUnit || 'mm',
+          unitWeight: (catalogMaterial as any)?.density || 1,
+          totalWeight: (material.orderedQuantity || 0) * ((catalogMaterial as any)?.density || 1),
+          lengthUnit: (catalogMaterial as any)?.lengthUnit || 'mm',
           weightUnit: material.unit || 'kg',
           unit: material.unit || 'kg',
-          unitCost: catalogMaterial?.basePrice || 0,
-          totalCost: (material.orderedQuantity || 0) * (catalogMaterial?.basePrice || 0),
-          currency: catalogMaterial?.currency || 'USD',
-          status: 'pending',
+          unitCost: (catalogMaterial as any)?.basePrice || 0,
+          totalCost: (material.orderedQuantity || 0) * ((catalogMaterial as any)?.basePrice || 0),
+          currency: (catalogMaterial as any)?.currency || 'USD',
+          status: 'pending' as any,
           location: 'Warehouse',
           notes: material.notes || `Material from catalog: ${catalogMaterial?.name || material.materialName}`
         })
       }
-      
-      // Reload dispatches to show the new one
-      await loadDispatches()
+
+      await refreshMaterials()
       
       setShowCreateDialog(false)
       setNewDispatch({
@@ -352,7 +305,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
       materialId: selectedMaterial.id,
       orderedQuantity: newMaterial.orderedQuantity,
       deliveredQuantity: newMaterial.deliveredQuantity,
-      unit: selectedMaterial.baseUnit || 'kg', // Get unit from catalog
+      unit: (selectedMaterial as any)?.baseUnit || 'kg',
       notes: newMaterial.notes
     }
     
@@ -383,55 +336,19 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
 
   const handleMarkAsDelivered = async (dispatchId: string) => {
     try {
-      const dispatch = dispatches.find(d => d.id === dispatchId)
-      if (!dispatch) return
-      
-      // Get the dispatch note from database to update it
-      const dispatchNote = await getDispatchNote(dispatchId)
-      if (!dispatchNote) {
-        toast({
-          title: "Error",
-          description: "Dispatch note not found",
-          variant: "destructive"
-        })
-        return
+      await ctxMarkDispatchArrived(dispatchId, new Date())
+      // Fetch fresh note and materials from DB to ensure statuses are up to date
+      const note = await dbGetDispatchNote(dispatchId)
+      if (note) {
+        const materials = await dbGetDispatchMaterials(dispatchId)
+        await onDispatchNoteUpdated({ ...note, materials, status: 'arrived' } as any)
       }
-      
-      // Update dispatch status in database
-      await updateDispatchNote({
-        ...dispatchNote,
-        status: 'delivered',
-        actualDeliveryDate: new Date()
-      })
-      
-      // Ensure dispatch materials are marked as arrived for sync
-      const materialsForDispatch = await getDispatchMaterials(dispatchId)
-      for (const dm of materialsForDispatch) {
-        if (dm.status !== 'arrived' && dm.status !== 'allocated') {
-          await updateDispatchMaterial(dm.id, { status: 'arrived' })
-        }
-      }
-      // Reload materials with updated statuses
-      const updatedMaterials = await getDispatchMaterials(dispatchId)
-      
-      // Trigger enhanced sync so project materials are created and stock is reserved
-      await onDispatchNoteUpdated({
-        ...dispatchNote,
-        status: 'arrived' as any,
-        actualDeliveryDate: new Date(),
-        materials: updatedMaterials
-      } as any)
-      
-      // Reload dispatches to reflect changes
-      await loadDispatches()
 
       toast({
         title: "Success",
         description: `Dispatch marked as delivered and synced to project materials.`
       })
       
-      // Skip legacy stock update logic to avoid duplication
-      return
     } catch (error) {
       console.error('Failed to mark dispatch as delivered:', error)
       toast({
@@ -444,55 +361,17 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
 
   const handleStatusChange = async (dispatchId: string, newStatus: string) => {
     try {
-      // Get the dispatch note from database
-      const dispatchNote = await getDispatchNote(dispatchId)
-      if (!dispatchNote) {
-        toast({
-          title: "Error",
-          description: "Dispatch note not found",
-          variant: "destructive"
-        })
-        return
-      }
-      
-      // Update dispatch status in database
-      const updatedDispatchNote = {
-        ...dispatchNote,
-        status: newStatus as any,
-        updatedAt: new Date()
-      }
-      
-      // If marking as delivered, also set actual delivery date and run enhanced sync
-      if (newStatus === 'delivered' && !dispatchNote.actualDeliveryDate) {
-        updatedDispatchNote.actualDeliveryDate = new Date() as any
-        await updateDispatchNote(updatedDispatchNote as any)
-        
-        // Ensure dispatch materials are marked as arrived for sync
-        const materialsForDispatch = await getDispatchMaterials(dispatchId)
-        for (const dm of materialsForDispatch) {
-          if (dm.status !== 'arrived' && dm.status !== 'allocated') {
-            await updateDispatchMaterial(dm.id, { status: 'arrived' })
-          }
+      if (newStatus === 'arrived') {
+        await ctxMarkDispatchArrived(dispatchId, new Date())
+        const note = await dbGetDispatchNote(dispatchId)
+        if (note) {
+          const materials = await dbGetDispatchMaterials(dispatchId)
+          await onDispatchNoteUpdated({ ...note, materials, status: 'arrived' } as any)
         }
-        const updatedMaterials = await getDispatchMaterials(dispatchId)
-        
-        await onDispatchNoteUpdated({
-          ...updatedDispatchNote,
-          status: 'arrived' as any,
-          materials: updatedMaterials
-        } as any)
-        
-        await loadDispatches()
-        toast({
-          title: "Success",
-          description: `Dispatch marked as delivered and synced to project materials.`
-        })
-        return
+        toast({ title: "Success", description: `Dispatch marked as delivered and synced to project materials.` })
+      } else {
+        await ctxUpdateDispatchStatus(dispatchId, newStatus as any)
       }
-      
-      await updateDispatchNote(updatedDispatchNote as any)
-      
-      // Legacy path for other statuses continues below
     } catch (error) {
       console.error('Failed to update dispatch status:', error)
       toast({
@@ -505,8 +384,8 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'delivered': return 'text-green-600 bg-green-50 border-green-200'
-      case 'in_transit': return 'text-blue-600 bg-blue-50 border-blue-200'
+      case 'arrived': return 'text-green-600 bg-green-50 border-green-200'
+      case 'shipped': return 'text-blue-600 bg-blue-50 border-blue-200'
       case 'pending': return 'text-yellow-600 bg-yellow-50 border-yellow-200'
       case 'cancelled': return 'text-red-600 bg-red-50 border-red-200'
       default: return 'text-gray-600 bg-gray-50 border-gray-200'
@@ -515,8 +394,8 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'delivered': return CheckCircle2
-      case 'in_transit': return Truck
+      case 'arrived': return CheckCircle2
+      case 'shipped': return Truck
       case 'pending': return Clock
       case 'cancelled': return AlertTriangle
       default: return Package
@@ -574,8 +453,8 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="in_transit">In Transit</SelectItem>
-            <SelectItem value="delivered">Delivered</SelectItem>
+            <SelectItem value="shipped">In Transit</SelectItem>
+            <SelectItem value="arrived">Delivered</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
@@ -638,7 +517,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                           >
                             <Eye className="w-3 h-3" />
                           </Button>
-                          {dispatch.status === 'in_transit' && (
+                          {dispatch.status === 'shipped' && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -664,15 +543,15 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                                 Pending
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => handleStatusChange(dispatch.id, 'in_transit')}
-                                disabled={dispatch.status === 'in_transit'}
+                                onClick={() => handleStatusChange(dispatch.id, 'shipped')}
+                                disabled={dispatch.status === 'shipped'}
                               >
                                 <Truck className="w-4 h-4 mr-2" />
                                 In Transit
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => handleStatusChange(dispatch.id, 'delivered')}
-                                disabled={dispatch.status === 'delivered'}
+                                onClick={() => handleStatusChange(dispatch.id, 'arrived')}
+                                disabled={dispatch.status === 'arrived'}
                               >
                                 <CheckCircle2 className="w-4 h-4 mr-2" />
                                 Delivered
@@ -817,7 +696,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                                       ...prev,
                                       materialCatalogId: material.id,
                                       materialName: material.name,
-                                      unit: material.baseUnit || 'kg'
+                                      unit: (material as any).baseUnit || 'kg'
                                     }))
                                     setOpen(false)
                                   }}
@@ -831,7 +710,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                                   <div className="flex flex-col">
                                     <span className="font-medium">{material.name}</span>
                                     <span className="text-sm text-muted-foreground">
-                                      {material.type} - {material.baseUnit || 'kg'}
+                                      {material.type} - {(material as any).baseUnit || 'kg'}
                                     </span>
                                   </div>
                                 </CommandItem>
@@ -862,7 +741,7 @@ export default function DispatchManager({ className }: DispatchManagerProps) {
                     <Label htmlFor="unit">Unit</Label>
                     <Input
                       id="unit"
-                      value={selectedMaterial ? selectedMaterial.baseUnit || 'kg' : newMaterial.unit}
+                      value={selectedMaterial ? (selectedMaterial as any).baseUnit || 'kg' : newMaterial.unit}
                       disabled
                       className="bg-gray-50"
                     />

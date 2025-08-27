@@ -253,6 +253,8 @@ export function BulkMaterialInput({
     try {
       const materialsToAdd = materials.map(({ id, ...material }) => ({
         ...material,
+        // Attach catalog link when name matches
+        materialCatalogId: catalogMaterials.find(cm => cm.name === material.materialType)?.id,
         totalWeight: material.quantity * material.unitWeight,
         totalCost: material.unitCost ? material.quantity * material.unitCost : undefined
       }))

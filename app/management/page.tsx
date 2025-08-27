@@ -574,7 +574,7 @@ export default function ManagementPage() {
               </div>
               
               {currentProject ? (
-                <ProjectTaskManagement projectId={currentProject.id} />
+                <ProjectTaskManagement project={currentProject} />
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">

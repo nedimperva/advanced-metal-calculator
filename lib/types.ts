@@ -345,6 +345,9 @@ export interface ProjectTask {
   // Assignment (simple, no teams)
   assignedTo?: string
   
+  // Optional milestone association
+  milestoneId?: string
+  
   // Dates
   scheduledStart?: Date
   scheduledEnd?: Date
@@ -366,6 +369,37 @@ export interface ProjectTask {
 
 // Milestone system for project management
 
+export enum MilestoneStatus {
+  PLANNED = 'planned',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled'
+}
+
+export enum MilestoneType {
+  PHASE = 'phase',
+  DELIVERABLE = 'deliverable',
+  INSPECTION = 'inspection',
+  PAYMENT = 'payment',
+  OTHER = 'other'
+}
+
+export interface ProjectMilestone {
+  id: string
+  projectId: string
+  name: string
+  description?: string
+  type: MilestoneType
+  status: MilestoneStatus
+  targetDate?: Date
+  completedDate?: Date
+  taskIds: string[]
+  progress: number
+  autoComplete: boolean
+  requiredTaskCompletion: number
+  createdAt: Date
+  updatedAt: Date
+}
 
 // ============================================================================
 // WORKFORCE & MACHINERY MANAGEMENT
@@ -589,6 +623,8 @@ export interface DispatchSupplier {
 export interface DispatchMaterial {
   id: string
   dispatchNoteId: string
+  // Link to catalog material when selected from catalog
+  materialCatalogId?: string
   // Material specifications
   materialType: string // Steel, Aluminum, etc.
   profile: string // I-beam, Channel, etc.

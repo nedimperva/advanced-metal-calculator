@@ -11,6 +11,20 @@ import type {
 } from '@/lib/types'
 import { toast } from '@/hooks/use-toast'
 import { useI18n } from '@/contexts/i18n-context'
+import {
+  initializeDatabase,
+  getAllDispatchNotes,
+  getDispatchNote as dbGetDispatchNote,
+  createDispatchNote as dbCreateDispatchNote,
+  updateDispatchNote as dbUpdateDispatchNote,
+  deleteDispatchNote as dbDeleteDispatchNote,
+  createDispatchMaterial as dbCreateDispatchMaterial,
+  bulkCreateDispatchMaterials as dbBulkCreateDispatchMaterials,
+  updateDispatchMaterial as dbUpdateDispatchMaterial,
+  deleteDispatchMaterial as dbDeleteDispatchMaterial,
+  updateDispatchMaterialStatus as dbUpdateDispatchMaterialStatus,
+  getDispatchMaterials as dbGetDispatchMaterials
+} from '@/lib/database'
 
 // Material Context interfaces
 interface MaterialContextState {
@@ -104,26 +118,24 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
     setState(prev => ({ ...prev, ...updates }))
   }, [])
 
-  // Initialize materials (placeholder - will implement with database)
+  // Initialize materials from IndexedDB
   const initializeMaterials = useCallback(async () => {
     try {
       updateState({ isLoading: true, error: null })
       
-      // TODO: Initialize IndexedDB stores for dispatch notes
-      // For now, load from localStorage or start with empty state
-      const storedDispatches = localStorage.getItem('steelforge-dispatch-notes')
-      const dispatchNotes = storedDispatches ? JSON.parse(storedDispatches) : []
+      await initializeDatabase()
+      const notes = await getAllDispatchNotes()
       
       updateState({
         isInitialized: true,
         isLoading: false,
-        dispatchNotes: dispatchNotes.map((note: any) => ({
+        dispatchNotes: notes.map((note: any) => ({
           ...note,
           date: new Date(note.date),
-          createdAt: new Date(note.createdAt),
-          updatedAt: new Date(note.updatedAt),
           expectedDeliveryDate: note.expectedDeliveryDate ? new Date(note.expectedDeliveryDate) : undefined,
-          actualDeliveryDate: note.actualDeliveryDate ? new Date(note.actualDeliveryDate) : undefined
+          actualDeliveryDate: note.actualDeliveryDate ? new Date(note.actualDeliveryDate) : undefined,
+          createdAt: new Date(note.createdAt),
+          updatedAt: new Date(note.updatedAt)
         }))
       })
       
@@ -136,23 +148,21 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
     }
   }, [updateState])
 
-  // Refresh materials from storage
+  // Refresh materials from IndexedDB
   const refreshMaterials = useCallback(async () => {
     try {
       updateState({ isLoading: true })
-      
-      const storedDispatches = localStorage.getItem('steelforge-dispatch-notes')
-      const dispatchNotes = storedDispatches ? JSON.parse(storedDispatches) : []
+      const notes = await getAllDispatchNotes()
       
       updateState({
         isLoading: false,
-        dispatchNotes: dispatchNotes.map((note: any) => ({
+        dispatchNotes: notes.map((note: any) => ({
           ...note,
           date: new Date(note.date),
-          createdAt: new Date(note.createdAt),
-          updatedAt: new Date(note.updatedAt),
           expectedDeliveryDate: note.expectedDeliveryDate ? new Date(note.expectedDeliveryDate) : undefined,
-          actualDeliveryDate: note.actualDeliveryDate ? new Date(note.actualDeliveryDate) : undefined
+          actualDeliveryDate: note.actualDeliveryDate ? new Date(note.actualDeliveryDate) : undefined,
+          createdAt: new Date(note.createdAt),
+          updatedAt: new Date(note.updatedAt)
         }))
       })
     } catch (error) {
@@ -164,34 +174,11 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
     }
   }, [updateState])
 
-  // Save to localStorage (temporary until database implementation)
-  const saveToStorage = useCallback((dispatchNotes: DispatchNote[]) => {
-    try {
-      localStorage.setItem('steelforge-dispatch-notes', JSON.stringify(dispatchNotes))
-    } catch (error) {
-      console.error('Failed to save to storage:', error)
-    }
-  }, [])
-
   // Create new dispatch note
   const createDispatchNote = useCallback(async (dispatchNoteData: Omit<DispatchNote, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const id = `dispatch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      const now = new Date()
-      
-      const newDispatchNote: DispatchNote = {
-        ...dispatchNoteData,
-        id,
-        createdAt: now,
-        updatedAt: now,
-        materials: [],
-        inspectionRequired: dispatchNoteData.inspectionRequired || false,
-        inspectionCompleted: false
-      }
-
-      const updatedDispatches = [...state.dispatchNotes, newDispatchNote]
-      saveToStorage(updatedDispatches)
-      updateState({ dispatchNotes: updatedDispatches })
+      const id = await dbCreateDispatchNote(dispatchNoteData)
+      await refreshMaterials()
       
       toast({
         title: t('dispatchNoteCreated'),
@@ -208,26 +195,13 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
       })
       throw error
     }
-  }, [state.dispatchNotes, saveToStorage, updateState, t])
+  }, [refreshMaterials, t])
 
   // Update dispatch note
   const updateDispatchNote = useCallback(async (dispatchNote: DispatchNote) => {
     try {
-      const updatedNote = {
-        ...dispatchNote,
-        updatedAt: new Date()
-      }
-
-      const updatedDispatches = state.dispatchNotes.map(note =>
-        note.id === dispatchNote.id ? updatedNote : note
-      )
-      
-      saveToStorage(updatedDispatches)
-      updateState({ dispatchNotes: updatedDispatches })
-      
-      if (state.currentDispatchNote?.id === dispatchNote.id) {
-        updateState({ currentDispatchNote: updatedNote })
-      }
+      await dbUpdateDispatchNote({ ...dispatchNote, updatedAt: new Date() })
+      await refreshMaterials()
       
       toast({
         title: t('dispatchNoteUpdated'),
@@ -242,18 +216,13 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
       })
       throw error
     }
-  }, [state.dispatchNotes, state.currentDispatchNote, saveToStorage, updateState, t])
+  }, [refreshMaterials, t])
 
   // Delete dispatch note
   const deleteDispatchNote = useCallback(async (dispatchNoteId: string) => {
     try {
-      const updatedDispatches = state.dispatchNotes.filter(note => note.id !== dispatchNoteId)
-      saveToStorage(updatedDispatches)
-      updateState({ dispatchNotes: updatedDispatches })
-      
-      if (state.currentDispatchNote?.id === dispatchNoteId) {
-        updateState({ currentDispatchNote: null })
-      }
+      await dbDeleteDispatchNote(dispatchNoteId)
+      await refreshMaterials()
       
       toast({
         title: t('dispatchNoteDeleted'),
@@ -268,7 +237,7 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
       })
       throw error
     }
-  }, [state.dispatchNotes, state.currentDispatchNote, saveToStorage, updateState, t])
+  }, [refreshMaterials, t])
 
   // Set current dispatch note
   const setCurrentDispatchNote = useCallback((dispatchNote: DispatchNote | null) => {
@@ -278,65 +247,20 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
   // Add material to dispatch
   const addMaterialToDispatch = useCallback(async (dispatchNoteId: string, materialData: Omit<DispatchMaterial, 'id' | 'dispatchNoteId'>) => {
     try {
-      const materialId = `material_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      
-      const newMaterial: DispatchMaterial = {
-        ...materialData,
-        id: materialId,
-        dispatchNoteId,
-        status: materialData.status || 'pending' as DispatchMaterialStatus
-      }
-
-      const updatedDispatches = state.dispatchNotes.map(note => {
-        if (note.id === dispatchNoteId) {
-          return {
-            ...note,
-            materials: [...note.materials, newMaterial],
-            updatedAt: new Date()
-          }
-        }
-        return note
-      })
-      
-      saveToStorage(updatedDispatches)
-      updateState({ dispatchNotes: updatedDispatches })
-      
-      return materialId
+      const id = await dbCreateDispatchMaterial({ ...materialData, dispatchNoteId })
+      await refreshMaterials()
+      return id
     } catch (error) {
       console.error('Failed to add material to dispatch:', error)
       throw error
     }
-  }, [state.dispatchNotes, saveToStorage, updateState])
+  }, [refreshMaterials])
 
   // Bulk add materials
   const bulkAddMaterials = useCallback(async (dispatchNoteId: string, materialsData: Omit<DispatchMaterial, 'id' | 'dispatchNoteId'>[]) => {
     try {
-      const materialIds: string[] = []
-      const newMaterials: DispatchMaterial[] = materialsData.map(materialData => {
-        const materialId = `material_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        materialIds.push(materialId)
-        
-        return {
-          ...materialData,
-          id: materialId,
-          dispatchNoteId,
-          status: materialData.status || 'pending' as DispatchMaterialStatus
-        }
-      })
-
-      const updatedDispatches = state.dispatchNotes.map(note => {
-        if (note.id === dispatchNoteId) {
-          return {
-            ...note,
-            materials: [...note.materials, ...newMaterials],
-            updatedAt: new Date()
-          }
-        }
-        return note
-      })
-      
-      saveToStorage(updatedDispatches)
-      updateState({ dispatchNotes: updatedDispatches })
+      const materialIds = await dbBulkCreateDispatchMaterials(dispatchNoteId, materialsData)
+      await refreshMaterials()
       
       toast({
         title: t('materialsAdded'),
@@ -353,30 +277,22 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
       })
       throw error
     }
-  }, [state.dispatchNotes, saveToStorage, updateState, t])
+  }, [refreshMaterials, t])
 
   // Update dispatch status
   const updateDispatchStatus = useCallback(async (dispatchNoteId: string, status: DispatchStatus) => {
     try {
-      const updatedDispatches = state.dispatchNotes.map(note => {
-        if (note.id === dispatchNoteId) {
-          const updates: Partial<DispatchNote> = {
-            status,
-            updatedAt: new Date()
-          }
-          
-          // Auto-set arrival date when status changes to 'arrived'
-          if (status === 'arrived' && !note.actualDeliveryDate) {
-            updates.actualDeliveryDate = new Date()
-          }
-          
-          return { ...note, ...updates }
-        }
-        return note
-      })
-      
-      saveToStorage(updatedDispatches)
-      updateState({ dispatchNotes: updatedDispatches })
+      const note = await dbGetDispatchNote(dispatchNoteId)
+      if (!note) {
+        throw new Error('Dispatch note not found')
+      }
+      const updates: Partial<DispatchNote> = {
+        status,
+        updatedAt: new Date(),
+        ...(status === 'arrived' && !note.actualDeliveryDate ? { actualDeliveryDate: new Date() } : {})
+      }
+      await dbUpdateDispatchNote({ ...note, ...updates })
+      await refreshMaterials()
       
       toast({
         title: t('statusUpdated'),
@@ -386,38 +302,22 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
       console.error('Failed to update dispatch status:', error)
       throw error
     }
-  }, [state.dispatchNotes, saveToStorage, updateState, t])
+  }, [refreshMaterials, t])
 
   // Mark dispatch as arrived
   const markDispatchArrived = useCallback(async (dispatchNoteId: string, arrivalDate?: Date) => {
     try {
       await updateDispatchStatus(dispatchNoteId, 'arrived')
-      
-      // Also update all materials in this dispatch to 'arrived' status
-      const dispatch = state.dispatchNotes.find(note => note.id === dispatchNoteId)
-      if (dispatch) {
-        const updatedDispatches = state.dispatchNotes.map(note => {
-          if (note.id === dispatchNoteId) {
-            return {
-              ...note,
-              actualDeliveryDate: arrivalDate || new Date(),
-              materials: note.materials.map(material => ({
-                ...material,
-                status: 'arrived' as DispatchMaterialStatus
-              }))
-            }
-          }
-          return note
-        })
-        
-        saveToStorage(updatedDispatches)
-        updateState({ dispatchNotes: updatedDispatches })
+      const materials = await dbGetDispatchMaterials(dispatchNoteId)
+      for (const mat of materials) {
+        await dbUpdateDispatchMaterialStatus(mat.id, 'arrived')
       }
+      await refreshMaterials()
     } catch (error) {
       console.error('Failed to mark dispatch as arrived:', error)
       throw error
     }
-  }, [state.dispatchNotes, updateDispatchStatus, saveToStorage, updateState])
+  }, [updateDispatchStatus, refreshMaterials])
 
   // Get filtered dispatches
   const getFilteredDispatches = useCallback(() => {
@@ -505,29 +405,8 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
   // Update existing dispatch material
   const updateDispatchMaterial = useCallback(async (material: DispatchMaterial) => {
     try {
-      const updatedDispatches = state.dispatchNotes.map(note => {
-        if (note.id === material.dispatchNoteId) {
-          return {
-            ...note,
-            materials: note.materials.map(m => 
-              m.id === material.id ? material : m
-            ),
-            updatedAt: new Date()
-          }
-        }
-        return note
-      })
-      
-      saveToStorage(updatedDispatches)
-      updateState({ dispatchNotes: updatedDispatches })
-      
-      // Update current dispatch note if it's the one being modified
-      if (state.currentDispatchNote?.id === material.dispatchNoteId) {
-        const updatedCurrentNote = updatedDispatches.find(note => note.id === material.dispatchNoteId)
-        if (updatedCurrentNote) {
-          updateState({ currentDispatchNote: updatedCurrentNote })
-        }
-      }
+      await dbUpdateDispatchMaterial(material.id, material)
+      await refreshMaterials()
       
       toast({
         title: t('materialUpdated'),
@@ -542,53 +421,17 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
       })
       throw error
     }
-  }, [state.dispatchNotes, state.currentDispatchNote, saveToStorage, updateState, t])
+  }, [refreshMaterials, t])
 
   // Remove material from dispatch
   const removeMaterialFromDispatch = useCallback(async (materialId: string) => {
     try {
-      // Find the material and its dispatch note
-      let materialToRemove: DispatchMaterial | null = null
-      let dispatchNoteId: string | null = null
-      
-      for (const note of state.dispatchNotes) {
-        const material = note.materials.find(m => m.id === materialId)
-        if (material) {
-          materialToRemove = material
-          dispatchNoteId = note.id
-          break
-        }
-      }
-      
-      if (!materialToRemove || !dispatchNoteId) {
-        throw new Error('Material not found')
-      }
-      
-      const updatedDispatches = state.dispatchNotes.map(note => {
-        if (note.id === dispatchNoteId) {
-          return {
-            ...note,
-            materials: note.materials.filter(m => m.id !== materialId),
-            updatedAt: new Date()
-          }
-        }
-        return note
-      })
-      
-      saveToStorage(updatedDispatches)
-      updateState({ dispatchNotes: updatedDispatches })
-      
-      // Update current dispatch note if it's the one being modified
-      if (state.currentDispatchNote?.id === dispatchNoteId) {
-        const updatedCurrentNote = updatedDispatches.find(note => note.id === dispatchNoteId)
-        if (updatedCurrentNote) {
-          updateState({ currentDispatchNote: updatedCurrentNote })
-        }
-      }
+      await dbDeleteDispatchMaterial(materialId)
+      await refreshMaterials()
       
       toast({
         title: t('materialRemoved'),
-        description: `${t('materialRemoved')} ${materialToRemove.materialType} ${materialToRemove.profile}`
+        description: t('materialRemoved')
       })
     } catch (error) {
       console.error('Failed to remove material from dispatch:', error)
@@ -599,49 +442,13 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
       })
       throw error
     }
-  }, [state.dispatchNotes, state.currentDispatchNote, saveToStorage, updateState, t])
+  }, [refreshMaterials, t])
 
   // Update material status
   const updateMaterialStatus = useCallback(async (materialId: string, status: DispatchMaterialStatus) => {
     try {
-      // Find the material and its dispatch note
-      let materialFound = false
-      let dispatchNoteId: string | null = null
-      
-      const updatedDispatches = state.dispatchNotes.map(note => {
-        const materialIndex = note.materials.findIndex(m => m.id === materialId)
-        if (materialIndex !== -1) {
-          materialFound = true
-          dispatchNoteId = note.id
-          const updatedMaterials = [...note.materials]
-          updatedMaterials[materialIndex] = {
-            ...updatedMaterials[materialIndex],
-            status
-          }
-          
-          return {
-            ...note,
-            materials: updatedMaterials,
-            updatedAt: new Date()
-          }
-        }
-        return note
-      })
-      
-      if (!materialFound) {
-        throw new Error('Material not found')
-      }
-      
-      saveToStorage(updatedDispatches)
-      updateState({ dispatchNotes: updatedDispatches })
-      
-      // Update current dispatch note if it's the one being modified
-      if (state.currentDispatchNote?.id === dispatchNoteId) {
-        const updatedCurrentNote = updatedDispatches.find(note => note.id === dispatchNoteId)
-        if (updatedCurrentNote) {
-          updateState({ currentDispatchNote: updatedCurrentNote })
-        }
-      }
+      await dbUpdateDispatchMaterialStatus(materialId, status)
+      await refreshMaterials()
       
       toast({
         title: t('materialStatusUpdated'),
@@ -656,7 +463,7 @@ export function MaterialProvider({ children }: MaterialProviderProps) {
       })
       throw error
     }
-  }, [state.dispatchNotes, state.currentDispatchNote, saveToStorage, updateState, t])
+  }, [refreshMaterials, t])
 
   // Calculate material inventory from all dispatch notes
   const getMaterialInventory = useCallback((projectId?: string): MaterialInventory[] => {

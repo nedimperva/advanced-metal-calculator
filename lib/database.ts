@@ -17,7 +17,8 @@ import type {
   MaterialCatalog,
   MaterialTemplate,
   MaterialStock,
-  MaterialStockTransaction
+  MaterialStockTransaction,
+  ProjectMilestone
 } from './types'
 import { ProjectStatus, MaterialStatus, ProjectMaterialStatus, ProjectMaterialSource, DispatchStatus, DispatchMaterialStatus } from './types'
 

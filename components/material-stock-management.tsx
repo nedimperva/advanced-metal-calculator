@@ -164,14 +164,14 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
       
       setMaterials(catalogMaterials)
       
-      // Map stock data with material information
+      // Map stock data with material information (include dispatch-linked stock without catalog)
       const stockWithMaterials = stockData.map(stock => ({
         ...stock,
         material: catalogMaterials.find(m => m.id === stock.materialCatalogId),
         totalValue: (Number(stock.currentStock) || 0) * (Number(stock.unitCost) || 0)
-      })).filter(stock => stock.material) as (MaterialStock & { material: MaterialCatalog })[]
+      })) as (MaterialStock & { material?: MaterialCatalog })[]
       
-      setMaterialStock(stockWithMaterials)
+      setMaterialStock(stockWithMaterials as any)
       
       // If no stock data exists, create initial stock for each material
       if (stockData.length === 0 && catalogMaterials.length > 0) {
@@ -691,10 +691,10 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
   }
 
   const filteredStock = materialStock.filter(stock => {
-    if (!stock.material) return false
-    const matchesSearch = stock.material.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = selectedCategory === 'all' || stock.material.category === selectedCategory
-    const matchesType = selectedType === 'all' || stock.material.type === selectedType
+    const name = (stock as any).material?.name || stock.materialCatalogId
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = selectedCategory === 'all' || ((stock as any).material && (stock as any).material.category === selectedCategory)
+    const matchesType = selectedType === 'all' || ((stock as any).material && (stock as any).material.type === selectedType)
     return matchesSearch && matchesCategory && matchesType
   })
 
@@ -814,11 +814,11 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                   return (
                     <TableRow key={stock.id}>
                       <TableCell className="font-medium">
-                        {stock.material.name}
+                        {stock.material?.name || (stock.materialCatalogId.startsWith('dispatch-') ? 'Dispatch Stock' : stock.materialCatalogId)}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {stock.material.type}
+                          {stock.material?.type || 'Dispatch'}
                         </Badge>
                       </TableCell>
                       <TableCell>{stock.currentStock}</TableCell>
@@ -847,23 +847,25 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
                       <TableCell>{stock.location}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
+                          {stock.material && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedMaterial(stock.material!)
+                                setShowAssignDialog(true)
+                              }}
+                            >
+                              Assign
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setSelectedMaterial(stock.material)
-                              setShowAssignDialog(true)
-                            }}
-                          >
-                            Assign
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedStockForView(stock)
+                              setSelectedStockForView(stock as any)
                               setShowViewDialog(true)
-                              loadMaterialHistory(stock.material.id, stock.id)
+                              loadMaterialHistory(stock.material?.id || stock.materialCatalogId, stock.id)
                             }}
                           >
                             <Eye className="w-3 h-3" />
@@ -1103,7 +1105,7 @@ export default function MaterialStockManagement({ className }: MaterialStockMana
           <DialogHeader>
             <DialogTitle>Edit Stock Information</DialogTitle>
             <DialogDescription>
-              Update stock levels and information for {selectedMaterial?.name}
+              Update stock levels and information for {selectedMaterial?.name || 'Dispatch Stock'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
